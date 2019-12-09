@@ -1,17 +1,17 @@
 CFLAGS=-std=c11 -g -static
-SRCS=$(winldcard *.c)
-OBJS=$(SRC:.c=.o)
+SRCS=$(wildcard *.c)
+OBJS=$(SRCS:.c=.o)
 
 mcc: $(OBJS)
-		$(CC) -o mcc $(OBJS) $(LDFLAGS)
+	$(CC) -o mcc $(OBJS) $(LDFLAGS)
 
 $(OBJS): mcc.h
 
 test: mcc
-		./test.sh
+	./test.sh
 
 clean:
-		rm -f mcc *.o *~ tmp*
+	rm -f mcc *.o *~ tmp*
 
 .PHONY: test clean
 

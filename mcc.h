@@ -2,22 +2,24 @@
 #ifndef MCC_H
 #define MCC_H
 
-
 typedef enum {
-  ND_ADD,  // +
-  ND_SUB,  // -
-  ND_MUL,  // *
-  ND_DIV,  // /
-  ND_MOD,  // %
-  ND_EQ,
-  ND_NE,
-  ND_LT,  // <
-  ND_LE,  // <=
-  ND_NUM,  // integer number
+  ND_ADD,    // +
+  ND_SUB,    // -
+  ND_MUL,    // *
+  ND_DIV,    // /
+  ND_MOD,    // %
+  ND_ASSIGN, // =
+  ND_LVAR,   // local variable
+  ND_EQ,     // ==
+  ND_NE,     // !=
+  ND_LT,     // <
+  ND_LE,     // <=
+  ND_NUM,    // integer number
 } NodeKind;
 
 typedef enum {
   TK_RESERVED,  // simbol +, -
+  TK_IDENT,     // identity
   TK_NUM,       // integer number
   TK_EOF,       // Eno of File
 } TokenKind;
@@ -39,22 +41,25 @@ struct Node {
   Node *lhs;  // left-hand side
   Node *rhs;  // right-hand side
   int val;    // only use if kind is ND_NUM
+  int offset;
 };
 
 // global vars
 extern char *user_input;
 extern Token *token;
+extern Node *code[];
 
 void print_header();
 Node *expr();
 Node *mul();
 
 void gen(Node *node);
-Token *tokenize(char *p);
+void tokenize(char *p);
 void print_header();
 
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
+void program();
 
 #endif
 

@@ -8,17 +8,17 @@
 // current token
 char *user_input;
 Token *token;
+Node *code[100];
 
-Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
+Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
-  tok->len = len;
   cur->next = tok;
   return tok;
 }
 
-Token *tokenize(char *p) {
+void tokenize(char *p) {
   Token head;
   head.next = NULL;
   Token *cur = &head;
@@ -33,27 +33,37 @@ Token *tokenize(char *p) {
 
     if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 
      || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0) {
-      cur = new_token(TK_RESERVED, cur, p, 2);
+      cur = new_token(TK_RESERVED, cur, p);
+      cur->len = 2;
       p += 2;
       continue;
     }
 
-    if (strchr("()<>+-*/%^", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++, 1);
+    if (strchr("=()<>+-*/%^;", *p)) {
+      cur = new_token(TK_RESERVED, cur, p++);
+      cur->len = 1;
       continue;
     }
 
     if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p, 1);
+      cur = new_token(TK_NUM, cur, p);
       cur->val = strtol(p, &p, 10);
+      continue;
+    }
+
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++);
+      cur->len = 1;
       continue;
     }
 
     error_at(p, "unexpected token");
   }
-  new_token(TK_EOF, cur, p, 1);
-  return head.next;
+  new_token(TK_EOF, cur, p);
+  
+  token = head.next;
 }
+
 
 bool consume(char *op) {
   if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
@@ -63,10 +73,18 @@ bool consume(char *op) {
   return true;
 }
 
+Token *consume_ident() {
+  if (token->kind != TK_IDENT) {
+    return false;
+  }
+  token = token->next;
+  return token;
+}
+
 // read reserved symbol
 void expect(char* op) {
   if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
-    error("token is not '%s'", op);
+    error("token is '%s' not '%s'", token->str, op);
   }
   token = token->next;
 }
@@ -102,6 +120,14 @@ Node *primary() {
   if (consume("(")) {
     Node *node = expr();
     expect(")");
+    return node;
+  }
+
+  Token *tok = consume_ident();
+  if (tok) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = (tok->str[0] - 'a' + 1) * 8;
     return node;
   }
   return new_node_num(expect_number());
@@ -176,7 +202,30 @@ Node *equality() {
   }
 }
 
+Node *assign() {
+  Node *node = equality();
+  if (consume("=")) {
+    node = new_node(ND_ASSIGN, node, assign());
+  }
+  return node;
+}
+
 Node *expr() {
-  return equality();
+  return assign();
+}
+
+Node *stmt() {
+  Node *node = expr();
+  consume(";");
+  return node;
+}
+
+
+void program() {
+  int i = 0;
+  while (!at_eof()) {
+    code[i++] = stmt();
+  }
+  code[i] = NULL;
 }
 
