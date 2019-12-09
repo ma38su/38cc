@@ -38,6 +38,7 @@ struct Node {
 };
 
 void print_header();
+Node *expr();
 Node *mul();
 
 // current token
@@ -158,6 +159,41 @@ Node *new_node_num(int val) {
   return node;
 }
 
+Node *primary() {
+  if (consume('(')) {
+    Node *node = expr();
+    expect(')');
+    return node;
+  }
+  return new_node_num(expect_number());
+}
+
+Node *unary() {
+  if (consume('-')) {
+    return new_node(ND_SUB, new_node_num(0), primary());
+  }
+  if (consume('+')) {
+    return primary();
+  }
+  return primary();
+}
+
+Node *mul() {
+  Node *node = unary();
+  for (;;) {
+    if (consume('*')) {
+      node = new_node(ND_MUL, node, unary());
+    } else if (consume('/')) {
+      node = new_node(ND_DIV, node, unary());
+    } else if (consume('%')) {
+      node = new_node(ND_MOD, node, unary());
+    } else {
+      return node;
+    }
+  }
+  return node;
+}
+
 Node *expr() {
   Node *node = mul();
   for (;;) {
@@ -169,31 +205,6 @@ Node *expr() {
       return node;
     }
   }
-}
-
-Node *primary() {
-  if (consume('(')) {
-    Node *node = expr();
-    expect(')');
-    return node;
-  }
-  return new_node_num(expect_number());
-}
-
-Node *mul() {
-  Node *node = primary();
-  for (;;) {
-    if (consume('*')) {
-      node = new_node(ND_MUL, node, primary());
-    } else if (consume('/')) {
-      node = new_node(ND_DIV, node, primary());
-    } else if (consume('%')) {
-      node = new_node(ND_MOD, node, primary());
-    } else {
-      return node;
-    }
-  }
-  return node;
 }
 
 void print_header() {
@@ -210,7 +221,7 @@ void gen(Node *node) {
 
   gen(node->lhs);
   gen(node->rhs);
- 
+
   printf("  pop rdi\n");
   printf("  pop rax\n");
   if (node->kind == ND_ADD) {
@@ -221,10 +232,10 @@ void gen(Node *node) {
     printf("  imul rax, rdi\n");
   } else if (node->kind == ND_DIV) {
     printf("  cqo\n");
-    printf("  idiv rdi\n"); // divide by (rdx << 64 | rax) / rdi => rax, rdx
+    printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
   } else if (node->kind == ND_MOD) {
     printf("  cqo\n");
-    printf("  idiv rdi\n"); // divide by (rdx << 64 | rax) / rdi => rax, rdx
+    printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
     printf("  mov rax, rdx\n");
   } else {
     error("failed to calc");
