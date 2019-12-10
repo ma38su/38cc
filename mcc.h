@@ -44,10 +44,20 @@ struct Node {
   int offset;
 };
 
+typedef struct LVar LVar;
+
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
 // global vars
 extern char *user_input;
 extern Token *token;
 extern Node *code[];
+extern LVar *locals;
 
 void print_header();
 Node *expr();
@@ -57,6 +67,7 @@ void gen(Node *node);
 void tokenize(char *p);
 void print_header();
 
+LVar *find_lvar(Token *tok);
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
 void program();

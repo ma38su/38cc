@@ -11,9 +11,9 @@ try() {
   actual="$?"
 
   if [ "$actual" = "$expected" ]; then
-    echo "$input => $actual"
+    echo "$input => $actual is expected"
   else
-    echo "$expected expected, but got $input => $actual"
+    echo "$input => $expected is expected, but actual is => $actual"
     exit 1
   fi
 }
@@ -33,19 +33,20 @@ try 1 '2 != 1;'
 try 1 '1 != 2;'
 try 1 '2 < 3;'
 try 0 '3 < 2;'
-try 1 '2 <= 2'
-try 1 '2 <= 3'
-try 0 '3 <= 2'
-try 1 '2 >= 2'
-try 1 '3 >= 2'
-try 0 '2 >= 3'
-try 0 '6 % 3'
-try 1 '3 % 2'
-try 5 '41 % 9'
+try 1 '2 <= 2;'
+try 1 '2 <= 3;'
+try 0 '3 <= 2;'
+try 1 '2 >= 2;'
+try 1 '3 >= 2;'
+try 0 '2 >= 3;'
+try 0 '6 % 3;'
+try 1 '3 % 2;'
+try 5 '41 % 9;'
 try 10 'c=10;'
 try 11 'c=a=5;c+a+1;'
+try 11 'ca=ab=5;ca+ab+1;'
 
-try -3 '-3'
+try -3 '-3;'
 
 echo OK
 

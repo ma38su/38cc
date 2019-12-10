@@ -9,6 +9,7 @@
 char *user_input;
 Token *token;
 Node *code[100];
+LVar *locals;
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
@@ -51,9 +52,11 @@ void tokenize(char *p) {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++);
-      cur->len = 1;
+    int l = lvar_len(p);
+    if (l >= 0) {
+      cur = new_token(TK_IDENT, cur, p);
+      cur->len = l;
+      p += l;
       continue;
     }
 
@@ -64,6 +67,17 @@ void tokenize(char *p) {
   token = head.next;
 }
 
+int lvar_len(char *p) {
+  int len = 0;
+  if ('a' <= *p && *p <= 'z') {
+    while (('a' <= *p && *p <= 'z')
+        || ('0' < *p && *p <= '9')) {
+      p++;
+      len++;
+    }
+  }
+  return len;
+}
 
 bool consume(char *op) {
   if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
@@ -75,10 +89,12 @@ bool consume(char *op) {
 
 Token *consume_ident() {
   if (token->kind != TK_IDENT) {
-    return false;
+    return NULL;
   }
+  Token *tmp;
+  tmp = token;
   token = token->next;
-  return token;
+  return tmp;
 }
 
 // read reserved symbol
@@ -127,9 +143,27 @@ Node *primary() {
   if (tok) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    node->offset = (tok->str[0] - 'a' + 1) * 8;
+    //node->offset = (tok->str[0] - 'a' + 1) * 8;
+    
+    LVar *lvar = find_lvar(tok);
+    if (lvar) {
+      node->offset = lvar->offset;
+    } else {
+      lvar = calloc(1, sizeof(LVar));
+      lvar->name = tok->str;
+      lvar->len = tok->len;
+      if (locals) {
+        lvar->offset = locals->offset + 8;
+      } else {
+        lvar->offset = 8;
+      }
+      node->offset = lvar->offset;
+      lvar->next = locals;
+      locals = lvar;
+    }
     return node;
   }
+
   return new_node_num(expect_number());
 }
 
@@ -216,7 +250,7 @@ Node *expr() {
 
 Node *stmt() {
   Node *node = expr();
-  consume(";");
+  expect(";");
   return node;
 }
 
@@ -229,3 +263,11 @@ void program() {
   code[i] = NULL;
 }
 
+LVar *find_lvar(Token *tok) {
+  for (LVar *var = locals; var; var = var->next) {
+    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
+      return var;
+    }
+  }
+  return NULL;
+}
