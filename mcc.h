@@ -9,6 +9,7 @@ typedef enum {
   ND_DIV,    // /
   ND_MOD,    // %
   ND_ASSIGN, // =
+  ND_RETURN, // return
   ND_LVAR,   // local variable
   ND_EQ,     // ==
   ND_NE,     // !=
@@ -21,6 +22,7 @@ typedef enum {
   TK_RESERVED,  // simbol +, -
   TK_IDENT,     // identity
   TK_NUM,       // integer number
+  TK_RETURN,    // return
   TK_EOF,       // Eno of File
 } TokenKind;
 

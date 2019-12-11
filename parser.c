@@ -19,6 +19,25 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
   return tok;
 }
 
+int is_alnum(char c) {
+  return ('a' <= c && c <= 'z')
+      || ('A' <= c && c <= 'Z')
+      || ('0' <= c && c <= '9')
+      || (c == '_');
+}
+
+int lvar_len(char *p0) {
+  char *p;
+  p = p0;
+  if (('a' <= *p && *p <= 'z')
+    || ('A' <= *p && *p <= 'Z')) {
+    while (is_alnum(*p)) {
+      p++;
+    }
+  }
+  return p - p0;
+}
+
 void tokenize(char *p) {
   Token head;
   head.next = NULL;
@@ -53,10 +72,15 @@ void tokenize(char *p) {
     }
 
     int l = lvar_len(p);
-    if (l >= 0) {
-      cur = new_token(TK_IDENT, cur, p);
-      cur->len = l;
+    if (l > 0) {
+      if (l == 6 && memcmp(p, "return", l) == 0) {
+        cur = new_token(TK_RETURN, cur, p);
+      } else {
+        cur = new_token(TK_IDENT, cur, p);
+      }
       p += l;
+      cur->len = l;
+
       continue;
     }
 
@@ -67,20 +91,16 @@ void tokenize(char *p) {
   token = head.next;
 }
 
-int lvar_len(char *p) {
-  int len = 0;
-  if ('a' <= *p && *p <= 'z') {
-    while (('a' <= *p && *p <= 'z')
-        || ('0' < *p && *p <= '9')) {
-      p++;
-      len++;
-    }
-  }
-  return len;
-}
-
 bool consume(char *op) {
   if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
+    return false;
+  }
+  token = token->next;
+  return true;
+}
+
+bool consume_return() {
+  if (token->kind != TK_RETURN) {
     return false;
   }
   token = token->next;
@@ -100,6 +120,14 @@ Token *consume_ident() {
 // read reserved symbol
 void expect(char* op) {
   if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
+    Token *t;
+    for (t = token; t; t = t->next) {
+      if (t->kind == TK_RETURN) {
+        printf("  token: %s = return\n", t->str);
+      } else {
+        printf("  token: %s\n", t->str);
+      }
+    }
     error("token is '%s' not '%s'", token->str, op);
   }
   token = token->next;
@@ -143,7 +171,6 @@ Node *primary() {
   if (tok) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    //node->offset = (tok->str[0] - 'a' + 1) * 8;
     
     LVar *lvar = find_lvar(tok);
     if (lvar) {
@@ -249,7 +276,14 @@ Node *expr() {
 }
 
 Node *stmt() {
-  Node *node = expr();
+  Node *node;
+  if (consume_return()) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_RETURN;
+    node->lhs = expr();
+  } else {
+    node = expr();
+  }
   expect(";");
   return node;
 }
