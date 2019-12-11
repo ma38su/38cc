@@ -50,6 +50,11 @@ try 11 'c=a=5;c+a+1;'
 try 11 'ca=ab=5;ca+ab+1;'
 try 5 'return 5; return 8;'
 try 13 'return 2 + 11; return 3 + 21;'
+try 9 'if (1) return 9; return 7;'
+try 13 'if (0) return 11; return 13;'
+try 5 'if (0) 3; 5;'
+try 5 'if (0) return 3; else return 5;'
+try 3 'if (1) return 3; else return 5;'
 
 try -3 '-3;'
 

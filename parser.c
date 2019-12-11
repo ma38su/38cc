@@ -5,11 +5,14 @@
 
 #include "mcc.h"
 
+Node *stmt();
+
 // current token
 char *user_input;
 Token *token;
 Node *code[100];
 LVar *locals;
+
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
@@ -27,8 +30,7 @@ int is_alnum(char c) {
 }
 
 int lvar_len(char *p0) {
-  char *p;
-  p = p0;
+  char *p = p0;
   if (('a' <= *p && *p <= 'z')
     || ('A' <= *p && *p <= 'Z')) {
     while (is_alnum(*p)) {
@@ -75,12 +77,19 @@ void tokenize(char *p) {
     if (l > 0) {
       if (l == 6 && memcmp(p, "return", l) == 0) {
         cur = new_token(TK_RETURN, cur, p);
+      } else if (l == 2 && memcmp(p, "if", l) == 0) {
+        cur = new_token(TK_IF, cur, p);
+      } else if (l == 4 && memcmp(p, "else", l) == 0) {
+        cur = new_token(TK_ELSE, cur, p);
+      } else if (l == 5 && memcmp(p, "while", l) == 0) {
+        cur = new_token(TK_WHILE, cur, p);
+      } else if (l == 3 && memcmp(p, "for", l) == 0) {
+        cur = new_token(TK_FOR, cur, p);
       } else {
         cur = new_token(TK_IDENT, cur, p);
       }
       p += l;
       cur->len = l;
-
       continue;
     }
 
@@ -99,8 +108,8 @@ bool consume(char *op) {
   return true;
 }
 
-bool consume_return() {
-  if (token->kind != TK_RETURN) {
+bool consume_kind(TokenKind kind) {
+  if (token->kind != kind) {
     return false;
   }
   token = token->next;
@@ -120,6 +129,7 @@ Token *consume_ident() {
 // read reserved symbol
 void expect(char* op) {
   if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
+    /*
     Token *t;
     for (t = token; t; t = t->next) {
       if (t->kind == TK_RETURN) {
@@ -128,6 +138,7 @@ void expect(char* op) {
         printf("  token: %s\n", t->str);
       }
     }
+    */
     error("token is '%s' not '%s'", token->str, op);
   }
   token = token->next;
@@ -277,10 +288,51 @@ Node *expr() {
 
 Node *stmt() {
   Node *node;
-  if (consume_return()) {
+  if (consume_kind(TK_IF)) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_IF;
+
+    expect("(");
+    node->lhs = expr();
+    expect(")");
+
+    Node *tmp = stmt();
+
+    if (!consume_kind(TK_ELSE)) {
+      node->rhs = tmp;
+    } else {
+      Node *sub = calloc(1, sizeof(Node));
+      sub->kind = ND_ELSE;
+      node->rhs = sub;
+
+      sub->lhs = tmp;
+      sub->rhs = stmt();
+    }
+    return node;
+  }
+
+  if (consume_kind(TK_RETURN)) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
     node->lhs = expr();
+  } else if (consume_kind(TK_WHILE)) {
+    expect("(");
+    node = expr();
+    expect(")");
+  } else if (consume_kind(TK_FOR)) {
+    expect("(");
+    if (!consume(";")) {
+      node = expr();
+      expect(";");
+    }
+    if (!consume(";")) {
+      node = expr();
+      expect(";");
+    }
+    if (!consume(";")) {
+      node = expr();
+      expect(")");
+    }
   } else {
     node = expr();
   }
