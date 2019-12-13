@@ -5,16 +5,16 @@ try() {
   input="$2"
 
   ./mcc "$input" > tmp.s
-  cat tmp.s
+  #cat tmp.s
   gcc -o tmp tmp.s
   ./tmp
   actual="$?"
 
   if [ "$actual" = "$expected" ]; then
-    echo "$input => $actual is expected"
+    echo "\"$input\" => $actual is expected"
     echo ""
   else
-    echo "$input => $expected is expected, but actual is => $actual"
+    echo "\"$input\" => $expected is expected, but actual is => $actual"
     echo ""
     exit 1
   fi
@@ -55,6 +55,11 @@ try 13 'if (0) return 11; return 13;'
 try 5 'if (0) 3; 5;'
 try 5 'if (0) return 3; else return 5;'
 try 3 'if (1) return 3; else return 5;'
+try 8 'i = 3; i = i + 5; return i;'
+try 10 'i = 1; while (i < 10) i = i + 1; return i;'
+try 1 'i = 1; while (i < 10) return i;'
+try 1 'for (i = 1; i < 10; i = i + 1) return i;'
+try 45 'sum = 0; for (i = 1; i < 10; i = i + 1) sum = sum + i; return sum;'
 
 try -3 '-3;'
 

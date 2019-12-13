@@ -13,6 +13,8 @@ typedef enum {
   ND_IF, // return
   ND_ELSE, // return
   ND_FOR, // return
+  ND_FOR_R, // for
+  ND_NONE, // return
   ND_WHILE, // return
   ND_LVAR,   // local variable
   ND_EQ,     // ==
@@ -48,6 +50,7 @@ typedef struct Node Node;
 
 struct Node {
   NodeKind kind;
+  Node *cdn;
   Node *lhs;  // left-hand side
   Node *rhs;  // right-hand side
   int val;    // only use if kind is ND_NUM

@@ -14,34 +14,88 @@ void gen_lval(Node *node) {
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
   printf("  push rax\n");
-  
+}
+
+void gen_while(Node *node) {
+  if (node->kind != ND_WHILE) {
+    error("not while");
+  }
+  printf(".LbeginXXX:\n");
+  gen(node->lhs);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je  .LendXXX\n");
+  gen(node->rhs);
+  printf("  jmp .LbeginXXX\n");
+  printf(".LendXXX:\n");
+}
+
+void gen_for(Node *node) {
+  if (node->kind != ND_FOR) {
+    error("not while");
+  }
+  if (node->lhs) {
+    gen(node->lhs);
+  }
+  gen_while(node->rhs);
+}
+
+void gen_if(Node* node) {
+  if (node->kind != ND_IF) {
+    error("not if");
+  }
+  gen(node->lhs);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  if (node->rhs->kind != ND_ELSE) {
+    printf("  je  .LendXXX\n");
+    gen(node->rhs);
+    printf(".LendXXX:\n");
+  } else {
+    printf("  je  .LelseXXX\n");
+    gen(node->rhs->lhs);
+    printf("  jmp .LendXXX\n");
+    printf(".LelseXXX:\n");
+    gen(node->rhs->rhs);
+    printf(".LendXXX:\n");
+  }
+}
+
+void gen_return(Node *node) {
+  if (node->kind != ND_RETURN) {
+    error("not return");
+  }
+  gen(node->lhs);
+  printf("  pop rax\n");
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  printf("  ret\n");
 }
 
 void gen(Node *node) {
-  if (node->kind == ND_IF) {
-    gen(node->lhs);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
-    if (node->rhs->kind != ND_ELSE) {
-      printf("  je  .LendXXX\n");
+  if (node->kind == ND_NONE) {
+    if (node->lhs) {
+      gen(node->lhs);
+    }
+    if (node->rhs) {
       gen(node->rhs);
-      printf(".LendXXX:\n");
-    } else {
-      printf("  je  .LelseXXX\n");
-      gen(node->rhs->lhs);
-      printf("  jmp .LendXXX\n");
-      printf(".LelseXXX:\n");
-      gen(node->rhs->rhs);
-      printf(".LendXXX:\n");
     }
     return;
   }
+  if (node->kind == ND_IF) {
+    gen_if(node);
+    return;
+  }
+  if (node->kind == ND_FOR) {
+    gen_for(node);
+    return;
+  }
+  if (node->kind == ND_WHILE) {
+    gen_while(node);
+    return;
+  }
   if (node->kind == ND_RETURN) {
-    gen(node->lhs);
-    printf("  pop rax\n");
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
+    gen_return(node);
     return;
   }
   if (node->kind == ND_NUM) {

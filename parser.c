@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -54,7 +55,11 @@ void tokenize(char *p) {
     }
 
     if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 
-     || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0) {
+     || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0
+     || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
+     || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
+     || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
+     || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0) {
       cur = new_token(TK_RESERVED, cur, p);
       cur->len = 2;
       p += 2;
@@ -147,7 +152,7 @@ void expect(char* op) {
 // read reserved integer number
 int expect_number() {
   if (token->kind != TK_NUM) {
-    error("not number");
+    error("token is '%s' not number: %d", token->str, token->kind);
   }
   int val = token->val;
   token = token->next;
@@ -287,6 +292,7 @@ Node *expr() {
 }
 
 Node *stmt() {
+
   Node *node;
   if (consume_kind(TK_IF)) {
     node = calloc(1, sizeof(Node));
@@ -310,29 +316,51 @@ Node *stmt() {
     }
     return node;
   }
+  if (consume_kind(TK_WHILE)) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_WHILE;
+    expect("(");
+    node->lhs = expr();
+    expect(")");
+    node->rhs = stmt();
+    return node;
+  }
+  if (consume_kind(TK_FOR)) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_FOR;
+    expect("(");
+
+    if (!consume(";")) {
+      node->lhs = expr();
+      expect(";");
+    }
+
+    Node *node_while = calloc(1, sizeof(Node));
+    node_while->kind = ND_WHILE;
+    node->rhs = node_while;
+
+    if (!consume(";")) {
+      node_while->lhs = expr();
+      expect(";");
+    }
+    if (consume(")")) {
+      node_while->rhs = stmt();
+    } else {
+      Node *sub = calloc(1, sizeof(Node));
+      sub->kind = ND_NONE;
+      sub->rhs = expr();
+      expect(")");
+      sub->lhs = stmt();
+
+      node_while->rhs = sub;
+    }
+    return node;
+  }
 
   if (consume_kind(TK_RETURN)) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
     node->lhs = expr();
-  } else if (consume_kind(TK_WHILE)) {
-    expect("(");
-    node = expr();
-    expect(")");
-  } else if (consume_kind(TK_FOR)) {
-    expect("(");
-    if (!consume(";")) {
-      node = expr();
-      expect(";");
-    }
-    if (!consume(";")) {
-      node = expr();
-      expect(";");
-    }
-    if (!consume(";")) {
-      node = expr();
-      expect(")");
-    }
   } else {
     node = expr();
   }
@@ -357,3 +385,4 @@ LVar *find_lvar(Token *tok) {
   }
   return NULL;
 }
+
