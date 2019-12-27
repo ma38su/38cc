@@ -7,6 +7,7 @@
 #include "mcc.h"
 #include "vector.h"
 
+Node *new_node(NodeKind kind);
 Node *stmt();
 
 // current token
@@ -14,6 +15,7 @@ char *user_input;
 Token *token;
 Node *code[100];
 LVar *locals;
+
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
@@ -66,7 +68,7 @@ void tokenize(char *p) {
       continue;
     }
 
-    if (strchr("=(){}<>+-*/%^;", *p)) {
+    if (strchr("=,(){}<>+-*/%^;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       cur->len = 1;
       continue;
@@ -161,8 +163,14 @@ int expect_number() {
 
 bool at_eof() { return token->kind == TK_EOF; }
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+Node *new_node(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  return node;
+}
+
+Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
+  Node *node = new_node(kind);
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
@@ -170,10 +178,15 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
 }
 
 Node *new_node_num(int val) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = ND_NUM;
+  Node *node = new_node(ND_NUM);
   node->val = val;
   return node;
+}
+
+char* substring(char *str, int len) {
+  char *sub = calloc(len + 1, sizeof(char));
+  strncpy(sub, str, len);
+  return sub;
 }
 
 Node *primary() {
@@ -185,8 +198,25 @@ Node *primary() {
 
   Token *tok = consume_ident();
   if (tok) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
+    if (consume("(")) {
+      Node *node = new_node(ND_FUNCTION);
+      if (!consume(")")) {
+        Vector *args = calloc(1, sizeof(Vector));
+        while (1) {
+          add_last(args, expr());
+          if (consume(")")) {
+            break;
+          }
+          expect(",");
+        }
+        node->list = args;
+      }
+      node->ident = substring(tok->str, tok->len);
+      return node;
+    }
+
+    Node *node = new_node(ND_LVAR);
+    node->ident = tok->str;
     
     LVar *lvar = find_lvar(tok);
     if (lvar) {
@@ -212,7 +242,7 @@ Node *primary() {
 
 Node *unary() {
   if (consume("-")) {
-    return new_node(ND_SUB, new_node_num(0), primary());
+    return new_node_lr(ND_SUB, new_node_num(0), primary());
   }
   if (consume("+")) {
     return primary();
@@ -224,11 +254,11 @@ Node *mul() {
   Node *node = unary();
   for (;;) {
     if (consume("*")) {
-      node = new_node(ND_MUL, node, unary());
+      node = new_node_lr(ND_MUL, node, unary());
     } else if (consume("/")) {
-      node = new_node(ND_DIV, node, unary());
+      node = new_node_lr(ND_DIV, node, unary());
     } else if (consume("%")) {
-      node = new_node(ND_MOD, node, unary());
+      node = new_node_lr(ND_MOD, node, unary());
     } else {
       return node;
     }
@@ -240,9 +270,9 @@ Node *add() {
   Node *node = mul();
   for (;;) {
     if (consume("+")) {
-      node = new_node(ND_ADD, node, mul());
+      node = new_node_lr(ND_ADD, node, mul());
     } else if (consume("-")) {
-      node = new_node(ND_SUB, node, mul());
+      node = new_node_lr(ND_SUB, node, mul());
     } else {
       return node;
     }
@@ -253,13 +283,13 @@ Node *relational() {
   Node *node = add();
   for (;;) {
     if (consume("<")) {
-      node = new_node(ND_LT, node, add());
+      node = new_node_lr(ND_LT, node, add());
     } else if (consume("<=")) {
-      node = new_node(ND_LE, node, add());
+      node = new_node_lr(ND_LE, node, add());
     } else if (consume(">=")) {
-      node = new_node(ND_LE, add(), node);
+      node = new_node_lr(ND_LE, add(), node);
     } else if (consume(">")) {
-      node = new_node(ND_LT, add(), node);
+      node = new_node_lr(ND_LT, add(), node);
     } else {
       return node;
     }
@@ -270,9 +300,9 @@ Node *equality() {
   Node *node = relational();
   for (;;) {
     if (consume("==")) {
-      node = new_node(ND_EQ, node, relational());
+      node = new_node_lr(ND_EQ, node, relational());
     } else if (consume("!=")) {
-      node = new_node(ND_NE, node, relational());
+      node = new_node_lr(ND_NE, node, relational());
     } else {
       return node;
     }
@@ -282,7 +312,7 @@ Node *equality() {
 Node *assign() {
   Node *node = equality();
   if (consume("=")) {
-    node = new_node(ND_ASSIGN, node, assign());
+    node = new_node_lr(ND_ASSIGN, node, assign());
   }
   return node;
 }
@@ -295,19 +325,17 @@ Node *stmt() {
 
   Node *node;
   if (consume("{")) {
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_BLOCK;
+    node = new_node(ND_BLOCK);
 
     Vector *stmt_list = calloc(1, sizeof(Vector));
     do {
       Node *sub = stmt();
       add_last(stmt_list, sub);
     } while (!consume("}"));
-    node->block = stmt_list;
+    node->list = stmt_list;
 
   } else if (consume_kind(TK_IF)) {
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_IF;
+    node = new_node(ND_IF);
 
     expect("(");
     node->lhs = expr();
@@ -318,8 +346,7 @@ Node *stmt() {
     if (!consume_kind(TK_ELSE)) {
       node->rhs = tmp;
     } else {
-      Node *sub = calloc(1, sizeof(Node));
-      sub->kind = ND_ELSE;
+      Node *sub = new_node(ND_ELSE);
       node->rhs = sub;
 
       sub->lhs = tmp;
@@ -327,16 +354,14 @@ Node *stmt() {
     }
     return node;
   } else if (consume_kind(TK_WHILE)) {
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_WHILE;
+    node = new_node(ND_WHILE);
     expect("(");
     node->lhs = expr();
     expect(")");
     node->rhs = stmt();
     return node;
   } else if (consume_kind(TK_FOR)) {
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_FOR;
+    node = new_node(ND_FOR);
     expect("(");
 
     if (!consume(";")) {
@@ -344,8 +369,7 @@ Node *stmt() {
       expect(";");
     }
 
-    Node *node_while = calloc(1, sizeof(Node));
-    node_while->kind = ND_WHILE;
+    Node *node_while = new_node(ND_WHILE);
     node->rhs = node_while;
 
     if (!consume(";")) {
@@ -355,8 +379,7 @@ Node *stmt() {
     if (consume(")")) {
       node_while->rhs = stmt();
     } else {
-      Node *sub = calloc(1, sizeof(Node));
-      sub->kind = ND_NONE;
+      Node *sub = new_node(ND_NONE);
       sub->rhs = expr();
       expect(")");
       sub->lhs = stmt();
@@ -364,8 +387,7 @@ Node *stmt() {
       node_while->rhs = sub;
     }
   } else if (consume_kind(TK_RETURN)) {
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_RETURN;
+    node = new_node(ND_RETURN);
     node->lhs = expr();
     expect(";");
   } else {

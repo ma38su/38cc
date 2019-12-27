@@ -16,13 +16,47 @@ void gen_lval(Node *node) {
   printf("  push rax\n");
 }
 
+void gen_function(Node *node) {
+  if (node->kind != ND_FUNCTION) {
+    error("not function");
+  }
+  if (node->list) {
+    VNode *itr = node->list->head;
+    int args = 0;
+    while (itr != NULL) {
+      gen((Node*) itr->value);
+
+      char *r = NULL;
+      if (args == 0) {
+        r = "rdi";
+      } else if (args == 1) {
+        r = "rsi";
+      } else if (args == 2) {
+        r = "rdx";
+      } else if (args == 3) {
+        r = "rcx";
+      } else if (args == 4) {
+        r = "r8";
+      } else if (args == 5) {
+        r = "r9";
+      }
+      if (r) {
+        printf("  pop %s\n", r);
+      }
+      
+      itr = itr->next;
+      ++args;
+    }
+  }
+  printf("  call %s\n", node->ident);
+}
+
 void gen_block(Node *node) {
   if (node->kind != ND_BLOCK) {
     error("not block");
   }
 
-  Vector* nodes = node->block;
-  VNode* itr = nodes->head;
+  VNode* itr = node->list->head;
   while (itr != NULL) {
     Node *node = (Node*) itr->value;
     gen(node);
@@ -139,6 +173,10 @@ void gen(Node *node) {
   }
   if (node->kind == ND_BLOCK) {
     gen_block(node);
+    return;
+  }
+  if (node->kind == ND_FUNCTION) {
+    gen_function(node);
     return;
   }
 

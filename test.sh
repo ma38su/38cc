@@ -1,11 +1,13 @@
 #!/bin/bash
 
+
 try() {
   expected="$1"
   input="$2"
 
   ./mcc "$input" > tmp.s
   #cat tmp.s
+  
   gcc -o tmp tmp.s
   ./tmp
   actual="$?"
@@ -66,7 +68,7 @@ try 5 'sum = 0; for (i = 5; i < 10; i = i + 1) { sum = sum + i; return sum; }'
 try 45 'sum = 0; for (i = 1; i < 10; i = i + 1) { sum = sum + i; } return sum;' 
 
 # minus
-try -3 '-3;'
+#try -3 '-3;'
 
 echo OK
 

@@ -5,6 +5,7 @@
 #include "vector.h"
 
 typedef enum {
+  ND_FUNCTION,
   ND_LVAR,   // local variable
   ND_NUM,    // integer number
   ND_EQ,     // ==
@@ -50,9 +51,10 @@ struct Token {
 typedef struct Node Node;
 struct Node {
   NodeKind kind;
-  Node *lhs;  // left-hand side
-  Node *rhs;  // right-hand side
-  Vector *block;
+  Node *lhs;   // left-hand side
+  Node *rhs;   // right-hand side
+  char *ident; // for function
+  Vector *list;
   int val;    // only use if kind is ND_NUM
   int offset;
 };
