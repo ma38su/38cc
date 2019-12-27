@@ -16,6 +16,21 @@ void gen_lval(Node *node) {
   printf("  push rax\n");
 }
 
+void gen_block(Node *node) {
+  if (node->kind != ND_BLOCK) {
+    error("not block");
+  }
+
+  Vector* nodes = node->block;
+  VNode* itr = nodes->head;
+  while (itr != NULL) {
+    Node *node = (Node*) itr->value;
+    gen(node);
+    printf("  pop rax\n");
+    itr = itr->next;
+  }
+}
+
 void gen_while(Node *node) {
   if (node->kind != ND_WHILE) {
     error("not while");
@@ -73,6 +88,10 @@ void gen_return(Node *node) {
 }
 
 void gen(Node *node) {
+  if (!node) {
+    error("node is none");
+  }
+
   if (node->kind == ND_NONE) {
     if (node->lhs) {
       gen(node->lhs);
@@ -116,6 +135,10 @@ void gen(Node *node) {
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
+    return;
+  }
+  if (node->kind == ND_BLOCK) {
+    gen_block(node);
     return;
   }
 

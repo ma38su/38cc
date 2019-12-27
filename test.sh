@@ -58,9 +58,14 @@ try 3 'if (1) return 3; else return 5;'
 try 8 'i = 3; i = i + 5; return i;'
 try 10 'i = 1; while (i < 10) i = i + 1; return i;'
 try 1 'i = 1; while (i < 10) return i;'
-try 1 'for (i = 1; i < 10; i = i + 1) return i;'
+try 5 'for (i = 5; i < 10; i = i + 1) return i;'
 try 45 'sum = 0; for (i = 1; i < 10; i = i + 1) sum = sum + i; return sum;'
 
+# block
+try 5 'sum = 0; for (i = 5; i < 10; i = i + 1) { sum = sum + i; return sum; }'
+try 45 'sum = 0; for (i = 1; i < 10; i = i + 1) { sum = sum + i; } return sum;' 
+
+# minus
 try -3 '-3;'
 
 echo OK

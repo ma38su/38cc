@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #include "mcc.h"
+#include "vector.h"
 
 Node *stmt();
 
@@ -13,7 +14,6 @@ char *user_input;
 Token *token;
 Node *code[100];
 LVar *locals;
-
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
@@ -66,7 +66,7 @@ void tokenize(char *p) {
       continue;
     }
 
-    if (strchr("=()<>+-*/%^;", *p)) {
+    if (strchr("=(){}<>+-*/%^;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       cur->len = 1;
       continue;
@@ -101,7 +101,7 @@ void tokenize(char *p) {
     error_at(p, "unexpected token");
   }
   new_token(TK_EOF, cur, p);
-  
+
   token = head.next;
 }
 
@@ -294,7 +294,18 @@ Node *expr() {
 Node *stmt() {
 
   Node *node;
-  if (consume_kind(TK_IF)) {
+  if (consume("{")) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+
+    Vector *stmt_list = calloc(1, sizeof(Vector));
+    do {
+      Node *sub = stmt();
+      add_last(stmt_list, sub);
+    } while (!consume("}"));
+    node->block = stmt_list;
+
+  } else if (consume_kind(TK_IF)) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_IF;
 
@@ -315,8 +326,7 @@ Node *stmt() {
       sub->rhs = stmt();
     }
     return node;
-  }
-  if (consume_kind(TK_WHILE)) {
+  } else if (consume_kind(TK_WHILE)) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_WHILE;
     expect("(");
@@ -324,8 +334,7 @@ Node *stmt() {
     expect(")");
     node->rhs = stmt();
     return node;
-  }
-  if (consume_kind(TK_FOR)) {
+  } else if (consume_kind(TK_FOR)) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_FOR;
     expect("(");
@@ -354,17 +363,15 @@ Node *stmt() {
 
       node_while->rhs = sub;
     }
-    return node;
-  }
-
-  if (consume_kind(TK_RETURN)) {
+  } else if (consume_kind(TK_RETURN)) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
     node->lhs = expr();
+    expect(";");
   } else {
     node = expr();
+    expect(";");
   }
-  expect(";");
   return node;
 }
 

@@ -2,7 +2,21 @@
 #ifndef MCC_H
 #define MCC_H
 
+#include "vector.h"
+
 typedef enum {
+  ND_LVAR,   // local variable
+  ND_NUM,    // integer number
+  ND_EQ,     // ==
+  ND_NE,     // !=
+  ND_LT,     // <
+  ND_LE,     // <=
+  ND_BLOCK,  // {}
+  ND_IF,     // return
+  ND_ELSE,   // return
+  ND_WHILE,  // return
+  ND_NONE,   // return
+  ND_FOR,    // return
   ND_ADD,    // +
   ND_SUB,    // -
   ND_MUL,    // *
@@ -10,18 +24,6 @@ typedef enum {
   ND_MOD,    // %
   ND_ASSIGN, // =
   ND_RETURN, // return
-  ND_IF, // return
-  ND_ELSE, // return
-  ND_FOR, // return
-  ND_FOR_R, // for
-  ND_NONE, // return
-  ND_WHILE, // return
-  ND_LVAR,   // local variable
-  ND_EQ,     // ==
-  ND_NE,     // !=
-  ND_LT,     // <
-  ND_LE,     // <=
-  ND_NUM,    // integer number
 } NodeKind;
 
 typedef enum {
@@ -37,7 +39,6 @@ typedef enum {
 } TokenKind;
 
 typedef struct Token Token;
-
 struct Token {
   TokenKind kind;
   Token *next;
@@ -47,18 +48,16 @@ struct Token {
 };
 
 typedef struct Node Node;
-
 struct Node {
   NodeKind kind;
-  Node *cdn;
   Node *lhs;  // left-hand side
   Node *rhs;  // right-hand side
+  Vector *block;
   int val;    // only use if kind is ND_NUM
   int offset;
 };
 
 typedef struct LVar LVar;
-
 struct LVar {
   LVar *next;
   char *name;
