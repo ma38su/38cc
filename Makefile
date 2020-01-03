@@ -8,10 +8,7 @@ mcc: $(OBJS)
 $(OBJS): mcc.h
 
 test: mcc
-	echo "!!! basic !!!"
 	./test.sh
-	echo "!!! link !!!"
-	./link-test.sh
 
 clean:
 	rm -f mcc *.o *~ tmp*

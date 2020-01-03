@@ -1,1 +1,1 @@
-docker run --rm -v $HOME/mcc:/mcc -w /mcc compilerbook make test
+docker run --rm -v $HOME/Documents/mos/cc:/mcc -w /mcc compilerbook make test

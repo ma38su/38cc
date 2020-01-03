@@ -1,8 +1,8 @@
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 #include "mcc.h"
 #include "vector.h"
@@ -16,7 +16,6 @@ Token *token;
 Node *code[100];
 LVar *locals;
 
-
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
@@ -26,16 +25,13 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
 }
 
 int is_alnum(char c) {
-  return ('a' <= c && c <= 'z')
-      || ('A' <= c && c <= 'Z')
-      || ('0' <= c && c <= '9')
-      || (c == '_');
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
+         ('0' <= c && c <= '9') || (c == '_');
 }
 
 int lvar_len(char *p0) {
   char *p = p0;
-  if (('a' <= *p && *p <= 'z')
-    || ('A' <= *p && *p <= 'Z')) {
+  if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z')) {
     while (is_alnum(*p)) {
       p++;
     }
@@ -56,12 +52,12 @@ void tokenize(char *p) {
       continue;
     }
 
-    if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 
-     || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0
-     || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
-     || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
-     || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
-     || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0) {
+    if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 ||
+        memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0 ||
+        memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0 ||
+        memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0 ||
+        memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0 ||
+        memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0) {
       cur = new_token(TK_RESERVED, cur, p);
       cur->len = 2;
       p += 2;
@@ -107,12 +103,25 @@ void tokenize(char *p) {
   token = head.next;
 }
 
+bool token_is(Token *tok, char *op) {
+  return tok && tok->kind == TK_RESERVED && strlen(op) == tok->len &&
+         memcmp(op, tok->str, tok->len) == 0;
+}
+
 bool consume(char *op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
+  if (!token_is(token, op)) {
     return false;
   }
   token = token->next;
   return true;
+}
+
+// read reserved symbol
+void expect(char *op) {
+  if (!token_is(token, op)) {
+    error("token is '%s' not '%s'", token->str, op);
+  }
+  token = token->next;
 }
 
 bool consume_kind(TokenKind kind) {
@@ -131,24 +140,6 @@ Token *consume_ident() {
   tmp = token;
   token = token->next;
   return tmp;
-}
-
-// read reserved symbol
-void expect(char* op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(op, token->str, token->len) != 0) {
-    /*
-    Token *t;
-    for (t = token; t; t = t->next) {
-      if (t->kind == TK_RETURN) {
-        printf("  token: %s = return\n", t->str);
-      } else {
-        printf("  token: %s\n", t->str);
-      }
-    }
-    */
-    error("token is '%s' not '%s'", token->str, op);
-  }
-  token = token->next;
 }
 
 // read reserved integer number
@@ -183,11 +174,28 @@ Node *new_node_num(int val) {
   return node;
 }
 
-char* substring(char *str, int len) {
+char *substring(char *str, int len) {
   char *sub = calloc(len + 1, sizeof(char));
   strncpy(sub, str, len);
   return sub;
 }
+
+Vector *consume_args() {
+  Vector *args = NULL;
+  if (!consume(")")) {
+    args = calloc(1, sizeof(Vector));
+    for (;;) {
+      add_last(args, expr());
+      if (consume(")")) {
+        break;
+      }
+      expect(",");
+    }
+  }
+  return args;
+}
+
+Vector *defined_args() { return consume_args(); }
 
 Node *primary() {
   if (consume("(")) {
@@ -199,25 +207,15 @@ Node *primary() {
   Token *tok = consume_ident();
   if (tok) {
     if (consume("(")) {
-      Node *node = new_node(ND_FUNCTION);
-      if (!consume(")")) {
-        Vector *args = calloc(1, sizeof(Vector));
-        while (1) {
-          add_last(args, expr());
-          if (consume(")")) {
-            break;
-          }
-          expect(",");
-        }
-        node->list = args;
-      }
+      Node *node = new_node(ND_CALL);
+      node->list = consume_args();
       node->ident = substring(tok->str, tok->len);
       return node;
     }
 
     Node *node = new_node(ND_LVAR);
     node->ident = tok->str;
-    
+
     LVar *lvar = find_lvar(tok);
     if (lvar) {
       node->offset = lvar->offset;
@@ -317,23 +315,32 @@ Node *assign() {
   return node;
 }
 
-Node *expr() {
-  return assign();
-}
+Node *expr() { return assign(); }
 
-Node *stmt() {
-
+Node *block_stmt() {
   Node *node;
   if (consume("{")) {
     node = new_node(ND_BLOCK);
-
     Vector *stmt_list = calloc(1, sizeof(Vector));
     do {
       Node *sub = stmt();
       add_last(stmt_list, sub);
     } while (!consume("}"));
     node->list = stmt_list;
+  }
+  return node;
+}
 
+Node *stmt() {
+  Node *node;
+  if (consume("{")) {
+    node = new_node(ND_BLOCK);
+    Vector *stmt_list = calloc(1, sizeof(Vector));
+    do {
+      Node *sub = stmt();
+      add_last(stmt_list, sub);
+    } while (!consume("}"));
+    node->list = stmt_list;
   } else if (consume_kind(TK_IF)) {
     node = new_node(ND_IF);
 
@@ -342,7 +349,6 @@ Node *stmt() {
     expect(")");
 
     Node *tmp = stmt();
-
     if (!consume_kind(TK_ELSE)) {
       node->rhs = tmp;
     } else {
@@ -352,14 +358,12 @@ Node *stmt() {
       sub->lhs = tmp;
       sub->rhs = stmt();
     }
-    return node;
   } else if (consume_kind(TK_WHILE)) {
     node = new_node(ND_WHILE);
     expect("(");
     node->lhs = expr();
     expect(")");
     node->rhs = stmt();
-    return node;
   } else if (consume_kind(TK_FOR)) {
     node = new_node(ND_FOR);
     expect("(");
@@ -397,11 +401,39 @@ Node *stmt() {
   return node;
 }
 
+Node *defined() {
+  Token *tok;
+
+  Node *node;
+  Node *block;
+  Vector *args;
+
+  tok = consume_ident();
+  if (!tok) {
+    error("illegal defined function ident");
+  }
+
+  expect("(");
+
+  args = defined_args();
+  block = block_stmt();
+  if (!block) {
+    error("illegal defined block");
+  }
+
+  node = new_node(ND_FUNCTION);
+  node->list = args;
+  node->ident = substring(tok->str, tok->len);
+  node->lhs = block;
+  return node;
+}
 
 void program() {
   int i = 0;
   while (!at_eof()) {
-    code[i++] = stmt();
+    // code[i++] = NULL;
+    code[i++] = defined();
+    // code[i++] = stmt();
   }
   code[i] = NULL;
 }
@@ -414,4 +446,3 @@ LVar *find_lvar(Token *tok) {
   }
   return NULL;
 }
-
