@@ -1,6 +1,4 @@
-#include <ctype.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,96 +10,9 @@ Node *stmt();
 
 // current token
 char *user_input;
-Token *token;
 Node *code[100];
 LVar *locals;
-
-Token *new_token(TokenKind kind, Token *cur, char *str) {
-  Token *tok = calloc(1, sizeof(Token));
-  tok->kind = kind;
-  tok->str = str;
-  cur->next = tok;
-  return tok;
-}
-
-int is_alnum(char c) {
-  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
-         ('0' <= c && c <= '9') || (c == '_');
-}
-
-int lvar_len(char *p0) {
-  char *p = p0;
-  if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z')) {
-    while (is_alnum(*p)) {
-      p++;
-    }
-  }
-  return p - p0;
-}
-
-void tokenize(char *p) {
-  Token head;
-  head.next = NULL;
-  Token *cur = &head;
-
-  int cnt = *p;
-
-  while (*p) {
-    if (isspace(*p)) {
-      p++;
-      continue;
-    }
-
-    if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 ||
-        memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0 ||
-        memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0 ||
-        memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0 ||
-        memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0 ||
-        memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0) {
-      cur = new_token(TK_RESERVED, cur, p);
-      cur->len = 2;
-      p += 2;
-      continue;
-    }
-
-    if (strchr("=,(){}<>+-*/%^;", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++);
-      cur->len = 1;
-      continue;
-    }
-
-    if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p);
-      cur->val = strtol(p, &p, 10);
-      continue;
-    }
-
-    int l = lvar_len(p);
-    if (l > 0) {
-      if (l == 6 && memcmp(p, "return", l) == 0) {
-        cur = new_token(TK_RETURN, cur, p);
-      } else if (l == 2 && memcmp(p, "if", l) == 0) {
-        cur = new_token(TK_IF, cur, p);
-      } else if (l == 4 && memcmp(p, "else", l) == 0) {
-        cur = new_token(TK_ELSE, cur, p);
-      } else if (l == 5 && memcmp(p, "while", l) == 0) {
-        cur = new_token(TK_WHILE, cur, p);
-      } else if (l == 3 && memcmp(p, "for", l) == 0) {
-        cur = new_token(TK_FOR, cur, p);
-      } else {
-        cur = new_token(TK_IDENT, cur, p);
-      }
-      p += l;
-      cur->len = l;
-      continue;
-    }
-
-    error_at(p, "unexpected token");
-  }
-  new_token(TK_EOF, cur, p);
-
-  token = head.next;
-}
+Token *token;
 
 bool token_is(Token *tok, char *op) {
   return tok && tok->kind == TK_RESERVED && strlen(op) == tok->len &&
@@ -152,7 +63,9 @@ int expect_number() {
   return val;
 }
 
-bool at_eof() { return token->kind == TK_EOF; }
+bool at_eof() {
+  return token->kind == TK_EOF;
+}
 
 Node *new_node(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
@@ -195,7 +108,48 @@ Vector *consume_args() {
   return args;
 }
 
-Vector *defined_args() { return consume_args(); }
+Node *lval() {
+  Token *tok = consume_ident();
+  if (!tok) {
+    error("not lval");
+  }
+  Node *node = new_node(ND_LVAR);
+  node->ident = substring(tok->str, tok->len);
+
+  LVar *lvar = find_lvar(tok);
+  if (lvar) {
+    error("defined lval %s", tok->str);
+    //node->offset = lvar->offset;
+  } else {
+    lvar = calloc(1, sizeof(LVar));
+    lvar->name = node->ident;
+    lvar->len = tok->len;
+    if (locals) {
+      lvar->offset = locals->offset + 8;
+    } else {
+      lvar->offset = 8;
+    }
+    node->offset = lvar->offset;
+    lvar->next = locals;
+    locals = lvar;
+  }
+  return node;
+}
+
+Vector *defined_args() {
+  Vector *args = NULL;
+  if (!consume(")")) {
+    args = calloc(1, sizeof(Vector));
+    for (;;) {
+      add_last(args, lval());
+      if (consume(")")) {
+        break;
+      }
+      expect(",");
+    }
+  }
+  return args;
+}
 
 Node *primary() {
   if (consume("(")) {
@@ -401,7 +355,7 @@ Node *stmt() {
   return node;
 }
 
-Node *defined() {
+Node *defined_function() {
   Token *tok;
 
   Node *node;
@@ -431,9 +385,7 @@ Node *defined() {
 void program() {
   int i = 0;
   while (!at_eof()) {
-    // code[i++] = NULL;
-    code[i++] = defined();
-    // code[i++] = stmt();
+    code[i++] = defined_function();
   }
   code[i] = NULL;
 }

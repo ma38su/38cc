@@ -1,9 +1,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <ctype.h>
-//#include <stdbool.h>
-//#include <string.h>
 
 #include "mcc.h"
 
@@ -34,7 +31,7 @@ int main(int argc, char **argv) {
   }
 
   user_input = argv[1];
-  tokenize(user_input);
+  token = tokenize(user_input);
   // dump_tokenize();
   // return 0;
 

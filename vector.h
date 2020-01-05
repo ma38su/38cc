@@ -7,11 +7,13 @@ typedef struct VNode VNode;
 struct VNode {
   void *value;
   VNode *next;
+  VNode *prev;
 };
 
 struct Vector {
   VNode *head;
   VNode *tail;
+  int size;
 };
 
 void add_last(Vector *vector, void *value);

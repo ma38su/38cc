@@ -7,7 +7,7 @@ try() {
 
   #echo "./mcc \"$input\" > tmp.s"
   ./mcc "$input" > tmp.s
-  #cat tmp.s
+  cat tmp.s
   
   gcc -o tmp tmp.s
   ./tmp
@@ -99,6 +99,37 @@ main() {
     sum = sum + i;
   }
   return sum;
+}
+'
+
+try 45 '
+sum() {
+  sum = 0;
+  for (i = 1; i < 10; i = i + 1) {
+    sum = sum + i;
+  }
+  return sum;
+}
+main() {
+  sum = sum();
+  return sum;
+}
+'
+
+try 4 '
+increments(a) {
+  return a+1;
+}
+main() {
+  return increments(3);
+}
+'
+try 15 '
+add(a, b) {
+  return a + b;
+}
+main() {
+  return add(9, 6);
 }
 '
 exit

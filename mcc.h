@@ -83,7 +83,7 @@ void gen(Node *node);
 
 char *substring(char *str, int len);
 
-void tokenize(char *p);
+Token *tokenize(char *p);
 void print_header();
 
 LVar *find_lvar(Token *tok);

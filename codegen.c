@@ -26,20 +26,22 @@ void gen_function_call(Node *node) {
       gen((Node *)itr->value);
 
       char *r = NULL;
-      if (args == 0) {
-        r = "rdi";
-      } else if (args == 1) {
-        r = "rsi";
-      } else if (args == 2) {
-        r = "rdx";
-      } else if (args == 3) {
-        r = "rcx";
-      } else if (args == 4) {
-        r = "r8";
-      } else if (args == 5) {
-        r = "r9";
-      }
-      if (r) {
+      if (args >= 6) {
+        error("not supported +6 lval");
+      } else {
+        if (args == 0) {
+          r = "rdi";
+        } else if (args == 1) {
+          r = "rsi";
+        } else if (args == 2) {
+          r = "rdx";
+        } else if (args == 3) {
+          r = "rcx";
+        } else if (args == 4) {
+          r = "r8";
+        } else if (args == 5) {
+          r = "r9";
+        }
         printf("  pop %s\n", r);
       }
 
@@ -48,6 +50,8 @@ void gen_function_call(Node *node) {
     }
   }
   printf("  call %s\n", node->ident);
+
+  // after called, return value is stored rax
   printf("  push rax\n");
 }
 
@@ -57,9 +61,10 @@ void gen_block(Node *node) {
   }
 
   VNode *itr = node->list->head;
+  Node *n;
   while (itr != NULL) {
-    Node *node = (Node *)itr->value;
-    gen(node);
+    n = (Node *)itr->value;
+    gen(n);
     itr = itr->next;
   }
 }
@@ -124,27 +129,69 @@ void gen_return(Node *node) {
   printf("  ret\n");
 }
 
+void gen_defined_function(Node *node) {
+  if (node->kind != ND_FUNCTION) {
+    error("node is not function");
+  }
+  // function label
+  printf("%s:\n", node->ident);
+
+  // allocate memory for 26 variables
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, %d\n", 8 * 10);
+
+  // extract args
+  if (node->list) {
+    int args = node->list->size;
+
+    VNode *itr = node->list->tail;
+    while (itr != NULL) {
+      Node *n = (Node *)itr->value;
+      printf("  # extract arg \"%s\"\n", n->ident);
+      gen_lval(n);
+      printf("  pop rax\n");
+
+      char *r = NULL;
+
+      --args;
+      if (args == 0) {
+        r = "rdi";
+      } else if (args == 1) {
+        r = "rsi";
+      } else if (args == 2) {
+        r = "rdx";
+      } else if (args == 3) {
+        r = "rcx";
+      } else if (args == 4) {
+        r = "r8";
+      } else if (args == 5) {
+        r = "r9";
+      } else {
+        error("not supported +6 args");
+        // if args > 6 then args are stacked.
+      }
+      printf("  mov [rax], %s\n", r);
+      itr = itr->prev;
+    }
+  }
+
+  gen_block(node->lhs);
+
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+
+  // return rax value
+  printf("  ret\n");
+}
+
 void gen_defined(Node *node) {
   if (!node) {
     error("node is none");
   }
+
   if (node->kind == ND_FUNCTION) {
-    // function label
-    printf("%s:\n", node->ident);
-
-    // allocate memory for 26 variables
-    printf("  push rbp\n");
-    printf("  mov rbp, rsp\n");
-    //printf("  sub rsp, 0\n");
-
-    gen_block(node->lhs);
-
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-
-    // return rax value
-    printf("  ret\n");
-
+    gen_defined_function(node);
     return;
   }
 }
@@ -184,7 +231,8 @@ void gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_lval(node);
-    printf("  pop rax # lvar\n");
+    printf("  # %s\n", "lval");
+    printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
@@ -192,8 +240,9 @@ void gen(Node *node) {
   if (node->kind == ND_ASSIGN) {
     gen_lval(node->lhs);
     gen(node->rhs);
+    printf("  # %s\n", "assign");
     printf("  pop rdi\n");
-    printf("  pop rax # assign\n");
+    printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
     return;
