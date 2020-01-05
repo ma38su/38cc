@@ -12,6 +12,7 @@ Node *stmt();
 char *user_input;
 Node *code[100];
 LVar *locals;
+Vector *types;  // Type*
 Token *token;
 
 bool token_is(Token *tok, char *op) {
@@ -30,7 +31,7 @@ bool consume(char *op) {
 // read reserved symbol
 void expect(char *op) {
   if (!token_is(token, op)) {
-    error("token is '%s' not '%s'", token->str, op);
+    error("token is '%s' not '%s'", substring(token->str, token->len), op);
   }
   token = token->next;
 }
@@ -56,7 +57,7 @@ Token *consume_ident() {
 // read reserved integer number
 int expect_number() {
   if (token->kind != TK_NUM) {
-    error("token is '%s' not number: %d", token->str, token->kind);
+    error("token is '%s' not number: %d", substring(token->str, token->len), token->kind);
   }
   int val = token->val;
   token = token->next;
@@ -108,32 +109,51 @@ Vector *consume_args() {
   return args;
 }
 
-Node *lval() {
-  Token *tok = consume_ident();
+Type *dec_type() {
+  Token *tok;
+  tok = consume_ident();
   if (!tok) {
-    error("not lval");
+    error("illegal type");
   }
-  Node *node = new_node(ND_LVAR);
-  node->ident = substring(tok->str, tok->len);
 
-  LVar *lvar = find_lvar(tok);
-  if (lvar) {
-    error("defined lval %s", tok->str);
-    //node->offset = lvar->offset;
-  } else {
-    lvar = calloc(1, sizeof(LVar));
-    lvar->name = node->ident;
-    lvar->len = tok->len;
-    if (locals) {
-      lvar->offset = locals->offset + 8;
-    } else {
-      lvar->offset = 8;
-    }
-    node->offset = lvar->offset;
-    lvar->next = locals;
-    locals = lvar;
+  Type *type;
+  type = find_type(tok);
+  if (!type) {
+    error("undefined type: %s", substring(tok->str, tok->len));
   }
-  return node;
+  return type;
+}
+
+// defined local variable
+LVar *lvar() {
+  Type *type = dec_type();
+  if (!type) {
+    error("illegal lvar type");
+  }
+
+  Token *tok;
+  tok = consume_ident();
+  if (!tok) {
+    error("illegal lvar name");
+  }
+  if (find_lvar(tok)) {
+    error("defined lvar %s", substring(tok->str, tok->len));
+  }
+
+  LVar *lvar;
+  lvar = calloc(1, sizeof(LVar));
+  lvar->name = tok->str;
+  lvar->len = tok->len;
+  if (locals) {
+    lvar->offset = locals->offset + 8;
+  } else {
+    lvar->offset = 8;
+  }
+  lvar->type = type;
+
+  lvar->next = locals;
+  locals = lvar;
+  return lvar;
 }
 
 Vector *defined_args() {
@@ -141,7 +161,12 @@ Vector *defined_args() {
   if (!consume(")")) {
     args = calloc(1, sizeof(Vector));
     for (;;) {
-      add_last(args, lval());
+      LVar *var = lvar();
+      Node *node = new_node(ND_LVAR);
+      node->ident = substring(var->name, var->len);
+      node->offset = var->offset;
+
+      add_last(args, node);
       if (consume(")")) {
         break;
       }
@@ -370,7 +395,10 @@ Node *defined_function() {
 
   Node *node;
   Node *block;
+  Type *ret_type;
   Vector *args;
+
+  ret_type = dec_type();
 
   tok = consume_ident();
   if (!tok) {
@@ -392,12 +420,41 @@ Node *defined_function() {
   return node;
 }
 
+Type *new_type(char* name, int len, int size) {
+  Type *type;
+  type = calloc(1, sizeof(Type));
+  type->name = name;
+  type->len = len;
+  type->size = size;
+}
+
+void init_types() {
+  types = calloc(1, sizeof(Vector));
+  add_last(types, new_type("int", 3, 4));
+}
+
 void program() {
+
+  init_types();
+
   int i = 0;
   while (!at_eof()) {
     code[i++] = defined_function();
   }
   code[i] = NULL;
+}
+
+Type *find_type(Token *tok) {
+  Type *type;
+  VNode *itr = types->head;
+  while (itr != NULL) {
+    type = (Type*) itr->value;
+    if (type->len == tok->len && !memcmp(tok->str, type->name, type->len)) {
+      return type;
+    }
+    itr = itr->next;
+  }
+  return NULL;
 }
 
 LVar *find_lvar(Token *tok) {

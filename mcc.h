@@ -6,6 +6,7 @@
 
 typedef enum {
   ND_FUNCTION,
+  ND_TYPE,
   ND_CALL,
   ND_LVAR,    // local variable
   ND_NUM,     // integer number
@@ -39,7 +40,7 @@ typedef enum {
   TK_ELSE,      // return
   TK_FOR,       // return
   TK_WHILE,     // return
-  TK_EOF,       // Eno of File
+  TK_EOF,       // End of File
 } TokenKind;
 
 typedef struct Token Token;
@@ -62,9 +63,17 @@ struct Node {
   int offset;
 };
 
+typedef struct Type Type;
+struct Type {
+  char *name;
+  int len;
+  int size;
+};
+
 typedef struct LVar LVar;
 struct LVar {
   LVar *next;
+  Type *type;
   char *name;
   int len;
   int offset;
@@ -89,6 +98,7 @@ Token *tokenize(char *p);
 void print_header();
 
 LVar *find_lvar(Token *tok);
+Type *find_type(Token *tok);
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
 void program();

@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+
   user_input = argv[1];
   token = tokenize(user_input);
   // dump_tokenize();
@@ -62,9 +63,9 @@ void error(char *fmt, ...) {
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
 
-  while (token) {
-    fprintf(stderr, "%s\n", token->str);
-    token = token->next;
-  }
+  // while (token) {
+  //   fprintf(stderr, "%s\n", token->str);
+  //   token = token->next;
+  // }
   exit(1);
 }
