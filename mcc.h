@@ -9,6 +9,8 @@ typedef enum {
   ND_CALL,
   ND_LVAR,    // local variable
   ND_NUM,     // integer number
+  ND_DEREF,
+  ND_ADDR,
   ND_EQ,      // ==
   ND_NE,      // !=
   ND_LT,      // <

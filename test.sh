@@ -116,14 +116,6 @@ main() {
 }
 '
 
-try 4 '
-increments(a) {
-  return a+1;
-}
-main() {
-  return increments(3);
-}
-'
 try 15 '
 add(a, b) {
   return a + b;
@@ -132,6 +124,23 @@ main() {
   return add(9, 6);
 }
 '
-exit
 
+try 55 '
+fib(a) {
+  if (a <= 0) {
+    return 0;
+  }
+  if (a == 1) {
+    return 1;
+  }
+  return fib(a - 1) + fib(a - 2);
+}
+main() {
+  return fib(10);
+}
+'
+
+try $((0xff - 4 + 1)) 'main() {return -4;}'
+
+exit
 

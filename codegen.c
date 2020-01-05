@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "mcc.h"
 
+int label_id = 0;
+
 void print_header() {
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
@@ -73,14 +75,15 @@ void gen_while(Node *node) {
   if (node->kind != ND_WHILE) {
     error("not while");
   }
-  printf(".LbeginXXX:\n");
+  printf(".Lbegin%03d:\n", label_id);
   gen(node->lhs);
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
-  printf("  je  .LendXXX\n");
+  printf("  je  .Lend%03d\n", label_id);
   gen(node->rhs);
-  printf("  jmp .LbeginXXX\n");
-  printf(".LendXXX:\n");
+  printf("  jmp .Lbegin%03d\n", label_id);
+  printf(".Lend%03d:\n", label_id);
+  label_id++;
 }
 
 void gen_for(Node *node) {
@@ -101,17 +104,18 @@ void gen_if(Node *node) {
   printf("  pop rax # if\n");
   printf("  cmp rax, 0\n");
   if (node->rhs->kind != ND_ELSE) {
-    printf("  je  .LendXXX\n");
+    printf("  je  .Lend%03d\n", label_id);
     gen(node->rhs);
-    printf(".LendXXX:\n");
+    printf(".Lend%03d:\n", label_id);
   } else {
-    printf("  je  .LelseXXX\n");
+    printf("  je  .Lelse%03d\n", label_id);
     gen(node->rhs->lhs);
-    printf("  jmp .LendXXX\n");
-    printf(".LelseXXX:\n");
+    printf("  jmp .Lend%03d\n", label_id);
+    printf(".Lelse%03d:\n", label_id);
     gen(node->rhs->rhs);
-    printf(".LendXXX:\n");
+    printf(".Lend%03d:\n", label_id);
   }
+  label_id++;
 }
 
 void gen_return(Node *node) {
@@ -253,6 +257,17 @@ void gen(Node *node) {
   }
   if (node->kind == ND_CALL) {
     gen_function_call(node);
+    return;
+  }
+  if (node->kind == ND_ADDR) {
+    gen_lval(node->lhs);
+    return;
+  }
+  if (node->kind == ND_DEREF) {
+    gen(node->lhs);
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
     return;
   }
 
