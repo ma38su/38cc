@@ -59,8 +59,8 @@ struct Node {
   Node *rhs;    // right-hand side
   char *ident;  // for function
   Vector *list;
-  int val;  // only use if kind is ND_NUM
-  int offset;
+  int val;      // for ND_NUM
+  int offset;   // for lvar
 };
 
 typedef struct Type Type;
@@ -79,6 +79,14 @@ struct LVar {
   int offset;
 };
 
+typedef struct Function Function;
+struct Function {
+  Type *ret_type;
+  char *name;
+  int len;
+  int size;
+};
+
 // global vars
 extern char *user_input;
 extern Token *token;
@@ -87,7 +95,6 @@ extern LVar *locals;
 
 void print_header();
 Node *expr();
-Node *mul();
 
 void gen_defined(Node *node);
 void gen(Node *node);

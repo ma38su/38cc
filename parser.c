@@ -7,6 +7,7 @@
 
 Node *new_node(NodeKind kind);
 Node *stmt();
+Type *consume_type();
 
 // current token
 char *user_input;
@@ -52,6 +53,19 @@ Token *consume_ident() {
   tmp = token;
   token = token->next;
   return tmp;
+}
+
+Type *consume_type() {
+  if (token->kind != TK_IDENT) {
+    return NULL;
+  }
+  Type *type;
+  type = find_type(token);
+  if (!type) {
+    return NULL;
+  }
+  token = token->next;
+  return type;
 }
 
 // read reserved integer number
@@ -109,7 +123,7 @@ Vector *consume_args() {
   return args;
 }
 
-Type *dec_type() {
+Type *expect_type() {
   Token *tok;
   tok = consume_ident();
   if (!tok) {
@@ -125,14 +139,13 @@ Type *dec_type() {
 }
 
 // defined local variable
-LVar *lvar() {
-  Type *type = dec_type();
+LVar *consume_defined_lvar() {
+  Type *type = consume_type();
   if (!type) {
-    error("illegal lvar type");
+    return NULL;
   }
 
-  Token *tok;
-  tok = consume_ident();
+  Token *tok = consume_ident();
   if (!tok) {
     error("illegal lvar name");
   }
@@ -161,10 +174,13 @@ Vector *defined_args() {
   if (!consume(")")) {
     args = calloc(1, sizeof(Vector));
     for (;;) {
-      LVar *var = lvar();
+      LVar *lvar = consume_defined_lvar();
+      if (!lvar) {
+        error("illegal lvar");
+      }
       Node *node = new_node(ND_LVAR);
-      node->ident = substring(var->name, var->len);
-      node->offset = var->offset;
+      node->ident = substring(lvar->name, lvar->len);
+      node->offset = lvar->offset;
 
       add_last(args, node);
       if (consume(")")) {
@@ -196,21 +212,10 @@ Node *primary() {
     node->ident = tok->str;
 
     LVar *lvar = find_lvar(tok);
-    if (lvar) {
-      node->offset = lvar->offset;
-    } else {
-      lvar = calloc(1, sizeof(LVar));
-      lvar->name = tok->str;
-      lvar->len = tok->len;
-      if (locals) {
-        lvar->offset = locals->offset + 8;
-      } else {
-        lvar->offset = 8;
-      }
-      node->offset = lvar->offset;
-      lvar->next = locals;
-      locals = lvar;
+    if (!lvar) {
+      error("undefined lvar: %s", substring(tok->str, tok->len));
     }
+    node->offset = lvar->offset;
     return node;
   }
 
@@ -306,20 +311,6 @@ Node *assign() {
 
 Node *expr() { return assign(); }
 
-Node *block_stmt() {
-  Node *node;
-  if (consume("{")) {
-    node = new_node(ND_BLOCK);
-    Vector *stmt_list = calloc(1, sizeof(Vector));
-    do {
-      Node *sub = stmt();
-      add_last(stmt_list, sub);
-    } while (!consume("}"));
-    node->list = stmt_list;
-  }
-  return node;
-}
-
 Node *stmt() {
   Node *node;
   if (consume("{")) {
@@ -384,8 +375,30 @@ Node *stmt() {
     node->lhs = expr();
     expect(";");
   } else {
+    LVar *lvar = consume_defined_lvar();
+    if (lvar) {
+      expect(";");
+      Node *node = new_node(ND_LVAR);
+      node->offset = lvar->offset;
+      return node;
+    }
+
     node = expr();
     expect(";");
+  }
+  return node;
+}
+
+Node *block_stmt() {
+  Node *node;
+  if (consume("{")) {
+    node = new_node(ND_BLOCK);
+    Vector *stmt_list = calloc(1, sizeof(Vector));
+    do {
+      Node *sub = stmt();
+      add_last(stmt_list, sub);
+    } while (!consume("}"));
+    node->list = stmt_list;
   }
   return node;
 }
@@ -398,7 +411,7 @@ Node *defined_function() {
   Type *ret_type;
   Vector *args;
 
-  ret_type = dec_type();
+  ret_type = expect_type();
 
   tok = consume_ident();
   if (!tok) {
@@ -406,7 +419,6 @@ Node *defined_function() {
   }
 
   expect("(");
-
   args = defined_args();
   block = block_stmt();
   if (!block) {
