@@ -7,7 +7,7 @@
 typedef enum {
   ND_FUNCTION,
   ND_CALL,
-  ND_DEF_LVAR,    // def local variable
+  ND_LVAR_DECLARED,    // def local variable
   ND_LVAR,    // local variable
   ND_NUM,     // integer number
   ND_DEREF,
@@ -68,6 +68,7 @@ struct Type {
   char *name;
   int len;
   int size;
+  Type *ptr_to;
 };
 
 typedef struct LVar LVar;

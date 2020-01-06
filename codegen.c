@@ -28,9 +28,7 @@ char* get_args_register(int args) {
 }
 
 void gen_lval(Node *node) {
-  if (node->kind != ND_LVAR && node->kind != ND_DEF_LVAR) {
-    error("left side hand is not variable");
-  }
+  printf("  # push lvar addr (rbp - offset) on stack\n");
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
   printf("  push rax\n");
@@ -40,13 +38,15 @@ void gen_function_call(Node *node) {
   if (node->kind != ND_CALL) {
     error("not function call");
   }
+
   if (node->list) {
+    printf("  # set args %d to call %s\n", node->list->size, node->ident);
     VNode *itr = node->list->head;
     int args = 0;
     while (itr != NULL) {
-      gen((Node *)itr->value);
-
       char *r = get_args_register(args);
+      printf("  # set arg%d to %s\n", args, r);
+      gen((Node *)itr->value);
       printf("  pop %s\n", r);
 
       itr = itr->next;
@@ -64,6 +64,7 @@ void gen_block(Node *node) {
     error("not block");
   }
 
+  printf("  # block begin\n");
   VNode *itr = node->list->head;
   Node *n;
   while (itr != NULL) {
@@ -71,6 +72,7 @@ void gen_block(Node *node) {
     gen(n);
     itr = itr->next;
   }
+  printf("  # block end\n");
 }
 
 void gen_while(Node *node) {
@@ -125,7 +127,6 @@ void gen_return(Node *node) {
     error("not return");
   }
   gen(node->lhs);
-
   printf("  pop rax\n");
 
   printf("  # epilogue by return\n");
@@ -142,10 +143,13 @@ void gen_defined_function(Node *node) {
   printf("%s:\n", node->ident);
 
   // allocate memory for 26 variables
-  printf("  # prologue by function\n");
+  printf("  # prologue by %s function\n", node->ident);
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", node->val);
+
+  if (node->val > 0) {
+    printf("  sub rsp, %d # args+lvar = %d\n", node->val * 8, node->val);
+  }
 
   // extract args
   if (node->list) {
@@ -158,7 +162,6 @@ void gen_defined_function(Node *node) {
       gen_lval(n);
       printf("  pop rax\n");
 
-
       --args;
       char *r = get_args_register(args);
       printf("  mov [rax], %s\n", r);
@@ -168,7 +171,7 @@ void gen_defined_function(Node *node) {
 
   gen_block(node->lhs);
 
-  printf("  # epilogue by function\n");
+  printf("  # epilogue by %s function\n", node->ident);
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");  // return rax value
@@ -215,12 +218,13 @@ void gen(Node *node) {
     return;
   }
   if (node->kind == ND_NUM) {
+    printf("  # num\n");
     printf("  push %d\n", node->val);
     return;
   }
-  if (node->kind == ND_DEF_LVAR) {
+  if (node->kind == ND_LVAR_DECLARED) {
     gen_lval(node);
-    printf("  # %s\n", "lval");
+    printf("  # declared lvar\n");
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
@@ -228,7 +232,7 @@ void gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_lval(node);
-    printf("  # %s\n", "lval");
+    printf("  # lvar\n");
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
@@ -236,8 +240,9 @@ void gen(Node *node) {
   }
   if (node->kind == ND_ASSIGN) {
     gen_lval(node->lhs);
+    printf("  # get rhs\n");
     gen(node->rhs);
-    printf("  # %s\n", "assign");
+    printf("  # assign to left value\n");
     printf("  pop rdi\n");
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
@@ -258,43 +263,55 @@ void gen(Node *node) {
   }
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
+    printf("  # deref lvar");
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
   }
 
+  printf("  # lhs\n");
   gen(node->lhs);
+  printf("  # rhs\n");
   gen(node->rhs);
 
   printf("  pop rdi\n");
-  printf("  pop rax # gen\n");
+  printf("  pop rax\n");
   if (node->kind == ND_ADD) {
+    printf("  # add(+)\n");
     printf("  add rax, rdi\n");
   } else if (node->kind == ND_SUB) {
+    printf("  # sub(-)\n");
     printf("  sub rax, rdi\n");
   } else if (node->kind == ND_MUL) {
+    printf("  # mul(*)\n");
     printf("  imul rax, rdi\n");
   } else if (node->kind == ND_DIV) {
+    printf("  # div(/)\n");
     printf("  cqo\n");
     printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
   } else if (node->kind == ND_MOD) {
+    printf("  # mod(%)\n");
     printf("  cqo\n");
     printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
     printf("  mov rax, rdx\n");
   } else if (node->kind == ND_EQ) {
+    printf("  # eq(==)\n");
     printf("  cmp rax, rdi\n");
     printf("  sete al\n");  // raxの下8bit
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_NE) {
+    printf("  # ne(!=)\n");
     printf("  cmp rax, rdi\n");
     printf("  setne al\n");  // raxの下8bit
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_LE) {
+    printf("  # le(>=)\n");
     printf("  cmp rax, rdi\n");
     printf("  setle al\n");  // raxの下8bit
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_LT) {
+    printf("  # lt(>)\n");
     printf("  cmp rax, rdi\n");
     printf("  setl al\n");  // raxの下8bit
     printf("  movzb rax, al\n");

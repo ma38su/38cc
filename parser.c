@@ -16,6 +16,19 @@ LVar *locals;
 Vector *types;  // Type*
 Token *token;
 
+Type *new_type(char* name, int len, int size) {
+  Type *type;
+  type = calloc(1, sizeof(Type));
+  type->name = name;
+  type->len = len;
+  type->size = size;
+}
+
+void init_types() {
+  types = calloc(1, sizeof(Vector));
+  add_last(types, new_type("int", 3, 4));
+}
+
 bool token_is(Token *tok, char *op) {
   return tok && tok->kind == TK_RESERVED && strlen(op) == tok->len &&
          memcmp(op, tok->str, tok->len) == 0;
@@ -145,6 +158,12 @@ LVar *consume_defined_lvar() {
     return NULL;
   }
 
+  while (consume("*")) {
+    Type *ptr_type = new_type("*", 1, 8);
+    ptr_type->ptr_to = type;
+    type = ptr_type;
+  }
+
   Token *tok = consume_ident();
   if (!tok) {
     error("illegal lvar name");
@@ -230,12 +249,12 @@ Node *unary() {
     return primary();
   }
   if (consume("*")) {
-    Node *node = new_node(ND_ADDR);
+    Node *node = new_node(ND_DEREF);
     node->lhs = unary();
     return node;
   }
   if (consume("&")) {
-    Node *node = new_node(ND_DEREF);
+    Node *node = new_node(ND_ADDR);
     node->lhs = unary();
     return node;
   }
@@ -378,7 +397,7 @@ Node *stmt() {
     LVar *lvar = consume_defined_lvar();
     if (lvar) {
       expect(";");
-      Node *node = new_node(ND_DEF_LVAR);
+      Node *node = new_node(ND_LVAR_DECLARED);
       node->offset = lvar->offset;
       return node;
     }
@@ -404,7 +423,7 @@ Node *block_stmt() {
 }
 
 int sizeof_args(Vector *args) {
-  return args ? args->size * 8 : 0; // 8byer/lvar
+  return args ? args->size * 1 : 0; // 8byer/lvar
 }
 
 int sizeof_block_lvar(Node *block) {
@@ -412,8 +431,8 @@ int sizeof_block_lvar(Node *block) {
   VNode *itr = block->list->head;
   while (itr) {
     Node *node = itr->value;
-    if (node->kind == ND_DEF_LVAR) {
-      sizeof_lvar += 8;
+    if (node->kind == ND_LVAR_DECLARED) {
+      sizeof_lvar += 1;
     }
     itr = itr->next;
   }
@@ -454,19 +473,6 @@ Node *defined_function() {
   node->lhs = block;
   node->val = sizeof_args(args) + sizeof_block_lvar(block);
   return node;
-}
-
-Type *new_type(char* name, int len, int size) {
-  Type *type;
-  type = calloc(1, sizeof(Type));
-  type->name = name;
-  type->len = len;
-  type->size = size;
-}
-
-void init_types() {
-  types = calloc(1, sizeof(Vector));
-  add_last(types, new_type("int", 3, 4));
 }
 
 void program() {
