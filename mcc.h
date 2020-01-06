@@ -6,8 +6,8 @@
 
 typedef enum {
   ND_FUNCTION,
-  ND_TYPE,
   ND_CALL,
+  ND_DEF_LVAR,    // def local variable
   ND_LVAR,    // local variable
   ND_NUM,     // integer number
   ND_DEREF,

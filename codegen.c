@@ -8,8 +8,27 @@ void print_header() {
   printf(".global main\n");
 }
 
+char* get_args_register(int args) {
+  if (args == 0) {
+    return "rdi";
+  } else if (args == 1) {
+    return "rsi";
+  } else if (args == 2) {
+    return "rdx";
+  } else if (args == 3) {
+    return "rcx";
+  } else if (args == 4) {
+    return "r8";
+  } else if (args == 5) {
+    return "r9";
+  } else {
+    error("not supported +6 args");
+    // if args > 6 then args are stacked.
+  }
+}
+
 void gen_lval(Node *node) {
-  if (node->kind != ND_LVAR) {
+  if (node->kind != ND_LVAR && node->kind != ND_DEF_LVAR) {
     error("left side hand is not variable");
   }
   printf("  mov rax, rbp\n");
@@ -27,25 +46,8 @@ void gen_function_call(Node *node) {
     while (itr != NULL) {
       gen((Node *)itr->value);
 
-      char *r = NULL;
-      if (args >= 6) {
-        error("not supported +6 lval");
-      } else {
-        if (args == 0) {
-          r = "rdi";
-        } else if (args == 1) {
-          r = "rsi";
-        } else if (args == 2) {
-          r = "rdx";
-        } else if (args == 3) {
-          r = "rcx";
-        } else if (args == 4) {
-          r = "r8";
-        } else if (args == 5) {
-          r = "r9";
-        }
-        printf("  pop %s\n", r);
-      }
+      char *r = get_args_register(args);
+      printf("  pop %s\n", r);
 
       itr = itr->next;
       ++args;
@@ -124,13 +126,12 @@ void gen_return(Node *node) {
   }
   gen(node->lhs);
 
-  // stack to rax
-  printf("  pop rax # return\n");
+  printf("  pop rax\n");
+
+  printf("  # epilogue by return\n");
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
-
-  // return rax value
-  printf("  ret\n");
+  printf("  ret\n");  // return rax value
 }
 
 void gen_defined_function(Node *node) {
@@ -141,9 +142,10 @@ void gen_defined_function(Node *node) {
   printf("%s:\n", node->ident);
 
   // allocate memory for 26 variables
+  printf("  # prologue by function\n");
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", 8 * 10);
+  printf("  sub rsp, %d\n", node->val);
 
   // extract args
   if (node->list) {
@@ -151,30 +153,14 @@ void gen_defined_function(Node *node) {
 
     VNode *itr = node->list->tail;
     while (itr != NULL) {
-      Node *n = (Node *)itr->value;
+      Node *n = (Node *) itr->value;
       printf("  # extract arg \"%s\"\n", n->ident);
       gen_lval(n);
       printf("  pop rax\n");
 
-      char *r = NULL;
 
       --args;
-      if (args == 0) {
-        r = "rdi";
-      } else if (args == 1) {
-        r = "rsi";
-      } else if (args == 2) {
-        r = "rdx";
-      } else if (args == 3) {
-        r = "rcx";
-      } else if (args == 4) {
-        r = "r8";
-      } else if (args == 5) {
-        r = "r9";
-      } else {
-        error("not supported +6 args");
-        // if args > 6 then args are stacked.
-      }
+      char *r = get_args_register(args);
       printf("  mov [rax], %s\n", r);
       itr = itr->prev;
     }
@@ -182,11 +168,10 @@ void gen_defined_function(Node *node) {
 
   gen_block(node->lhs);
 
+  printf("  # epilogue by function\n");
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
-
-  // return rax value
-  printf("  ret\n");
+  printf("  ret\n");  // return rax value
 }
 
 void gen_defined(Node *node) {
@@ -231,6 +216,14 @@ void gen(Node *node) {
   }
   if (node->kind == ND_NUM) {
     printf("  push %d\n", node->val);
+    return;
+  }
+  if (node->kind == ND_DEF_LVAR) {
+    gen_lval(node);
+    printf("  # %s\n", "lval");
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
     return;
   }
   if (node->kind == ND_LVAR) {

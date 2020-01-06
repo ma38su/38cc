@@ -150,7 +150,7 @@ LVar *consume_defined_lvar() {
     error("illegal lvar name");
   }
   if (find_lvar(tok)) {
-    error("defined lvar %s", substring(tok->str, tok->len));
+    error("duplicated defined lvar %s", substring(tok->str, tok->len));
   }
 
   LVar *lvar;
@@ -378,7 +378,7 @@ Node *stmt() {
     LVar *lvar = consume_defined_lvar();
     if (lvar) {
       expect(";");
-      Node *node = new_node(ND_LVAR);
+      Node *node = new_node(ND_DEF_LVAR);
       node->offset = lvar->offset;
       return node;
     }
@@ -403,6 +403,23 @@ Node *block_stmt() {
   return node;
 }
 
+int sizeof_args(Vector *args) {
+  return args ? args->size * 8 : 0; // 8byer/lvar
+}
+
+int sizeof_block_lvar(Node *block) {
+  int sizeof_lvar = 0;
+  VNode *itr = block->list->head;
+  while (itr) {
+    Node *node = itr->value;
+    if (node->kind == ND_DEF_LVAR) {
+      sizeof_lvar += 8;
+    }
+    itr = itr->next;
+  }
+  return sizeof_lvar;
+}
+
 Node *defined_function() {
   Token *tok;
 
@@ -419,16 +436,23 @@ Node *defined_function() {
   }
 
   expect("(");
+  LVar *tmp_locals = locals;
+  locals = NULL;
+
   args = defined_args();
   block = block_stmt();
   if (!block) {
     error("illegal defined block");
   }
 
+  // local変数を戻す
+  locals = tmp_locals;
+
   node = new_node(ND_FUNCTION);
   node->list = args;
   node->ident = substring(tok->str, tok->len);
   node->lhs = block;
+  node->val = sizeof_args(args) + sizeof_block_lvar(block);
   return node;
 }
 

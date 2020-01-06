@@ -176,6 +176,18 @@ int main() {
 }
 '
 
+try 6 '
+int sum(int a, int b, int c) {
+  return a + b + c;
+}
+int main() {
+  int a;
+  a = sum(1, 2, 3);
+  return a;
+}
+'
+
+
 try $((0xff - 4 + 1)) 'int main() {return -4;}'
 
 exit
