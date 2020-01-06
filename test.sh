@@ -7,9 +7,9 @@ try() {
 
   #echo "./mcc \"$input\" > tmp.s"
   ./mcc "$input" > tmp.s
-  cat tmp.s
+  cat -n tmp.s
   
-  gcc -o tmp tmp.s
+  gcc -g -o tmp tmp.s
   ./tmp
   actual="$?"
 
@@ -187,6 +187,15 @@ int main() {
 }
 '
 
+try 3 '
+int main() {
+  int x;
+  int *y;
+  y = &x;
+  *y = 3;
+  return x;
+}
+'
 
 try $((0xff - 4 + 1)) 'int main() {return -4;}'
 

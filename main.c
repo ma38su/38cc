@@ -58,14 +58,12 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 void error(char *fmt, ...) {
+  fprintf(stderr, "ERR: ");
+
   va_list ap;
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
 
-  // while (token) {
-  //   fprintf(stderr, "%s\n", token->str);
-  //   token = token->next;
-  // }
   exit(1);
 }

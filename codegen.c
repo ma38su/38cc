@@ -1,7 +1,10 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "mcc.h"
 
 int label_id = 0;
+
+bool gen(Node *node);
 
 void print_header() {
   printf(".intel_syntax noprefix\n");
@@ -27,8 +30,12 @@ char* get_args_register(int args) {
   }
 }
 
+void gen_deref(Node *node) {
+
+}
+
 void gen_lval(Node *node) {
-  printf("  # push lvar addr (rbp - offset) on stack\n");
+  printf("  # gen lval\n");
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
   printf("  push rax\n");
@@ -69,7 +76,9 @@ void gen_block(Node *node) {
   Node *n;
   while (itr != NULL) {
     n = (Node *)itr->value;
-    gen(n);
+    if (gen(n)) {
+      printf("  pop rax # end line\n");
+    }
     itr = itr->next;
   }
   printf("  # block end\n");
@@ -182,13 +191,14 @@ void gen_defined(Node *node) {
     error("node is none");
   }
 
-  if (node->kind == ND_FUNCTION) {
-    gen_defined_function(node);
-    return;
+  if (node->kind != ND_FUNCTION) {
+    error("node is not function");
   }
+
+  gen_defined_function(node);
 }
 
-void gen(Node *node) {
+bool gen(Node *node) {
   if (!node) {
     error("node is none");
   }
@@ -199,47 +209,50 @@ void gen(Node *node) {
     if (node->rhs) {
       gen(node->rhs);
     }
-    return;
+    return true;
   }
+
   if (node->kind == ND_IF) {
     gen_if(node);
-    return;
+    return false;
   }
   if (node->kind == ND_FOR) {
     gen_for(node);
-    return;
+    return false;
   }
   if (node->kind == ND_WHILE) {
     gen_while(node);
-    return;
+    return false;
   }
   if (node->kind == ND_RETURN) {
     gen_return(node);
-    return;
+    return false;
   }
+
   if (node->kind == ND_NUM) {
     printf("  # num\n");
     printf("  push %d\n", node->val);
-    return;
+    return true;
   }
+
   if (node->kind == ND_LVAR_DECLARED) {
-    gen_lval(node);
-    printf("  # declared lvar\n");
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
-    return;
+    return false;
   }
   if (node->kind == ND_LVAR) {
+    printf("  # lvar %s\n", node->ident);
     gen_lval(node);
-    printf("  # lvar\n");
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
-    return;
+    return true;
   }
   if (node->kind == ND_ASSIGN) {
-    gen_lval(node->lhs);
+    if (node->lhs->kind == ND_DEREF) {
+      gen(node->lhs);
+    } else {
+      printf("  # lvar %s = \n", node->lhs->ident);
+      gen_lval(node->lhs);
+    }
     printf("  # get rhs\n");
     gen(node->rhs);
     printf("  # assign to left value\n");
@@ -247,27 +260,28 @@ void gen(Node *node) {
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
-    return;
+    return true;
   }
   if (node->kind == ND_BLOCK) {
     gen_block(node);
-    return;
+    return false;
   }
   if (node->kind == ND_CALL) {
     gen_function_call(node);
-    return;
+    return true;
   }
   if (node->kind == ND_ADDR) {
+    printf("  # &%s\n", node->lhs->ident);
     gen_lval(node->lhs);
-    return;
+    return true;
   }
   if (node->kind == ND_DEREF) {
+    printf("  # *%s\n", node->lhs->ident);
     gen(node->lhs);
-    printf("  # deref lvar");
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
-    return;
+    return true;
   }
 
   printf("  # lhs\n");
@@ -291,7 +305,7 @@ void gen(Node *node) {
     printf("  cqo\n");
     printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
   } else if (node->kind == ND_MOD) {
-    printf("  # mod(%)\n");
+    printf("  # mod(%%)\n");
     printf("  cqo\n");
     printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
     printf("  mov rax, rdx\n");
@@ -319,4 +333,5 @@ void gen(Node *node) {
     error("failed to calc");
   }
   printf("  push rax\n");
+  return true;
 }

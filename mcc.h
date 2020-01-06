@@ -98,8 +98,6 @@ void print_header();
 Node *expr();
 
 void gen_defined(Node *node);
-void gen(Node *node);
-
 char *substring(char *str, int len);
 
 Token *tokenize(char *p);

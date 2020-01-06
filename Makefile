@@ -10,6 +10,9 @@ $(OBJS): mcc.h
 test: mcc
 	./test.sh
 
+debug: mcc
+	./debug.sh
+
 clean:
 	rm -f mcc *.o *~ tmp*
 

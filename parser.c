@@ -228,7 +228,9 @@ Node *primary() {
     }
 
     Node *node = new_node(ND_LVAR);
-    node->ident = tok->str;
+    
+    // for debug
+    node->ident = substring(tok->str, tok->len);
 
     LVar *lvar = find_lvar(tok);
     if (!lvar) {
