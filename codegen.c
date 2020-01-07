@@ -30,12 +30,8 @@ char* get_args_register(int args) {
   }
 }
 
-void gen_deref(Node *node) {
-
-}
-
-void gen_lval(Node *node) {
-  printf("  # gen lval\n");
+void gen_addr(Node *node) {
+  printf("  # & %s\n", node->ident);
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
   printf("  push rax\n");
@@ -162,17 +158,17 @@ void gen_defined_function(Node *node) {
 
   // extract args
   if (node->list) {
-    int args = node->list->size;
+    int index = node->list->size;
 
     VNode *itr = node->list->tail;
     while (itr != NULL) {
-      Node *n = (Node *) itr->value;
-      printf("  # extract arg \"%s\"\n", n->ident);
-      gen_lval(n);
+      Node *arg = (Node *) itr->value;
+      printf("  # extract arg \"%s\"\n", arg->ident);
+      gen_addr(arg);
       printf("  pop rax\n");
 
-      --args;
-      char *r = get_args_register(args);
+      --index;
+      char *r = get_args_register(index);
       printf("  mov [rax], %s\n", r);
       itr = itr->prev;
     }
@@ -196,6 +192,27 @@ void gen_defined(Node *node) {
   }
 
   gen_defined_function(node);
+}
+
+void gen_deref() {
+  printf("  pop rax\n");
+  printf("  mov rax, [rax]\n");
+  printf("  push rax\n");
+}
+
+void gen_lval(Node *node) {
+  printf("  # assign lhs\n");
+  Node *n = node;
+  int deref_count = 0;
+  while (n->kind == ND_DEREF) {
+    deref_count++;
+    n = n->lhs;
+  }
+  gen_addr(n);
+  for (int i = 0; i < deref_count; ++i) {
+    printf("  # deref\n");
+    gen_deref();
+  }
 }
 
 bool gen(Node *node) {
@@ -239,23 +256,17 @@ bool gen(Node *node) {
     return false;
   }
   if (node->kind == ND_LVAR) {
-    printf("  # lvar %s\n", node->ident);
-    gen_lval(node);
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
+    gen_addr(node);
+    gen_deref();
     return true;
   }
   if (node->kind == ND_ASSIGN) {
-    if (node->lhs->kind == ND_DEREF) {
-      gen(node->lhs);
-    } else {
-      printf("  # lvar %s = \n", node->lhs->ident);
-      gen_lval(node->lhs);
-    }
-    printf("  # get rhs\n");
+    gen_lval(node->lhs);
+
+    printf("  # assign rhs\n");
     gen(node->rhs);
-    printf("  # assign to left value\n");
+
+    printf("  # assign\n");
     printf("  pop rdi\n");
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
@@ -271,16 +282,13 @@ bool gen(Node *node) {
     return true;
   }
   if (node->kind == ND_ADDR) {
-    printf("  # &%s\n", node->lhs->ident);
-    gen_lval(node->lhs);
+    gen_addr(node->lhs);
     return true;
   }
   if (node->kind == ND_DEREF) {
     printf("  # *%s\n", node->lhs->ident);
     gen(node->lhs);
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
+    gen_deref();
     return true;
   }
 

@@ -8,10 +8,10 @@ mcc: $(OBJS)
 $(OBJS): mcc.h
 
 test: mcc
-	./test.sh
+	./_test.sh
 
 debug: mcc
-	./debug.sh
+	./_debug.sh
 
 clean:
 	rm -f mcc *.o *~ tmp*
