@@ -197,6 +197,53 @@ int main() {
 }
 '
 
+try 4 '
+int main() {
+  int x;
+  return sizeof(x);
+}
+'
+
+try 8 '
+int main() {
+  int *x;
+  return sizeof(x);
+}
+'
+
+try 4 '
+int main() {
+  int x;
+  return sizeof(x+3);
+}
+'
+
+try 8 '
+int main() {
+  int *x;
+  return sizeof(x+3);
+}
+'
+
+try 4 '
+int main() {
+  int *x;
+  return sizeof(*x);
+}
+'
+
+try 4 '
+int main() {
+  return sizeof(1);
+}
+'
+
+try 4 '
+int main() {
+  return sizeof(sizeof(1));
+}
+'
+
 exit
 
 try $((0xff - 4 + 1)) 'int main() {return -4;}'

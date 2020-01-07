@@ -211,7 +211,22 @@ Vector *defined_args() {
   return args;
 }
 
+int sizeof_node(Node* node) {
+  if (node->kind == ND_NUM) {
+    return 4;
+  } else if (node->kind == ND_ADDR) {
+    return 8;
+  } else if (node->kind == ND_DEREF) {
+    return 4;
+  } else if (node->kind == ND_LVAR) {
+    return node->val;
+  } else {
+    return sizeof_node(node->lhs);
+  }
+}
+
 Node *primary() {
+
   if (consume("(")) {
     Node *node = expr();
     expect(")");
@@ -228,18 +243,16 @@ Node *primary() {
     }
 
     Node *node = new_node(ND_LVAR);
-    
     // for debug
     node->ident = substring(tok->str, tok->len);
-
     LVar *lvar = find_lvar(tok);
     if (!lvar) {
       error("undefined lvar: %s", substring(tok->str, tok->len));
     }
     node->offset = lvar->offset;
+    node->val = lvar->type->size;
     return node;
   }
-
   return new_node_num(expect_number());
 }
 
@@ -259,6 +272,10 @@ Node *unary() {
     Node *node = new_node(ND_ADDR);
     node->lhs = unary();
     return node;
+  }
+  if (consume_kind(TK_SIZEOF)) {
+    Node *node = unary();
+    return new_node_num(sizeof_node(node));
   }
   return primary();
 }

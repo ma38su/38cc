@@ -32,6 +32,7 @@ typedef enum {
 } NodeKind;
 
 typedef enum {
+  TK_SIZEOF,    // sizeof
   TK_RESERVED,  // simbol +, -
   TK_IDENT,     // identity
   TK_NUM,       // integer number

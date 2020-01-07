@@ -68,7 +68,9 @@ Token *tokenize(char *p) {
 
     int l = lvar_len(p);
     if (l > 0) {
-      if (l == 6 && memcmp(p, "return", l) == 0) {
+      if (l == 6 && memcmp(p, "sizeof", l) == 0) {
+        cur = new_token(TK_SIZEOF, cur, p);
+      } else if (l == 6 && memcmp(p, "return", l) == 0) {
         cur = new_token(TK_RETURN, cur, p);
       } else if (l == 2 && memcmp(p, "if", l) == 0) {
         cur = new_token(TK_IF, cur, p);
