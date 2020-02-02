@@ -1,13 +1,12 @@
 #!/bin/bash
 
-
 try() {
   expected="$1"
   input="$2"
 
   #echo "./mcc \"$input\" > tmp.s"
   ./mcc "$input" > tmp.s
-  cat -n tmp.s
+  #cat -n tmp.s
   
   gcc -g -o tmp tmp.s
   ./tmp
@@ -17,7 +16,7 @@ try() {
     echo "\"$input\" => $actual is expected"
     echo ""
   else
-    echo "\"$input\" => $expected is expected, but actual is => $actual"
+    echo "\"$input\" => $actual is not expected. $expected is expected,"
     echo ""
     exit 1
   fi
@@ -191,13 +190,25 @@ try 11 '
 int main() {
   int x;
   int *y;
+  x = 5;
+  y = &x;
+  *y = 11;
+  return *y;
+}
+'
+
+try 11 '
+int main() {
+  int x;
+  int *y;
+  x = 3;
   y = &x;
   *y = 11;
   return x;
 }
 '
 
-try 4 '
+try 8 '
 int main() {
   int x;
   return sizeof(x);
@@ -211,7 +222,7 @@ int main() {
 }
 '
 
-try 4 '
+try 8 '
 int main() {
   int x;
   return sizeof(x+3);
@@ -225,24 +236,102 @@ int main() {
 }
 '
 
-try 4 '
+try 8 '
 int main() {
   int *x;
   return sizeof(*x);
 }
 '
 
-try 4 '
+try 8 '
+int main() {
+  int x;
+  x = 10;
+  return sizeof(&x);
+}
+'
+
+try 8 '
 int main() {
   return sizeof(1);
 }
 '
 
-try 4 '
+try 8 '
 int main() {
   return sizeof(sizeof(1));
 }
 '
+
+try 80 '
+int main() {
+  int a[10];
+  return sizeof(a);
+}
+'
+
+try 3 '
+int main() {
+  int a[2];
+  *a = 3;
+  return *a;
+}
+'
+
+try 3 '
+int main() {
+  int a[2];
+  a[0] = 3;
+  return *a;
+}
+'
+
+try 3 '
+int main() {
+  int a[2];
+  *a = 3;
+  return a[0];
+}
+'
+
+
+try 3 '
+int main() {
+  int a[2];
+  a[0] = 3;
+  return a[0];
+}
+'
+
+try 3 '
+int main() {
+  int a[2];
+  a[0] = 5;
+  a[1] = 3;
+  return a[1];
+}
+'
+
+try 8 '
+int main() {
+  int a[2];
+  a[0] = 5;
+  a[1] = 3;
+  return a[1] + a[0];
+}
+'
+
+try 3 '
+int main() {
+  int a[2];
+  *a = 1;
+  *(a + 1) = 2;
+  int *p;
+  p = a;
+  return *p + *(p + 1)
+}
+'
+
 
 exit
 

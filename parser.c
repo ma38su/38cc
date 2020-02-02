@@ -7,6 +7,7 @@
 
 Node *new_node(NodeKind kind);
 Node *stmt();
+Node *mul();
 Type *consume_type();
 
 // current token
@@ -26,7 +27,7 @@ Type *new_type(char* name, int len, int size) {
 
 void init_types() {
   types = calloc(1, sizeof(Vector));
-  add_last(types, new_type("int", 3, 4));
+  add_last(types, new_type("int", 3, 8));
 }
 
 bool token_is(Token *tok, char *op) {
@@ -77,7 +78,14 @@ Type *consume_type() {
   if (!type) {
     return NULL;
   }
+
   token = token->next;
+
+  while (consume("*")) {
+    Type *ptr_type = new_type("*", 1, 8);
+    ptr_type->ptr_to = type;
+    type = ptr_type;
+  }
   return type;
 }
 
@@ -148,6 +156,7 @@ Type *expect_type() {
   if (!type) {
     error("undefined type: %s", substring(tok->str, tok->len));
   }
+
   return type;
 }
 
@@ -158,11 +167,6 @@ LVar *consume_defined_lvar() {
     return NULL;
   }
 
-  while (consume("*")) {
-    Type *ptr_type = new_type("*", 1, 8);
-    ptr_type->ptr_to = type;
-    type = ptr_type;
-  }
 
   Token *tok = consume_ident();
   if (!tok) {
@@ -175,13 +179,27 @@ LVar *consume_defined_lvar() {
   LVar *lvar;
   lvar = calloc(1, sizeof(LVar));
   lvar->name = tok->str;
-  lvar->len = tok->len;
-  if (locals) {
-    lvar->offset = locals->offset + 8;
+  lvar->len = tok->len; // strlen
+
+  int new_size;
+  if (consume("[")) {
+    int array_len = expect_number();
+    expect("]");
+
+    new_size = type->size * array_len;
+    Type *array_type = new_type("[]", 2, new_size);
+    array_type->ptr_to = type;
+    type = array_type;
   } else {
-    lvar->offset = 8;
+    new_size = type->size;
   }
+
   lvar->type = type;
+  if (locals) {
+    lvar->offset = locals->offset + new_size;
+  } else {
+    lvar->offset = new_size;
+  }
 
   lvar->next = locals;
   locals = lvar;
@@ -197,9 +215,10 @@ Vector *defined_args() {
       if (!lvar) {
         error("illegal lvar");
       }
-      Node *node = new_node(ND_LVAR);
+      Node *node = new_node(ND_LVAR_DECLARED);
       node->ident = substring(lvar->name, lvar->len);
       node->offset = lvar->offset;
+      node->val = lvar->type->size;
 
       add_last(args, node);
       if (consume(")")) {
@@ -213,20 +232,23 @@ Vector *defined_args() {
 
 int sizeof_node(Node* node) {
   if (node->kind == ND_NUM) {
-    return 4;
+    return 8;
   } else if (node->kind == ND_ADDR) {
     return 8;
-  } else if (node->kind == ND_DEREF) {
-    return 4;
   } else if (node->kind == ND_LVAR) {
+    return node->val;
+  } else if (node->kind == ND_ARRAY) {
     return node->val;
   } else {
     return sizeof_node(node->lhs);
   }
 }
 
-Node *primary() {
+int is_array(Type* type) {
+  return memcmp(type->name, "[]", type->len) == 0;
+}
 
+Node *primary() {
   if (consume("(")) {
     Node *node = expr();
     expect(")");
@@ -234,26 +256,46 @@ Node *primary() {
   }
 
   Token *tok = consume_ident();
-  if (tok) {
-    if (consume("(")) {
-      Node *node = new_node(ND_CALL);
-      node->list = consume_args();
-      node->ident = substring(tok->str, tok->len);
-      return node;
-    }
+  if (!tok) {
+    return new_node_num(expect_number());
+  }
 
-    Node *node = new_node(ND_LVAR);
-    // for debug
+  if (consume("(")) {
+    Node *node = new_node(ND_CALL);
+    node->list = consume_args();
     node->ident = substring(tok->str, tok->len);
-    LVar *lvar = find_lvar(tok);
-    if (!lvar) {
-      error("undefined lvar: %s", substring(tok->str, tok->len));
-    }
-    node->offset = lvar->offset;
-    node->val = lvar->type->size;
     return node;
   }
-  return new_node_num(expect_number());
+
+  LVar *lvar = find_lvar(tok);
+  if (!lvar) {
+    error("undefined lvar: %s", substring(tok->str, tok->len));
+  }
+
+  Node *node;
+  if (is_array(lvar->type)) {
+    node = new_node(ND_ARRAY);
+  } else {
+    node = new_node(ND_LVAR);
+  }
+  node->offset = lvar->offset;
+  node->val = lvar->type->size;
+  // for debug
+  node->ident = substring(tok->str, tok->len);
+
+  if (consume("[")) {
+    if (!is_array(lvar->type)) {
+      error("not array %s", substring(tok->str, tok->len));
+    }
+    Node *index = new_node_lr(ND_MUL, expr(), new_node_num(8));
+    expect("]");
+
+    Node *deref = new_node(ND_DEREF);
+    deref->lhs = new_node_lr(ND_ADD, node, index);
+    node = deref;
+  }
+
+  return node;
 }
 
 Node *unary() {
@@ -418,9 +460,9 @@ Node *stmt() {
       expect(";");
       Node *node = new_node(ND_LVAR_DECLARED);
       node->offset = lvar->offset;
+      node->val = lvar->type->size;
       return node;
     }
-
     node = expr();
     expect(";");
   }
@@ -442,20 +484,30 @@ Node *block_stmt() {
 }
 
 int sizeof_args(Vector *args) {
-  return args ? args->size * 1 : 0; // 8byer/lvar
+  if (!args) {
+    return 0;
+  }
+  int size = 0;
+  VNode *itr = args->head;
+  while (itr) {
+    Node *node = itr->value;
+    size += node->val;
+    itr = itr->next;
+  }
+  return size;
 }
 
 int sizeof_block_lvar(Node *block) {
-  int sizeof_lvar = 0;
+  int size = 0;
   VNode *itr = block->list->head;
   while (itr) {
     Node *node = itr->value;
     if (node->kind == ND_LVAR_DECLARED) {
-      sizeof_lvar += 1;
+      size += node->val;
     }
     itr = itr->next;
   }
-  return sizeof_lvar;
+  return size;
 }
 
 Node *defined_function() {
@@ -526,3 +578,4 @@ LVar *find_lvar(Token *tok) {
   }
   return NULL;
 }
+
