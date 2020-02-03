@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include "mcc.h"
 
 int label_id = 0;
@@ -165,6 +166,7 @@ void gen_defined_function(Node *node) {
   printf("  mov rbp, rsp\n");
 
   if (node->val > 0) {
+    // allocate local vars
     printf("  sub rsp, %d # args+lvar\n",
         node->val);
   }
@@ -227,6 +229,18 @@ void gen_num(int num) {
   printf("  push %d\n", num);
 }
 
+// check to calculate pointer
+bool is_ptr(Node *node) {
+  if (!node) {
+    return false;
+  }
+  if (node->kind != ND_LVAR) {
+    return is_ptr(node->lhs) || is_ptr(node->rhs);
+  }
+  return memcmp(node->type->name, "[]", node->type->len) == 0
+       || memcmp(node->type->name, "*", node->type->len) == 0;
+}
+
 bool gen(Node *node) {
   if (!node) {
     error("node is none");
@@ -240,7 +254,6 @@ bool gen(Node *node) {
     }
     return true;
   }
-
   if (node->kind == ND_IF) {
     return gen_if(node);
   }
@@ -260,7 +273,9 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_addr(node);
-    gen_deref();
+    if (!is_array(node->type)) {
+      gen_deref();
+    }
     return true;
   }
   if (node->kind == ND_ASSIGN) {
@@ -289,29 +304,32 @@ bool gen(Node *node) {
     return true;
   }
   if (node->kind == ND_DEREF) {
-    //printf("  # deref\n"); //*%s\n", node->lhs->ident);
     gen(node->lhs);
     gen_deref();
     return true;
   }
 
-  int lhs_is_ptr = 0;//(node->lhs->kind == ND_PTR || node->lhs->kind == ND_ARRAY);
-  int rhs_is_ptr = 0;//(node->rhs->kind == ND_PTR || node->rhs->kind == ND_ARRAY);
+  bool lhs_is_ptr = is_ptr(node->lhs);
+  bool rhs_is_ptr = is_ptr(node->rhs);
 
   printf("  # lhs\n");
   gen(node->lhs);
   if (!lhs_is_ptr && rhs_is_ptr) {
+    // for pointer calculation
     printf("  pop rax\n");
-    printf("  imul rax, 8\n");
+    printf("  imul rax, %d\n", 8);// sizeof_node(node->rhs));
     printf("  push rax\n");
   }
+
   printf("  # rhs\n");
   gen(node->rhs);
   if (lhs_is_ptr && !rhs_is_ptr) {
+    // for pointer calculation
     printf("  pop rax\n");
-    printf("  imul rax, 8\n");
+    printf("  imul rax, %d\n", 8);//sizeof_node(node->lhs));
     printf("  push rax\n");
   }
+
   printf("  pop rdi\n");
   printf("  pop rax\n");
   if (node->kind == ND_ADD) {

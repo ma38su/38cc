@@ -43,7 +43,19 @@ typedef enum {
   TK_EOF,       // End of File
 } TokenKind;
 
+typedef struct Type Type;
 typedef struct Token Token;
+typedef struct Node Node;
+typedef struct LVar LVar;
+typedef struct Function Function;
+
+struct Type {
+  char *name;
+  int len;
+  int size;
+  Type *ptr_to;
+};
+
 struct Token {
   TokenKind kind;
   Token *next;
@@ -52,7 +64,6 @@ struct Token {
   int len;    // length of token
 };
 
-typedef struct Node Node;
 struct Node {
   NodeKind kind;
   Node *lhs;    // left-hand side
@@ -60,18 +71,10 @@ struct Node {
   char *ident;  // for function
   Vector *list;
   int val;      // for ND_NUM
+  Type *type;    // for lvar
   int offset;   // for lvar
 };
 
-typedef struct Type Type;
-struct Type {
-  char *name;
-  int len;
-  int size;
-  Type *ptr_to;
-};
-
-typedef struct LVar LVar;
 struct LVar {
   LVar *next;
   Type *type;
@@ -80,7 +83,6 @@ struct LVar {
   int offset;
 };
 
-typedef struct Function Function;
 struct Function {
   Type *ret_type;
   char *name;
@@ -96,6 +98,8 @@ extern LVar *locals;
 
 void print_header();
 Node *expr();
+int is_array(Type *type);
+int sizeof_node(Node* node);
 
 void gen_defined(Node *node);
 char *substring(char *str, int len);

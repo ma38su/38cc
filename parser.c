@@ -218,7 +218,7 @@ Vector *defined_args() {
       Node *node = new_node(ND_LVAR);
       node->ident = substring(lvar->name, lvar->len);
       node->offset = lvar->offset;
-      node->val = lvar->type->size;
+      node->type = lvar->type;
 
       add_last(args, node);
       if (consume(")")) {
@@ -235,19 +235,17 @@ int sizeof_node(Node* node) {
     return 8;
   } else if (node->kind == ND_ADDR) {
     return 8;
+  } else if (node->kind == ND_DEREF) {
+    return sizeof_node(node->lhs);
   } else if (node->kind == ND_LVAR) {
-    return node->val;
+    return node->type->size;
   } else {
     return sizeof_node(node->lhs);
   }
 }
 
-int is_array(Type* type) {
+int is_array(Type *type) {
   return memcmp(type->name, "[]", type->len) == 0;
-}
-
-int is_pointer(Type* type) {
-  return memcmp(type->name, "*", type->len) == 0;
 }
 
 Node *primary() {
@@ -277,21 +275,18 @@ Node *primary() {
   Node *node;
   node = new_node(ND_LVAR);
   node->offset = lvar->offset;
-  node->val = lvar->type->size;
+  node->type = lvar->type;
   // for debug
   node->ident = substring(tok->str, tok->len);
 
-  if (consume("[")) {
-    if (!is_array(lvar->type)) {
-      error("not array %s", substring(tok->str, tok->len));
-    }
-    //Node *index = new_node_lr(ND_MUL, expr(), new_node_num(8));
+  if (is_array(lvar->type) && consume("[")) {
     Node *index = expr();
-    expect("]");
 
     Node *deref = new_node(ND_DEREF);
     deref->lhs = new_node_lr(ND_ADD, node, index);
     node = deref;
+
+    expect("]");
   }
   return node;
 }
@@ -458,7 +453,7 @@ Node *stmt() {
       expect(";");
       Node *node = new_node(ND_LVAR);
       node->offset = lvar->offset;
-      node->val = lvar->type->size;
+      node->type = lvar->type;
       return node;
     }
     node = expr();
@@ -489,7 +484,7 @@ int sizeof_args(Vector *args) {
   VNode *itr = args->head;
   while (itr) {
     Node *node = itr->value;
-    size += node->val;
+    size += node->type->size;
     itr = itr->next;
   }
   return size;

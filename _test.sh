@@ -321,6 +321,23 @@ int main() {
 }
 '
 
+try 1 '
+int main() {
+  int a[2];
+  *a = 1;
+  *(a + 1) = 2;
+  return a[0];
+}
+'
+
+try 2 '
+int main() {
+  int a[2];
+  *(a + 1) = 2;
+  return a[1];
+}
+'
+
 try 3 '
 int main() {
   int a[2];
@@ -328,7 +345,7 @@ int main() {
   *(a + 1) = 2;
   int *p;
   p = a;
-  return *p + *(p + 1)
+  return *p + *(p + 1);
 }
 '
 
