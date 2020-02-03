@@ -9,6 +9,7 @@ Node *new_node(NodeKind kind);
 Node *stmt();
 Node *mul();
 Type *consume_type();
+int sizeof_lvars();
 
 // current token
 char *user_input;
@@ -161,12 +162,11 @@ Type *expect_type() {
 }
 
 // defined local variable
-LVar *consume_defined_lvar() {
+LVar *consume_lvar_define() {
   Type *type = consume_type();
   if (!type) {
     return NULL;
   }
-
 
   Token *tok = consume_ident();
   if (!tok) {
@@ -211,11 +211,11 @@ Vector *defined_args() {
   if (!consume(")")) {
     args = calloc(1, sizeof(Vector));
     for (;;) {
-      LVar *lvar = consume_defined_lvar();
+      LVar *lvar = consume_lvar_define();
       if (!lvar) {
         error("illegal lvar");
       }
-      Node *node = new_node(ND_LVAR_DECLARED);
+      Node *node = new_node(ND_LVAR);
       node->ident = substring(lvar->name, lvar->len);
       node->offset = lvar->offset;
       node->val = lvar->type->size;
@@ -237,8 +237,6 @@ int sizeof_node(Node* node) {
     return 8;
   } else if (node->kind == ND_LVAR) {
     return node->val;
-  } else if (node->kind == ND_ARRAY) {
-    return node->val;
   } else {
     return sizeof_node(node->lhs);
   }
@@ -246,6 +244,10 @@ int sizeof_node(Node* node) {
 
 int is_array(Type* type) {
   return memcmp(type->name, "[]", type->len) == 0;
+}
+
+int is_pointer(Type* type) {
+  return memcmp(type->name, "*", type->len) == 0;
 }
 
 Node *primary() {
@@ -273,11 +275,7 @@ Node *primary() {
   }
 
   Node *node;
-  if (is_array(lvar->type)) {
-    node = new_node(ND_ARRAY);
-  } else {
-    node = new_node(ND_LVAR);
-  }
+  node = new_node(ND_LVAR);
   node->offset = lvar->offset;
   node->val = lvar->type->size;
   // for debug
@@ -287,14 +285,14 @@ Node *primary() {
     if (!is_array(lvar->type)) {
       error("not array %s", substring(tok->str, tok->len));
     }
-    Node *index = new_node_lr(ND_MUL, expr(), new_node_num(8));
+    //Node *index = new_node_lr(ND_MUL, expr(), new_node_num(8));
+    Node *index = expr();
     expect("]");
 
     Node *deref = new_node(ND_DEREF);
     deref->lhs = new_node_lr(ND_ADD, node, index);
     node = deref;
   }
-
   return node;
 }
 
@@ -455,10 +453,10 @@ Node *stmt() {
     node->lhs = expr();
     expect(";");
   } else {
-    LVar *lvar = consume_defined_lvar();
+    LVar *lvar = consume_lvar_define();
     if (lvar) {
       expect(";");
-      Node *node = new_node(ND_LVAR_DECLARED);
+      Node *node = new_node(ND_LVAR);
       node->offset = lvar->offset;
       node->val = lvar->type->size;
       return node;
@@ -497,19 +495,6 @@ int sizeof_args(Vector *args) {
   return size;
 }
 
-int sizeof_block_lvar(Node *block) {
-  int size = 0;
-  VNode *itr = block->list->head;
-  while (itr) {
-    Node *node = itr->value;
-    if (node->kind == ND_LVAR_DECLARED) {
-      size += node->val;
-    }
-    itr = itr->next;
-  }
-  return size;
-}
-
 Node *defined_function() {
   Token *tok;
 
@@ -535,14 +520,15 @@ Node *defined_function() {
     error("illegal defined block");
   }
 
-  // local変数を戻す
-  locals = tmp_locals;
 
   node = new_node(ND_FUNCTION);
   node->list = args;
   node->ident = substring(tok->str, tok->len);
   node->lhs = block;
-  node->val = sizeof_args(args) + sizeof_block_lvar(block);
+  node->val = sizeof_args(args) + sizeof_lvars();
+
+  // local変数を戻す(サイズ計算後)
+  locals = tmp_locals;
   return node;
 }
 
@@ -577,5 +563,13 @@ LVar *find_lvar(Token *tok) {
     }
   }
   return NULL;
+}
+
+int sizeof_lvars() {
+  int size = 0;
+  for (LVar *var = locals; var; var = var->next) {
+    size += var->type->size;
+  }
+  return size;
 }
 

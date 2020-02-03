@@ -32,6 +32,9 @@ char* get_args_register(int args) {
 }
 
 void gen_addr(Node* node) {
+  if (node->kind != ND_LVAR) {
+    error("not lvar: %d", node->kind);
+  }
   printf("  # &%s\n", node->ident);
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
@@ -86,7 +89,7 @@ void gen_block(Node *node) {
   printf("  # block end\n");
 }
 
-void gen_while(Node *node) {
+bool gen_while(Node *node) {
   if (node->kind != ND_WHILE) {
     error("not while");
   }
@@ -99,19 +102,20 @@ void gen_while(Node *node) {
   printf("  jmp .Lbegin%03d\n", label_id);
   printf(".Lend%03d:\n", label_id);
   label_id++;
+  return false;
 }
 
-void gen_for(Node *node) {
+bool gen_for(Node *node) {
   if (node->kind != ND_FOR) {
     error("not while");
   }
   if (node->lhs) {
     gen(node->lhs);
   }
-  gen_while(node->rhs);
+  return gen_while(node->rhs);
 }
 
-void gen_if(Node *node) {
+bool gen_if(Node *node) {
   if (node->kind != ND_IF) {
     error("not if");
   }
@@ -131,9 +135,10 @@ void gen_if(Node *node) {
     printf(".Lend%03d:\n", label_id);
   }
   label_id++;
+  return false;
 }
 
-void gen_return(Node *node) {
+bool gen_return(Node *node) {
   if (node->kind != ND_RETURN) {
     error("not return");
   }
@@ -144,6 +149,7 @@ void gen_return(Node *node) {
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");  // return rax value
+  return false;
 }
 
 void gen_defined_function(Node *node) {
@@ -209,36 +215,11 @@ void gen_deref() {
 
 // push store address
 void gen_lval(Node *node) {
-  Node *n = node;
-  int deref_count = 0;
-  while (n->kind == ND_DEREF) {
-    deref_count++;
-    n = n->lhs;
-  }
-  //printf("  # assign lhs %s %d\n", n->ident, n->val);
-  printf("  # begin deref %d\n", deref_count);
-  if (n->kind == ND_ARRAY) {
-    deref_count--;
-    gen_addr(n);
-  } else if (n->kind == ND_LVAR) {
-    gen_addr(n);
+  if (node->kind == ND_DEREF) {
+    gen(node->lhs);
   } else {
-    if (n->kind == ND_ADD) {
-      gen_addr(n->lhs);
-      gen(n->rhs);
-      printf("  pop rdi\n");
-      printf("  pop rax\n");
-      printf("  # add(+)\n");
-      printf("  add rax, rdi\n");
-      printf("  push rax\n");
-      return;
-    }
+    gen_addr(node);
   }
-  for (int i = 0; i < deref_count; ++i) {
-    printf("  # deref %d/%d\n", i, deref_count);
-    gen_deref();
-  }
-  printf("  # end deref %d\n", deref_count);
 }
 
 void gen_num(int num) {
@@ -261,37 +242,25 @@ bool gen(Node *node) {
   }
 
   if (node->kind == ND_IF) {
-    gen_if(node);
-    return false;
+    return gen_if(node);
   }
   if (node->kind == ND_FOR) {
-    gen_for(node);
-    return false;
+    return gen_for(node);
   }
   if (node->kind == ND_WHILE) {
-    gen_while(node);
-    return false;
+    return gen_while(node);
   }
   if (node->kind == ND_RETURN) {
-    gen_return(node);
-    return false;
+    return gen_return(node);
   }
 
   if (node->kind == ND_NUM) {
     gen_num(node->val);
     return true;
   }
-
-  if (node->kind == ND_LVAR_DECLARED) {
-    return false;
-  }
   if (node->kind == ND_LVAR) {
     gen_addr(node);
     gen_deref();
-    return true;
-  }
-  if (node->kind == ND_ARRAY) {
-    gen_addr(node);
     return true;
   }
   if (node->kind == ND_ASSIGN) {
@@ -320,16 +289,29 @@ bool gen(Node *node) {
     return true;
   }
   if (node->kind == ND_DEREF) {
-    printf("  # deref\n"); //*%s\n", node->lhs->ident);
+    //printf("  # deref\n"); //*%s\n", node->lhs->ident);
     gen(node->lhs);
     gen_deref();
     return true;
   }
 
+  int lhs_is_ptr = 0;//(node->lhs->kind == ND_PTR || node->lhs->kind == ND_ARRAY);
+  int rhs_is_ptr = 0;//(node->rhs->kind == ND_PTR || node->rhs->kind == ND_ARRAY);
+
   printf("  # lhs\n");
   gen(node->lhs);
+  if (!lhs_is_ptr && rhs_is_ptr) {
+    printf("  pop rax\n");
+    printf("  imul rax, 8\n");
+    printf("  push rax\n");
+  }
   printf("  # rhs\n");
   gen(node->rhs);
+  if (lhs_is_ptr && !rhs_is_ptr) {
+    printf("  pop rax\n");
+    printf("  imul rax, 8\n");
+    printf("  push rax\n");
+  }
   printf("  pop rdi\n");
   printf("  pop rax\n");
   if (node->kind == ND_ADD) {
