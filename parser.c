@@ -449,15 +449,21 @@ Node *stmt() {
     expect(";");
   } else {
     LVar *lvar = consume_lvar_define();
-    if (lvar) {
+    if (!lvar) {
+      node = expr();
       expect(";");
-      Node *node = new_node(ND_LVAR);
-      node->offset = lvar->offset;
-      node->type = lvar->type;
       return node;
     }
-    node = expr();
+
+    Node *node = new_node(ND_LVAR);
+    node->offset = lvar->offset;
+    node->type = lvar->type;
+
+    if (consume("=")) {
+      node = new_node_lr(ND_ASSIGN, node, assign());
+    }
     expect(";");
+    return node;
   }
   return node;
 }
