@@ -4,8 +4,8 @@ try() {
   expected="$1"
   input="$2"
 
-  #echo "./mcc \"$input\" > tmp.s"
-  ./mcc "$input" > tmp.s
+  #echo "./38cc \"$input\" > tmp.s"
+  ./38cc "$input" > tmp.s
   cat -n tmp.s
   
   gcc -g -o tmp tmp.s
@@ -22,6 +22,13 @@ try() {
     exit 1
   fi
 }
+
+try 11 '
+int a = 11;
+int main() {
+  return a;
+}
+'
 
 try 3 '
 int main() {
@@ -120,6 +127,13 @@ int main() {
   int *p;
   p = a;
   return *p + *(p + 1);
+}
+'
+
+try 10 '
+int a = 10;
+int main() {
+  return a;
 }
 '
 

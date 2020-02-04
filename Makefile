@@ -2,19 +2,19 @@ CFLAGS=-std=c11 -g -static
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
-mcc: $(OBJS)
-	$(CC) -g -o mcc $(OBJS) $(LDFLAGS)
+38cc: $(OBJS)
+	$(CC) -g -o 38cc $(OBJS) $(LDFLAGS)
 
-$(OBJS): mcc.h
+$(OBJS): 38cc.h
 
-test: mcc
+test: 38cc
 	./_test.sh
 
-debug: mcc
+debug: 38cc
 	./_debug.sh
 
 clean:
-	rm -f mcc *.o *~ tmp*
+	rm -f 38cc *.o *~ tmp*
 
 .PHONY: test clean
 

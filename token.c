@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "mcc.h"
+#include "38cc.h"
 
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {

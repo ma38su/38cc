@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "mcc.h"
+#include "38cc.h"
 
 void dump_tokenize() {
   Token *p;

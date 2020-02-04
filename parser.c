@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mcc.h"
+#include "38cc.h"
 #include "vector.h"
 
 Node *new_node(NodeKind kind);
@@ -10,11 +10,13 @@ Node *stmt();
 Node *mul();
 Type *consume_type();
 int sizeof_lvars();
+GVar *find_gvar(Token *tok);
 
 // current token
 char *user_input;
 Node *code[100];
 LVar *locals;
+GVar *globals;
 Vector *types;  // Type*
 Token *token;
 
@@ -149,7 +151,7 @@ Type *expect_type() {
   Token *tok;
   tok = consume_ident();
   if (!tok) {
-    error("illegal type");
+    error("illegal type: %s", substring(token->str, token->len));
   }
 
   Type *type;
@@ -163,6 +165,7 @@ Type *expect_type() {
 
 // defined local variable
 LVar *consume_lvar_define() {
+
   Type *type = consume_type();
   if (!type) {
     return NULL;
@@ -175,11 +178,6 @@ LVar *consume_lvar_define() {
   if (find_lvar(tok)) {
     error("duplicated defined lvar %s", substring(tok->str, tok->len));
   }
-
-  LVar *lvar;
-  lvar = calloc(1, sizeof(LVar));
-  lvar->name = tok->str;
-  lvar->len = tok->len; // strlen
 
   int new_size;
   if (consume("[")) {
@@ -194,13 +192,17 @@ LVar *consume_lvar_define() {
     new_size = type->size;
   }
 
+  LVar *lvar;
+  lvar = calloc(1, sizeof(LVar));
+  lvar->name = tok->str;
+  lvar->len = tok->len; // strlen
   lvar->type = type;
+
   if (locals) {
     lvar->offset = locals->offset + new_size;
   } else {
     lvar->offset = new_size;
   }
-
   lvar->next = locals;
   locals = lvar;
   return lvar;
@@ -267,21 +269,25 @@ Node *primary() {
     return node;
   }
 
+  Node *node;
   LVar *lvar = find_lvar(tok);
-  if (!lvar) {
-    error("undefined lvar: %s", substring(tok->str, tok->len));
+  if (lvar) {
+    node = new_node(ND_LVAR);
+    node->type = lvar->type;
+    node->ident = substring(tok->str, tok->len);
+    node->offset = lvar->offset;
+  } else {
+    GVar *gvar = find_gvar(tok);
+    if (!gvar) {
+      error("undefined lvar: %s", substring(tok->str, tok->len));
+    }
+    node = new_node(ND_GVAR);
+    node->type = gvar->type;
+    node->ident = substring(tok->str, tok->len);
   }
 
-  Node *node;
-  node = new_node(ND_LVAR);
-  node->offset = lvar->offset;
-  node->type = lvar->type;
-  // for debug
-  node->ident = substring(tok->str, tok->len);
-
-  if (is_array(lvar->type) && consume("[")) {
+  if (is_array(node->type) && consume("[")) {
     Node *index = expr();
-
     Node *deref = new_node(ND_DEREF);
     deref->lhs = new_node_lr(ND_ADD, node, index);
     node = deref;
@@ -449,27 +455,23 @@ Node *stmt() {
     expect(";");
   } else {
     LVar *lvar = consume_lvar_define();
-    if (!lvar) {
+    if (lvar) {
+      node = new_node(ND_LVAR);
+      node->offset = lvar->offset;
+      node->type = lvar->type;
+      if (consume("=")) {
+        node = new_node_lr(ND_ASSIGN, node, assign());
+      }
+    } else {
       node = expr();
-      expect(";");
-      return node;
-    }
-
-    Node *node = new_node(ND_LVAR);
-    node->offset = lvar->offset;
-    node->type = lvar->type;
-
-    if (consume("=")) {
-      node = new_node_lr(ND_ASSIGN, node, assign());
     }
     expect(";");
-    return node;
   }
   return node;
 }
 
 Node *block_stmt() {
-  Node *node;
+  Node *node = NULL;
   if (consume("{")) {
     node = new_node(ND_BLOCK);
     Vector *stmt_list = calloc(1, sizeof(Vector));
@@ -496,41 +498,77 @@ int sizeof_args(Vector *args) {
   return size;
 }
 
-Node *defined_function() {
-  Token *tok;
+Node *global() {
 
-  Node *node;
-  Node *block;
-  Type *ret_type;
-  Vector *args;
-
-  ret_type = expect_type();
-
-  tok = consume_ident();
+  Type *type = expect_type();
+  Token *tok = consume_ident();
   if (!tok) {
     error("illegal defined function ident");
   }
 
-  expect("(");
-  LVar *tmp_locals = locals;
-  locals = NULL;
+  Node *node;
+  if (consume("(")) {
 
-  args = defined_args();
-  block = block_stmt();
-  if (!block) {
-    error("illegal defined block");
+    Node *block;
+    Vector *args;
+
+    LVar *tmp_locals = locals;
+    locals = NULL;
+
+    args = defined_args();
+    block = block_stmt();
+    if (!block) {
+      error("illegal defined block");
+    }
+
+    node = new_node(ND_FUNCTION);
+    node->list = args;
+    node->ident = substring(tok->str, tok->len);
+    node->lhs = block;
+    node->val = sizeof_args(args) + sizeof_lvars();
+
+    // local変数を戻す(サイズ計算後)
+    locals = tmp_locals;
+    return node;
+
+  } else {
+
+    GVar *gvar = find_gvar(tok);
+    if (gvar) {
+      error("duplicated defined gvar: %s", substring(tok->str, tok->len));
+    }
+    gvar = calloc(1, sizeof(GVar));
+    gvar->name = tok->str;
+    gvar->len = tok->len; // strlen
+
+    int new_size;
+    if (consume("[")) {
+      int array_len = expect_number();
+      expect("]");
+
+      new_size = type->size * array_len;
+      Type *array_type = new_type("[]", 2, new_size);
+      array_type->ptr_to = type;
+      type = array_type;
+    } else {
+      new_size = type->size;
+    }
+
+    gvar->type = type;
+
+    gvar->next = globals;
+    globals = gvar;
+
+    Node *node = new_node(ND_GVAR);
+    node->type = gvar->type;
+    node->ident = substring(tok->str, tok->len);
+
+    if (consume("=")) {
+      node->lhs = equality();
+    }
+    expect(";");
+    return node;
   }
-
-
-  node = new_node(ND_FUNCTION);
-  node->list = args;
-  node->ident = substring(tok->str, tok->len);
-  node->lhs = block;
-  node->val = sizeof_args(args) + sizeof_lvars();
-
-  // local変数を戻す(サイズ計算後)
-  locals = tmp_locals;
-  return node;
 }
 
 void program() {
@@ -539,7 +577,7 @@ void program() {
 
   int i = 0;
   while (!at_eof()) {
-    code[i++] = defined_function();
+    code[i++] = global();
   }
   code[i] = NULL;
 }
@@ -557,8 +595,18 @@ Type *find_type(Token *tok) {
   return NULL;
 }
 
+
 LVar *find_lvar(Token *tok) {
   for (LVar *var = locals; var; var = var->next) {
+    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
+      return var;
+    }
+  }
+  return NULL;
+}
+
+GVar *find_gvar(Token *tok) {
+  for (GVar *var = globals; var; var = var->next) {
     if (var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
       return var;
     }

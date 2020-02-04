@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
-#include "mcc.h"
+#include "38cc.h"
 
 int label_id = 0;
 
@@ -153,6 +153,44 @@ bool gen_return(Node *node) {
   return false;
 }
 
+void gen_defined_gvar(Node *node) {
+  if (node->kind != ND_GVAR) {
+    error("node is not gvar: %d", node->kind);
+  }
+  // gvar label
+  printf("%s:\n", node->ident);
+
+  if (node->lhs) {
+    if (node->lhs->kind == ND_NUM) {
+      printf("  .long %d\n", node->lhs->val);
+    }
+  }
+}
+
+void gen_assign_gvar(Node *node) {
+  if (!node) {
+    // error("gvar assigned none");
+    return;
+  }
+
+  if (node->lhs->kind == ND_NUM) {
+    printf("  .long %d\n", node->lhs->val);
+  } else {
+    error("not supported gvar type");
+  }
+}
+
+bool gen_gvar(Node *node) {
+  if (node->kind != ND_GVAR) {
+    error("node is not gvar");
+  }
+
+  // for 64bit
+  printf("  mov rax, QWORD PTR %s[rip]\n", node->ident);
+  printf("  push rax\n");
+  return true;
+}
+
 void gen_defined_function(Node *node) {
   if (node->kind != ND_FUNCTION) {
     error("node is not function");
@@ -199,14 +237,16 @@ void gen_defined_function(Node *node) {
 
 void gen_defined(Node *node) {
   if (!node) {
-    error("node is none");
+    error("node is none. by gen_defined");
   }
 
-  if (node->kind != ND_FUNCTION) {
-    error("node is not function");
+  if (node->kind == ND_FUNCTION) {
+    gen_defined_function(node);
+  } else if (node->kind == ND_GVAR) {
+    gen_defined_gvar(node);
+  } else {
+    error("node is not supported.");
   }
-
-  gen_defined_function(node);
 }
 
 void gen_deref() {
@@ -217,6 +257,7 @@ void gen_deref() {
 
 // push store address
 void gen_lval(Node *node) {
+  printf("  # gen_lval");
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
   } else {
@@ -243,7 +284,7 @@ bool is_ptr(Node *node) {
 
 bool gen(Node *node) {
   if (!node) {
-    error("node is none");
+    error("node is none. by gen");
   }
   if (node->kind == ND_NONE) {
     if (node->lhs) {
@@ -277,6 +318,9 @@ bool gen(Node *node) {
       gen_deref();
     }
     return true;
+  }
+  if (node->kind == ND_GVAR) {
+    return gen_gvar(node);
   }
   if (node->kind == ND_ASSIGN) {
     gen_lval(node->lhs);
@@ -376,3 +420,4 @@ bool gen(Node *node) {
   printf("  push rax\n");
   return true;
 }
+

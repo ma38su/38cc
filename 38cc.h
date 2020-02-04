@@ -5,10 +5,9 @@
 #include "vector.h"
 
 typedef enum {
-  ND_FUNCTION,
-  ND_CALL,
-  ND_LVAR,    // local variable
   ND_NUM,     // integer number
+  ND_LVAR,    // local variable
+  ND_GVAR,    // global variable
   ND_DEREF,
   ND_ADDR,
   ND_EQ,      // ==
@@ -28,6 +27,8 @@ typedef enum {
   ND_MOD,     // %
   ND_ASSIGN,  // =
   ND_RETURN,  // return
+  ND_FUNCTION,
+  ND_CALL,
 } NodeKind;
 
 typedef enum {
@@ -47,6 +48,7 @@ typedef struct Type Type;
 typedef struct Token Token;
 typedef struct Node Node;
 typedef struct LVar LVar;
+typedef struct GVar GVar;
 typedef struct Function Function;
 
 struct Type {
@@ -83,6 +85,13 @@ struct LVar {
   int offset;
 };
 
+struct GVar {
+  GVar *next;
+  Type *type;
+  char *name;
+  int len;
+};
+
 struct Function {
   Type *ret_type;
   char *name;
@@ -95,6 +104,7 @@ extern char *user_input;
 extern Token *token;
 extern Node *code[];
 extern LVar *locals;
+extern GVar *globals;
 
 void print_header();
 Node *expr();
@@ -107,6 +117,7 @@ char *substring(char *str, int len);
 Token *tokenize(char *p);
 void print_header();
 
+LVar *find_var(Token *tok);
 LVar *find_lvar(Token *tok);
 Type *find_type(Token *tok);
 void error_at(char *loc, char *fmt, ...);
