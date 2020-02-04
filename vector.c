@@ -2,7 +2,7 @@
 
 #include "vector.h"
 
-void add_last(Vector *vector, void *value) {
+void vec_add(Vector *vector, void *value) {
   VNode *node = calloc(1, sizeof(VNode));
   node->value = value;
   if (vector->tail) {

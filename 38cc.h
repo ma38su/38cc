@@ -5,30 +5,30 @@
 #include "vector.h"
 
 typedef enum {
-  ND_NUM,     // integer number
-  ND_LVAR,    // local variable
-  ND_GVAR,    // global variable
-  ND_DEREF,
-  ND_ADDR,
-  ND_EQ,      // ==
-  ND_NE,      // !=
-  ND_LT,      // <
-  ND_LE,      // <=
-  ND_BLOCK,   // {}
-  ND_IF,      // return
-  ND_ELSE,    // return
-  ND_WHILE,   // return
-  ND_NONE,    // return
-  ND_FOR,     // return
-  ND_ADD,     // +
-  ND_SUB,     // -
-  ND_MUL,     // *
-  ND_DIV,     // /
-  ND_MOD,     // %
-  ND_ASSIGN,  // =
-  ND_RETURN,  // return
-  ND_FUNCTION,
-  ND_CALL,
+  ND_NUM,     // 0 integer number
+  ND_LVAR,    // 1 local variable
+  ND_GVAR,    // 2 global variable
+  ND_DEREF,   // 3
+  ND_ADDR,    // 4
+  ND_EQ,      // 5 ==
+  ND_NE,      // 6 !=
+  ND_LT,      // 7 <
+  ND_LE,      // 8 <=
+  ND_BLOCK,   // 9 {}
+  ND_IF,      // 10 return
+  ND_ELSE,    // 11 return
+  ND_WHILE,   // 12 return
+  ND_NONE,    // 13 return
+  ND_FOR,     // 14 return
+  ND_ADD,     // 15 +
+  ND_SUB,     // 16 -
+  ND_MUL,     // 17 *
+  ND_DIV,     // 18 /
+  ND_MOD,     // 19 %
+  ND_ASSIGN,  // 20 =
+  ND_RETURN,  // 21 return
+  ND_FUNCTION,// 22
+  ND_CALL,    // 23
 } NodeKind;
 
 typedef enum {
@@ -106,9 +106,14 @@ extern Node *code[];
 extern LVar *locals;
 extern GVar *globals;
 
+extern Type *type_int;
+extern Type *type_char;
+
+
 void print_header();
 Node *expr();
-int is_array(Type *type);
+int type_is_array(Type *type);
+int type_is_ptr(Type *type);
 int sizeof_node(Node* node);
 
 void gen_defined(Node *node);

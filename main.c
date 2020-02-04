@@ -30,13 +30,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-
   user_input = argv[1];
   token = tokenize(user_input);
   // dump_tokenize();
   // return 0;
 
   program();
+
   print_header();
   for (int i = 0; code[i]; i++) {
     printf("# gen %d\n", i);

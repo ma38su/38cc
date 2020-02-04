@@ -16,6 +16,6 @@ struct Vector {
   int size;
 };
 
-void add_last(Vector *vector, void *value);
+void vec_add(Vector *vector, void *value);
 
 #endif

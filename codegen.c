@@ -275,6 +275,9 @@ bool is_ptr(Node *node) {
   if (!node) {
     return false;
   }
+  if (node->kind != ND_DEREF) {
+    return false;
+  }
   if (node->kind != ND_LVAR) {
     return is_ptr(node->lhs) || is_ptr(node->rhs);
   }
@@ -314,7 +317,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_addr(node);
-    if (!is_array(node->type)) {
+    if (!type_is_array(node->type)) {
       gen_deref();
     }
     return true;

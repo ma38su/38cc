@@ -356,6 +356,28 @@ int main() {
 }
 '
 
+try 6 '
+int main() {
+  int x[3];
+  x[0] = 1;
+  x[1] = 2;
+  int y;
+  y = 4;
+  return x[1] + 4;
+}
+'
+
+try 3 '
+int main() {
+  char x[3];
+  x[0] = -1;
+  x[1] = 2;
+  int y;
+  y = 4;
+  return x[0] + y;
+}
+'
+
 exit
 
 try $((0xff - 4 + 1)) 'int main() {return -4;}'

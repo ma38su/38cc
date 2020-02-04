@@ -11,14 +11,21 @@ Node *mul();
 Type *consume_type();
 int sizeof_lvars();
 GVar *find_gvar(Token *tok);
+Type *find_type(Token *tok);
+Type *find_function(Token *tok);
 
 // current token
+Token *token;
+
 char *user_input;
 Node *code[100];
 LVar *locals;
 GVar *globals;
 Vector *types;  // Type*
-Token *token;
+Vector *functions;
+
+Type *type_int;
+Type *type_char;
 
 Type *new_type(char* name, int len, int size) {
   Type *type;
@@ -28,9 +35,98 @@ Type *new_type(char* name, int len, int size) {
   type->size = size;
 }
 
+Type *new_ptr_type(Type* type) {
+  Type *ptr_type = new_type("*", 1, 8);
+  ptr_type->ptr_to = type;
+  return ptr_type;
+}
+
+Type *new_array_type(Type* type, int len) {
+  Type *array_type = new_type("[]", 2, type->size * len);
+  array_type->ptr_to = type;
+  return array_type;
+}
+
+Type *new_function_type(char* name, int len, Type* ret_type) {
+  Type *func_type = new_type(name, len, 8);
+  func_type->ptr_to = ret_type;
+  return func_type;
+}
+
 void init_types() {
   types = calloc(1, sizeof(Vector));
-  add_last(types, new_type("int", 3, 8));
+  functions = calloc(1, sizeof(Vector));
+
+  type_int = new_type("int", 3, 8);
+  type_char = new_type("char", 4, 8);
+
+  vec_add(types, type_int);
+  vec_add(types, type_char);
+}
+
+int type_is_array(Type *type) {
+  return memcmp(type->name, "[]", type->len) == 0;
+}
+
+int type_is_ptr(Type *type) {
+  return memcmp(type->name, "*", type->len) == 0;
+}
+
+bool type_is_func(Type *type) {
+  return type->ptr_to && !type_is_ptr(type) && !type_is_array(type);
+}
+
+Node *new_node(NodeKind kind) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  return node;
+}
+
+Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
+  Node *node = new_node(kind);
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+
+  if (!lhs->type) {
+    error("lhs no type: %d -> %d", node->kind, lhs->kind);
+  }
+  if (!rhs->type) {
+    error("rhs no type: %d -> %d", node->kind, rhs->kind);
+  }
+
+  Type *lhs_type = lhs->type;
+  Type *rhs_type = rhs->type;
+
+  if (type_is_func(lhs_type)) {
+    lhs_type = lhs_type->ptr_to;
+  }
+  if (type_is_func(rhs_type)) {
+    rhs_type = rhs_type->ptr_to;
+  }
+  if (kind == ND_NUM
+      || kind == ND_EQ
+      || kind == ND_NE
+      || kind == ND_LT
+      || kind == ND_LE) {
+    node->type = type_int;
+  } else if (lhs_type == rhs_type) {
+    node->type = lhs_type;
+  } else if (kind == ND_ADDR) {
+    node->type = new_ptr_type(lhs_type);
+  } else if (type_is_ptr(lhs_type)) {
+    node->type = lhs_type;
+  } else if (type_is_ptr(rhs_type)) {
+    node->type = rhs_type;
+  }
+  return node;
+}
+
+Node *new_node_num(int val) {
+  Node *node = new_node(ND_NUM);
+  node->val = val;
+  node->type = type_int;
+  return node;
 }
 
 bool token_is(Token *tok, char *op) {
@@ -76,18 +172,14 @@ Type *consume_type() {
   if (token->kind != TK_IDENT) {
     return NULL;
   }
-  Type *type;
-  type = find_type(token);
+  Type *type = find_type(token);
   if (!type) {
     return NULL;
   }
-
   token = token->next;
 
   while (consume("*")) {
-    Type *ptr_type = new_type("*", 1, 8);
-    ptr_type->ptr_to = type;
-    type = ptr_type;
+    type = new_ptr_type(type);
   }
   return type;
 }
@@ -106,26 +198,6 @@ bool at_eof() {
   return token->kind == TK_EOF;
 }
 
-Node *new_node(NodeKind kind) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = kind;
-  return node;
-}
-
-Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
-  Node *node = new_node(kind);
-  node->kind = kind;
-  node->lhs = lhs;
-  node->rhs = rhs;
-  return node;
-}
-
-Node *new_node_num(int val) {
-  Node *node = new_node(ND_NUM);
-  node->val = val;
-  return node;
-}
-
 char *substring(char *str, int len) {
   char *sub = calloc(len + 1, sizeof(char));
   strncpy(sub, str, len);
@@ -137,7 +209,7 @@ Vector *consume_args() {
   if (!consume(")")) {
     args = calloc(1, sizeof(Vector));
     for (;;) {
-      add_last(args, expr());
+      vec_add(args, expr());
       if (consume(")")) {
         break;
       }
@@ -185,9 +257,7 @@ LVar *consume_lvar_define() {
     expect("]");
 
     new_size = type->size * array_len;
-    Type *array_type = new_type("[]", 2, new_size);
-    array_type->ptr_to = type;
-    type = array_type;
+    type = new_array_type(type, array_len);
   } else {
     new_size = type->size;
   }
@@ -222,7 +292,7 @@ Vector *defined_args() {
       node->offset = lvar->offset;
       node->type = lvar->type;
 
-      add_last(args, node);
+      vec_add(args, node);
       if (consume(")")) {
         break;
       }
@@ -246,10 +316,6 @@ int sizeof_node(Node* node) {
   }
 }
 
-int is_array(Type *type) {
-  return memcmp(type->name, "[]", type->len) == 0;
-}
-
 Node *primary() {
   if (consume("(")) {
     Node *node = expr();
@@ -266,6 +332,10 @@ Node *primary() {
     Node *node = new_node(ND_CALL);
     node->list = consume_args();
     node->ident = substring(tok->str, tok->len);
+    node->type = find_function(tok);
+    if (!node->type) {
+      error("func not found: %s", node->ident);
+    }
     return node;
   }
 
@@ -286,7 +356,7 @@ Node *primary() {
     node->ident = substring(tok->str, tok->len);
   }
 
-  if (is_array(node->type) && consume("[")) {
+  if (type_is_array(node->type) && consume("[")) {
     Node *index = expr();
     Node *deref = new_node(ND_DEREF);
     deref->lhs = new_node_lr(ND_ADD, node, index);
@@ -397,7 +467,7 @@ Node *stmt() {
     Vector *stmt_list = calloc(1, sizeof(Vector));
     do {
       Node *sub = stmt();
-      add_last(stmt_list, sub);
+      vec_add(stmt_list, sub);
     } while (!consume("}"));
     node->list = stmt_list;
   } else if (consume_kind(TK_IF)) {
@@ -477,7 +547,7 @@ Node *block_stmt() {
     Vector *stmt_list = calloc(1, sizeof(Vector));
     do {
       Node *sub = stmt();
-      add_last(stmt_list, sub);
+      vec_add(stmt_list, sub);
     } while (!consume("}"));
     node->list = stmt_list;
   }
@@ -509,6 +579,10 @@ Node *global() {
   Node *node;
   if (consume("(")) {
 
+    // before parse function statement for recursive call
+    Type *func_type = new_function_type(tok->str, tok->len, type);
+    vec_add(functions, func_type);
+
     Node *block;
     Vector *args;
 
@@ -526,6 +600,7 @@ Node *global() {
     node->ident = substring(tok->str, tok->len);
     node->lhs = block;
     node->val = sizeof_args(args) + sizeof_lvars();
+    node->type = func_type;
 
     // local変数を戻す(サイズ計算後)
     locals = tmp_locals;
@@ -547,9 +622,7 @@ Node *global() {
       expect("]");
 
       new_size = type->size * array_len;
-      Type *array_type = new_type("[]", 2, new_size);
-      array_type->ptr_to = type;
-      type = array_type;
+      type = new_array_type(type, array_len);
     } else {
       new_size = type->size;
     }
@@ -572,7 +645,6 @@ Node *global() {
 }
 
 void program() {
-
   init_types();
 
   int i = 0;
@@ -595,6 +667,18 @@ Type *find_type(Token *tok) {
   return NULL;
 }
 
+Type *find_function(Token *tok) {
+  Type *type;
+  VNode *itr = functions->head;
+  while (itr != NULL) {
+    type = (Type*) itr->value;
+    if (type->len == tok->len && !memcmp(tok->str, type->name, type->len)) {
+      return type;
+    }
+    itr = itr->next;
+  }
+  return NULL;
+}
 
 LVar *find_lvar(Token *tok) {
   for (LVar *var = locals; var; var = var->next) {
