@@ -350,8 +350,8 @@ int main() {
 '
 
 try 11 '
+int a = 11;
 int main() {
-  int a = 11;
   return a;
 }
 '
