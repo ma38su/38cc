@@ -91,10 +91,14 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
   if (!lhs->type) {
     error("lhs no type: %d -> %d", node->kind, lhs->kind);
   }
+  if (kind == ND_ASSIGN) {
+    node->type = lhs->type;
+    return node;
+  }
+
   if (!rhs->type) {
     error("rhs no type: %d -> %d", node->kind, rhs->kind);
   }
-
   Type *lhs_type = lhs->type;
   Type *rhs_type = rhs->type;
 
