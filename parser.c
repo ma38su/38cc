@@ -124,8 +124,12 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
   if (type_is_func(rhs_type)) {
     rhs_type = rhs_type->ptr_to;
   }
+
   if (lhs_type == rhs_type) {
     node->type = lhs_type;
+  } else if ((lhs_type == int_type || lhs_type == char_type)
+      && (rhs_type == int_type || rhs_type == char_type)) {
+    node->type = int_type;
   } else if (kind == ND_EQ
       || kind == ND_NE
       || kind == ND_LT
@@ -144,7 +148,6 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
       node->type = lhs_type;
     }
   }
-
   if (!node->type) {
     error("not defined: kind: %d, lhs: %d, rhs: %d, type: %s",
        kind, lhs->kind, rhs->kind, lhs->type->name);
