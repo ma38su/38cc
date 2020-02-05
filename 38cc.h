@@ -6,36 +6,38 @@
 
 typedef enum {
   ND_NUM,     // 0 integer number
-  ND_LVAR,    // 1 local variable
-  ND_GVAR,    // 2 global variable
-  ND_DEREF,   // 3
-  ND_ADDR,    // 4
-  ND_EQ,      // 5 ==
-  ND_NE,      // 6 !=
-  ND_LT,      // 7 <
-  ND_LE,      // 8 <=
-  ND_BLOCK,   // 9 {}
-  ND_IF,      // 10 return
-  ND_ELSE,    // 11 return
-  ND_WHILE,   // 12 return
-  ND_NONE,    // 13 return
-  ND_FOR,     // 14 return
-  ND_ADD,     // 15 +
-  ND_SUB,     // 16 -
-  ND_MUL,     // 17 *
-  ND_DIV,     // 18 /
-  ND_MOD,     // 19 %
-  ND_ASSIGN,  // 20 =
-  ND_RETURN,  // 21 return
-  ND_FUNCTION,// 22
-  ND_CALL,    // 23
+  ND_STR,     // 1 string literal
+  ND_LVAR,    // 2 local variable
+  ND_GVAR,    // 3 global variable
+  ND_DEREF,   // 4
+  ND_ADDR,    // 5
+  ND_EQ,      // 6 ==
+  ND_NE,      // 7 !=
+  ND_LT,      // 8 <
+  ND_LE,      // 9 <=
+  ND_BLOCK,   // 10 {}
+  ND_IF,      // 11 return
+  ND_ELSE,    // 12 return
+  ND_WHILE,   // 13 return
+  ND_NONE,    // 14 return
+  ND_FOR,     // 15 return
+  ND_ADD,     // 16 +
+  ND_SUB,     // 17 -
+  ND_MUL,     // 18 *
+  ND_DIV,     // 19 /
+  ND_MOD,     // 20 %
+  ND_ASSIGN,  // 21 =
+  ND_RETURN,  // 22 return
+  ND_FUNCTION,// 23
+  ND_CALL,    // 24
 } NodeKind;
 
 typedef enum {
-  TK_SIZEOF,    // sizeof
   TK_RESERVED,  // simbol +, -
-  TK_IDENT,     // identity
   TK_NUM,       // integer number
+  TK_STR,       // 1 string literal
+  TK_SIZEOF,    // sizeof
+  TK_IDENT,     // identity
   TK_RETURN,    // return
   TK_IF,        // return
   TK_ELSE,      // return

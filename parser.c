@@ -178,7 +178,8 @@ bool consume(char *op) {
 // read reserved symbol
 void expect(char *op) {
   if (!token_is(token, op)) {
-    error("token is '%s' not '%s'", substring(token->str, token->len), op);
+    error("token is '%s' not '%s'. tk-kind: %d",
+        substring(token->str, token->len), op, token->kind);
   }
   token = token->next;
 }
@@ -220,7 +221,8 @@ Type *consume_type() {
 // read reserved integer number
 int expect_number() {
   if (token->kind != TK_NUM) {
-    error("token is '%s' not number: %d", substring(token->str, token->len), token->kind);
+    error("token is '%s' not number. tk-kind: %d",
+        substring(token->str, token->len), token->kind);
   }
   int val = token->val;
   token = token->next;

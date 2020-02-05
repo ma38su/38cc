@@ -369,12 +369,21 @@ int main() {
 
 try 3 '
 int main() {
+  // line comment test * test
   char x[3];
   x[0] = -1;
   x[1] = 2;
+  /* block * / * /* comment */
   int y;
   y = 4;
   return x[0] + y;
+}
+'
+
+try 1 '
+int main() {
+  char* str = "Hello";
+  return 0;
 }
 '
 
