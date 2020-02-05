@@ -37,8 +37,29 @@ Token *tokenize(char *p) {
   int cnt = *p;
 
   while (*p) {
+    // skip blank
     if (isspace(*p)) {
       p++;
+      continue;
+    }
+
+    // skip line comment
+    if (memcmp(p, "//", 2) == 0) {
+      p += 2;
+      while (*p != '\n') {
+        p++;
+      }
+      p++;
+      continue;
+    }
+
+    // skip block comment
+    if (memcmp(p, "/*", 2) == 0) {
+      p += 2;
+      while (*p != '*' || *(p+1) != '/') {
+        p++;
+      }
+      p += 2;
       continue;
     }
 
