@@ -24,8 +24,8 @@ GVar *globals;
 Vector *types;  // Type*
 Vector *functions;
 
-Type *type_int;
-Type *type_char;
+Type *int_type;
+Type *char_type;
 
 Type *new_type(char* name, int len, int size) {
   Type *type;
@@ -57,11 +57,11 @@ void init_types() {
   types = calloc(1, sizeof(Vector));
   functions = calloc(1, sizeof(Vector));
 
-  type_int = new_type("int", 3, 8);
-  type_char = new_type("char", 4, 8);
+  int_type = new_type("int", 3, 8);
+  char_type = new_type("char", 4, 8);
 
-  vec_add(types, type_int);
-  vec_add(types, type_char);
+  vec_add(types, int_type);
+  vec_add(types, char_type);
 }
 
 int type_is_array(Type *type) {
@@ -79,6 +79,22 @@ bool type_is_func(Type *type) {
 Node *new_node(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
+  return node;
+}
+
+Node *new_node_deref(Node *lhs) {
+  if (!lhs) {
+    error("no node at new_node_deref");
+  }
+  if (!lhs->type) {
+    error("no type at new_node_deref %d", lhs->kind);
+  }
+  if (!lhs->type->ptr_to) {
+    error("type is not ptr at new_node_deref");
+  }
+  Node *node = new_node(ND_DEREF);
+  node->lhs = lhs;
+  node->type = lhs->type->ptr_to;
   return node;
 }
 
@@ -108,20 +124,30 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
   if (type_is_func(rhs_type)) {
     rhs_type = rhs_type->ptr_to;
   }
-  if (kind == ND_NUM
-      || kind == ND_EQ
+  if (lhs_type == rhs_type) {
+    node->type = lhs_type;
+  } else if (kind == ND_EQ
       || kind == ND_NE
       || kind == ND_LT
       || kind == ND_LE) {
-    node->type = type_int;
-  } else if (lhs_type == rhs_type) {
-    node->type = lhs_type;
+    node->type = int_type;
   } else if (kind == ND_ADDR) {
     node->type = new_ptr_type(lhs_type);
-  } else if (type_is_ptr(lhs_type)) {
-    node->type = lhs_type;
-  } else if (type_is_ptr(rhs_type)) {
-    node->type = rhs_type;
+  } else {
+    int lhs_ptr = type_is_ptr(lhs_type) || type_is_array(lhs_type);
+    int rhs_ptr = type_is_ptr(rhs_type) || type_is_array(rhs_type);
+    if (lhs_ptr && rhs_ptr) {
+      node->type = int_type;
+    } else if (lhs_ptr) {
+      node->type = lhs_type;
+    } else if (rhs_ptr) {
+      node->type = lhs_type;
+    }
+  }
+
+  if (!node->type) {
+    error("not defined: kind: %d, lhs: %d, rhs: %d, type: %s",
+       kind, lhs->kind, rhs->kind, lhs->type->name);
   }
   return node;
 }
@@ -129,7 +155,7 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
 Node *new_node_num(int val) {
   Node *node = new_node(ND_NUM);
   node->val = val;
-  node->type = type_int;
+  node->type = int_type;
   return node;
 }
 
@@ -362,9 +388,8 @@ Node *primary() {
 
   if (type_is_array(node->type) && consume("[")) {
     Node *index = expr();
-    Node *deref = new_node(ND_DEREF);
-    deref->lhs = new_node_lr(ND_ADD, node, index);
-    node = deref;
+    node = new_node_deref(
+        new_node_lr(ND_ADD, node, index));
 
     expect("]");
   }
@@ -379,9 +404,7 @@ Node *unary() {
     return primary();
   }
   if (consume("*")) {
-    Node *node = new_node(ND_DEREF);
-    node->lhs = unary();
-    return node;
+    return new_node_deref(unary());
   }
   if (consume("&")) {
     Node *node = new_node(ND_ADDR);

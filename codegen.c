@@ -270,21 +270,6 @@ void gen_num(int num) {
   printf("  push %d\n", num);
 }
 
-// check to calculate pointer
-bool is_ptr(Node *node) {
-  if (!node) {
-    return false;
-  }
-  if (node->kind != ND_DEREF) {
-    return false;
-  }
-  if (node->kind != ND_LVAR) {
-    return is_ptr(node->lhs) || is_ptr(node->rhs);
-  }
-  return memcmp(node->type->name, "[]", node->type->len) == 0
-       || memcmp(node->type->name, "*", node->type->len) == 0;
-}
-
 bool gen(Node *node) {
   if (!node) {
     error("node is none. by gen");
@@ -356,8 +341,8 @@ bool gen(Node *node) {
     return true;
   }
 
-  bool lhs_is_ptr = is_ptr(node->lhs);
-  bool rhs_is_ptr = is_ptr(node->rhs);
+  bool lhs_is_ptr = type_is_ptr(node->lhs->type) || type_is_array(node->lhs->type);
+  bool rhs_is_ptr = type_is_ptr(node->rhs->type) || type_is_array(node->rhs->type);
 
   printf("  # lhs\n");
   gen(node->lhs);
