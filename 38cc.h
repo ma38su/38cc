@@ -91,7 +91,8 @@ struct GVar {
   GVar *next;
   Type *type;
   char *name;
-  int len;
+  int val; // int
+  char *str;
 };
 
 struct Function {
@@ -118,6 +119,7 @@ int type_is_array(Type *type);
 int type_is_ptr(Type *type);
 int sizeof_node(Node* node);
 
+void gen_gvars();
 void gen_defined(Node *node);
 char *substring(char *str, int len);
 

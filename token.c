@@ -5,6 +5,7 @@
 
 #include "38cc.h"
 
+int str_count;
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));

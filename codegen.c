@@ -153,16 +153,13 @@ bool gen_return(Node *node) {
   return false;
 }
 
-void gen_defined_gvar(Node *node) {
-  if (node->kind != ND_GVAR) {
-    error("node is not gvar: %d", node->kind);
-  }
-  // gvar label
-  printf("%s:\n", node->ident);
-
-  if (node->lhs) {
-    if (node->lhs->kind == ND_NUM) {
-      printf("  .long %d\n", node->lhs->val);
+void gen_gvars() {
+  for (GVar *var = globals; var; var = var->next) {
+    printf("%s:\n", var->name);
+    if (*(var->name) == '.') {
+      printf("  .string \"%s\"\n", var->str);
+    } else {
+      printf("  .long %d\n", var->val);
     }
   }
 }
@@ -243,7 +240,7 @@ void gen_defined(Node *node) {
   if (node->kind == ND_FUNCTION) {
     gen_defined_function(node);
   } else if (node->kind == ND_GVAR) {
-    gen_defined_gvar(node);
+    //gen_defined_gvar(node);
   } else {
     error("node is not supported.");
   }

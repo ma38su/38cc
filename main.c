@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
   program();
 
   print_header();
+  gen_gvars();
   for (int i = 0; code[i]; i++) {
     printf("# gen %d\n", i);
     gen_defined(code[i]);

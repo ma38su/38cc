@@ -23,6 +23,13 @@ try() {
   fi
 }
 
+try 11 '
+int a = 11;
+int main() {
+  return a;
+}
+'
+
 try 1 '
 int main() {
   char* str = "Hello";
