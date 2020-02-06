@@ -359,10 +359,8 @@ Vector *defined_args() {
 }
 
 int sizeof_node(Node* node) {
-  if (node->kind == ND_NUM) {
-    return 8;
-  } else if (node->kind == ND_ADDR) {
-    return 8;
+  if (node->kind == ND_NUM || node->kind == ND_ADDR) {
+    return node->type->size;
   } else if (node->kind == ND_DEREF) {
     return sizeof_node(node->lhs);
   } else if (node->kind == ND_LVAR) {
@@ -439,6 +437,7 @@ Node *unary() {
   if (consume("&")) {
     Node *node = new_node(ND_ADDR);
     node->lhs = unary();
+    node->type = new_ptr_type(node->lhs->type);
     return node;
   }
   if (consume_kind(TK_SIZEOF)) {

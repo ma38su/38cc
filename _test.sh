@@ -383,7 +383,7 @@ int main() {
 try 1 '
 int main() {
   char* str = "Hello";
-  return 0;
+  return 1;
 }
 '
 

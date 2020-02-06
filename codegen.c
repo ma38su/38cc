@@ -350,7 +350,7 @@ bool gen(Node *node) {
   if (!lhs_is_ptr && rhs_is_ptr) {
     // for pointer calculation
     printf("  pop rax\n");
-    printf("  imul rax, %d\n", 8);// sizeof_node(node->rhs));
+    printf("  imul rax, %d\n", node->rhs->type->size);// sizeof_node(node->rhs));
     printf("  push rax\n");
   }
 
