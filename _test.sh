@@ -208,21 +208,14 @@ int main() {
 }
 '
 
-try 8 '
+try 4 '
 int main() {
   int x;
   return sizeof(x);
 }
 '
 
-try 8 '
-int main() {
-  int *x;
-  return sizeof(x);
-}
-'
-
-try 8 '
+try 4 '
 int main() {
   int x;
   return sizeof(x+3);
@@ -232,11 +225,18 @@ int main() {
 try 8 '
 int main() {
   int *x;
-  return sizeof(x+3);
+  return sizeof(x);
 }
 '
 
 try 8 '
+int main() {
+  int *x;
+  return sizeof(x+3);
+}
+'
+
+try 4 '
 int main() {
   int *x;
   return sizeof(*x);
@@ -251,19 +251,19 @@ int main() {
 }
 '
 
-try 8 '
+try 4 '
 int main() {
   return sizeof(1);
 }
 '
 
-try 8 '
+try 4 '
 int main() {
   return sizeof(sizeof(1));
 }
 '
 
-try 80 '
+try 40 '
 int main() {
   int a[10];
   return sizeof(a);
@@ -349,10 +349,12 @@ int main() {
 }
 '
 
-try 11 '
+try 29 '
 int a = 11;
+char b = 8;
+short c = 10;
 int main() {
-  return a;
+  return a + b + c;
 }
 '
 

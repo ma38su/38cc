@@ -7,28 +7,59 @@ int label_id = 0;
 
 bool gen(Node *node);
 void gen_num(int num);
-void gen_deref();
+void gen_deref(int size);
+
+char *reg64s[] = {
+  "rdi", // 0
+  "rsi", // 1
+  "rdx", // 2
+  "rcx", // 3
+  "r8",  // 4
+  "r9"   // 5
+};
+char *reg32s[] = {
+  "edi", // 0
+  "esi", // 1
+  "edx", // 2
+  "ecx", // 3
+  "r8d", // 4
+  "r9d"  // 5
+};
+char *reg16s[] = {
+  "di", // 0
+  "si", // 1
+  "dx", // 2
+  "cx", // 3
+  "r8w",// 4
+  "r9w" // 5
+};
+char *reg8s[] = {
+  "dil", // 0
+  "sil", // 1
+  "dl",  // 2
+  "cl",  // 3
+  "r8b", // 4
+  "r9b"  // 5
+};
 
 void print_header() {
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
 }
 
-char* get_args_register(int args) {
-  if (args == 0) {
-    return "rdi";
-  } else if (args == 1) {
-    return "rsi";
-  } else if (args == 2) {
-    return "rdx";
-  } else if (args == 3) {
-    return "rcx";
-  } else if (args == 4) {
-    return "r8";
-  } else if (args == 5) {
-    return "r9";
-  } else {
+char* get_args_register(int size, int index) {
+  if (index > 5) {
     error("not supported +6 args. if args > 6 then args are stacked.");
+  }
+  if (size == 1) {
+    return reg8s[index];
+  } else if (size == 2) {
+    return reg16s[index];
+  } else if (size == 4) {
+    return reg32s[index];
+  } else {
+    assert(size == 8);
+    return reg64s[index];
   }
 }
 
@@ -55,7 +86,7 @@ void gen_function_call(Node *node) {
     VNode *itr = node->list->head;
     int args = 0;
     while (itr != NULL) {
-      char *r = get_args_register(args);
+      char *r = get_args_register(8, args);
       printf("  # set arg%d to %s\n", args, r);
       gen((Node *)itr->value);
       printf("  pop %s\n", r);
@@ -160,24 +191,14 @@ void gen_gvars() {
       printf("  .string \"%s\"\n", var->str);
     } else if (var->type == char_type) {
       printf("  .byte %d\n", var->val);
+    } else if (var->type == short_type) {
+      printf("  .word %d\n", var->val);
     } else if (var->type == int_type) {
       printf("  .long %d\n", var->val);
-    } else if (var->type == long_type) {
+    } else {
+      assert(var->type == long_type);
       printf("  .quad %d\n", var->val);
     }
-  }
-}
-
-void gen_assign_gvar(Node *node) {
-  if (!node) {
-    // error("gvar assigned none");
-    return;
-  }
-
-  if (node->lhs->kind == ND_NUM) {
-    printf("  .long %d\n", node->lhs->val);
-  } else {
-    error("not supported gvar type");
   }
 }
 
@@ -187,7 +208,15 @@ bool gen_gvar(Node *node) {
   }
 
   // for 64bit
-  printf("  mov rax, QWORD PTR %s[rip]\n", node->ident);
+  if (node->type == char_type) {
+    printf("  movsx rax, byte ptr %s[rip]\n", node->ident);
+  } else if (node->type == short_type) {
+    printf("  movsx rax, word ptr %s[rip]\n", node->ident);
+  } else if (node->type == int_type) {
+    printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
+  } else if (node->type == long_type) {
+    printf("  mov rax, %s[rip]\n", node->ident);
+  }
   printf("  push rax\n");
   return true;
 }
@@ -199,7 +228,6 @@ void gen_defined_function(Node *node) {
   // function label
   printf("%s:\n", node->ident);
 
-  // allocate memory for 26 variables
   printf("  # prologue by %s function\n", node->ident);
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
@@ -222,7 +250,8 @@ void gen_defined_function(Node *node) {
       printf("  pop rax\n");
 
       --index;
-      char *r = get_args_register(index);
+      int size = arg->type->size;
+      char *r = get_args_register(size, index);
       printf("  mov [rax], %s\n", r);
       itr = itr->prev;
     }
@@ -244,15 +273,25 @@ void gen_defined(Node *node) {
   if (node->kind == ND_FUNCTION) {
     gen_defined_function(node);
   } else if (node->kind == ND_GVAR) {
-    //gen_defined_gvar(node);
+    // gen gvar at gen_gvars
   } else {
     error("node is not supported.");
   }
 }
 
-void gen_deref() {
+void gen_deref(int size) {
   printf("  pop rax\n");
-  printf("  mov rax, [rax]\n");
+
+  if (size == 1) {
+    printf("  movsx rax, byte ptr [rax]\n");
+  } else if (size == 2) {
+    printf("  movsx rax, word ptr [rax]\n");
+  } else if (size == 4) {
+    printf("  movsxd rax, dword ptr [rax]\n");
+  } else {
+    assert(size == 8);
+    printf("  mov rax, [rax]\n");
+  }
   printf("  push rax\n");
 }
 
@@ -269,6 +308,16 @@ void gen_lval(Node *node) {
 void gen_num(int num) {
   printf("  # num %d\n", num);
   printf("  push %d\n", num);
+}
+
+int max_size(Node* lhs, Node* rhs) {
+  int lsize = lhs->type->size;
+  int rsize = rhs->type->size;
+  if (lsize >= rsize) {
+    return lsize;
+  } else {
+    return rsize;
+  }
 }
 
 bool gen(Node *node) {
@@ -304,7 +353,7 @@ bool gen(Node *node) {
   if (node->kind == ND_LVAR) {
     gen_addr(node);
     if (!type_is_array(node->type)) {
-      gen_deref();
+      gen_deref(node->type->size);
     }
     return true;
   }
@@ -320,7 +369,18 @@ bool gen(Node *node) {
     printf("  # assign\n");
     printf("  pop rdi\n");
     printf("  pop rax\n");
-    printf("  mov [rax], rdi\n");
+
+    int size = node->type->size;
+    if (size == 1) {
+      printf("  mov [rax], dil\n");
+    } else if (size == 2) {
+      printf("  mov [rax], di\n");
+    } else if (size == 4) {
+      printf("  mov [rax], edi\n");
+    } else {
+      assert(size == 8);
+      printf("  mov [rax], rdi\n");
+    }
     printf("  push rdi\n");
     return true;
   }
@@ -338,7 +398,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
-    gen_deref();
+    gen_deref(node->lhs->type->ptr_to->size);
     return true;
   }
 
@@ -350,7 +410,7 @@ bool gen(Node *node) {
   if (!lhs_is_ptr && rhs_is_ptr) {
     // for pointer calculation
     printf("  pop rax\n");
-    printf("  imul rax, %d\n", node->rhs->type->size);// sizeof_node(node->rhs));
+    printf("  imul rax, %d\n", 8); // sizeof_node(node->rhs));
     printf("  push rax\n");
   }
 
@@ -359,7 +419,7 @@ bool gen(Node *node) {
   if (lhs_is_ptr && !rhs_is_ptr) {
     // for pointer calculation
     printf("  pop rax\n");
-    printf("  imul rax, %d\n", 8);//sizeof_node(node->lhs));
+    printf("  imul rax, %d\n", 8); // sizeof_node(node->lhs));
     printf("  push rax\n");
   }
 
@@ -386,22 +446,22 @@ bool gen(Node *node) {
   } else if (node->kind == ND_EQ) {
     printf("  # eq(==)\n");
     printf("  cmp rax, rdi\n");
-    printf("  sete al\n");  // raxの下8bit
+    printf("  sete al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_NE) {
     printf("  # ne(!=)\n");
     printf("  cmp rax, rdi\n");
-    printf("  setne al\n");  // raxの下8bit
+    printf("  setne al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_LE) {
     printf("  # le(>=)\n");
     printf("  cmp rax, rdi\n");
-    printf("  setle al\n");  // raxの下8bit
+    printf("  setle al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_LT) {
     printf("  # lt(>)\n");
     printf("  cmp rax, rdi\n");
-    printf("  setl al\n");  // raxの下8bit
+    printf("  setl al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
   } else {
     error("failed to calc");

@@ -110,6 +110,7 @@ extern LVar *locals;
 extern GVar *globals;
 
 extern Type *char_type;
+extern Type *short_type;
 extern Type *int_type;
 extern Type *long_type;
 
@@ -134,5 +135,6 @@ Type *find_type(Token *tok);
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
 void program();
+void assert(int condition);
 
 #endif

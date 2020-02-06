@@ -69,3 +69,9 @@ void error(char *fmt, ...) {
 
   exit(1);
 }
+
+void assert(int condition) {
+  if (!condition) {
+    error("assertion error");
+  }
+}

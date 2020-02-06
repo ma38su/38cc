@@ -26,6 +26,7 @@ Vector *types;  // Type*
 Vector *functions;
 
 Type *char_type;
+Type *short_type;
 Type *int_type;
 Type *long_type;
 
@@ -61,14 +62,17 @@ void init_types() {
   types = calloc(1, sizeof(Vector));
   functions = calloc(1, sizeof(Vector));
 
-  char_type = new_type("char", 4, 8);
-  int_type = new_type("int", 3, 8);
+  char_type = new_type("char", 4, 1);
+  short_type = new_type("short", 5, 2);
+  int_type = new_type("int", 3, 4);
   long_type = new_type("long", 4, 8);
 
   str_type = new_ptr_type(char_type);
 
   vec_add(types, int_type);
+  vec_add(types, short_type);
   vec_add(types, char_type);
+  vec_add(types, long_type);
 }
 
 int type_is_array(Type *type) {
@@ -105,26 +109,7 @@ Node *new_node_deref(Node *lhs) {
   return node;
 }
 
-Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
-  Node *node = new_node(kind);
-  node->kind = kind;
-  node->lhs = lhs;
-  node->rhs = rhs;
-
-  if (!lhs->type) {
-    error("lhs no type: %d -> %d", node->kind, lhs->kind);
-  }
-  if (kind == ND_ASSIGN) {
-    node->type = lhs->type;
-    return node;
-  }
-
-  if (!rhs->type) {
-    error("rhs no type: %d -> %d", node->kind, rhs->kind);
-  }
-  Type *lhs_type = lhs->type;
-  Type *rhs_type = rhs->type;
-
+Type *to_type(Type *lhs_type, Type *rhs_type) {
   if (type_is_func(lhs_type)) {
     lhs_type = lhs_type->ptr_to;
   }
@@ -132,29 +117,51 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
     rhs_type = rhs_type->ptr_to;
   }
 
-  if (lhs_type == rhs_type) {
-    node->type = lhs_type;
-  } else if ((lhs_type == int_type || lhs_type == char_type)
-      && (rhs_type == int_type || rhs_type == char_type)) {
-    node->type = int_type;
-  } else if (kind == ND_EQ
+  int lhs_ptr = type_is_ptr(lhs_type) || type_is_array(lhs_type);
+  int rhs_ptr = type_is_ptr(rhs_type) || type_is_array(rhs_type);
+  if (lhs_ptr && rhs_ptr) {
+    return int_type;
+  } else if (lhs_ptr) {
+    return lhs_type; 
+  } else if (rhs_ptr) {
+    return rhs_type;
+  }
+  if (lhs_type == long_type || rhs_type == long_type) {
+    return long_type;
+  } else if (lhs_type == int_type || rhs_type == int_type) {
+    return int_type;
+  } else if (lhs_type == short_type || rhs_type == short_type) {
+    return short_type;
+  } else {
+    assert(lhs_type == char_type || rhs_type == char_type);
+    return char_type;
+  }
+}
+
+Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
+  Node *node = new_node(kind);
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+
+  if (kind == ND_EQ
       || kind == ND_NE
       || kind == ND_LT
       || kind == ND_LE) {
     node->type = int_type;
-  } else if (kind == ND_ADDR) {
-    node->type = new_ptr_type(lhs_type);
+  } else if (kind == ND_ASSIGN) {
+    node->type = lhs->type;
   } else {
-    int lhs_ptr = type_is_ptr(lhs_type) || type_is_array(lhs_type);
-    int rhs_ptr = type_is_ptr(rhs_type) || type_is_array(rhs_type);
-    if (lhs_ptr && rhs_ptr) {
-      node->type = int_type;
-    } else if (lhs_ptr) {
-      node->type = lhs_type;
-    } else if (rhs_ptr) {
-      node->type = lhs_type;
+
+    if (!lhs->type) {
+      error("lhs no type: %d -> %d", node->kind, lhs->kind);
     }
+    if (!rhs->type) {
+      error("rhs no type: %d -> %d", node->kind, rhs->kind);
+    }
+    node->type = to_type(lhs->type, rhs->type);
   }
+
   if (!node->type) {
     error("not defined: kind: %d, lhs: %d, rhs: %d, type: %s",
        kind, lhs->kind, rhs->kind, lhs->type->name);
@@ -359,10 +366,8 @@ Vector *defined_args() {
 }
 
 int sizeof_node(Node* node) {
-  if (node->kind == ND_NUM || node->kind == ND_ADDR) {
+  if (node->kind == ND_NUM || node->kind == ND_ADDR || node->kind == ND_DEREF) {
     return node->type->size;
-  } else if (node->kind == ND_DEREF) {
-    return sizeof_node(node->lhs);
   } else if (node->kind == ND_LVAR) {
     return node->type->size;
   } else {
