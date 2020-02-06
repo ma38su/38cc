@@ -25,8 +25,10 @@ GVar *globals;
 Vector *types;  // Type*
 Vector *functions;
 
-Type *int_type;
 Type *char_type;
+Type *int_type;
+Type *long_type;
+
 Type *str_type;
 
 Type *new_type(char* name, int len, int size) {
@@ -59,8 +61,9 @@ void init_types() {
   types = calloc(1, sizeof(Vector));
   functions = calloc(1, sizeof(Vector));
 
-  int_type = new_type("int", 3, 8);
   char_type = new_type("char", 4, 8);
+  int_type = new_type("int", 3, 8);
+  long_type = new_type("long", 4, 8);
 
   str_type = new_ptr_type(char_type);
 

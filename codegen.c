@@ -158,8 +158,12 @@ void gen_gvars() {
     printf("%s:\n", var->name);
     if (*(var->name) == '.') {
       printf("  .string \"%s\"\n", var->str);
-    } else {
+    } else if (var->type == char_type) {
+      printf("  .byte %d\n", var->val);
+    } else if (var->type == int_type) {
       printf("  .long %d\n", var->val);
+    } else if (var->type == long_type) {
+      printf("  .quad %d\n", var->val);
     }
   }
 }

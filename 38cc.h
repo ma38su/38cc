@@ -109,9 +109,11 @@ extern Node *code[];
 extern LVar *locals;
 extern GVar *globals;
 
-extern Type *type_int;
-extern Type *type_char;
+extern Type *char_type;
+extern Type *int_type;
+extern Type *long_type;
 
+extern Type *str_type;
 
 void print_header();
 Node *expr();
