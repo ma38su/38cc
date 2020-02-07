@@ -391,7 +391,21 @@ int main() {
 
 try 1 '
 int main() {
-  char* str = "Hello";
+  char* str0 = "Hello0";
+  char* str1 = "Hello1";
+  char* str2 = "Hello2";
+  char* str3 = "Hello3";
+  char* str4 = "Hello4";
+  char* str5 = "Hello5";
+  char* str6 = "Hello6";
+  char* str7 = "Hello7";
+  char* str8 = "Hello8";
+  char* str9 = "Hello9";
+  char* str10 = "Hello10";
+  char* str11 = "Hello11";
+  char* str12 = "Hello12";
+  char* str13 = "Hello13";
+  char* str14 = "Hello14";
   return 1;
 }
 '

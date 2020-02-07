@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h#include <stdio.h>>
+#include <stdio.h>
 
 #include "38cc.h"
 #include "vector.h"
