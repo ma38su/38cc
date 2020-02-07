@@ -64,6 +64,17 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (*p == '\'') {
+      p++;
+      cur = new_token(TK_CHAR, cur, p);
+      cur->len = 1;
+      p++;
+      if (*p != '\'') {
+        error_at(p, "unexpected token. expected token is \"'\"");
+      }
+      p++;
+      continue;
+    }
     // string literal
     if (*p == '"') {
       p++;

@@ -35,6 +35,7 @@ typedef enum {
 typedef enum {
   TK_RESERVED,  // simbol +, -
   TK_NUM,       // integer number
+  TK_CHAR,      // 1 character literal
   TK_STR,       // 1 string literal
   TK_SIZEOF,    // sizeof
   TK_IDENT,     // identity

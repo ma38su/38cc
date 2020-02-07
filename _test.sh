@@ -382,6 +382,13 @@ int main() {
 }
 '
 
+try 104 '
+int main() {
+  char a = '\''h'\'';
+  return a;
+}
+'
+
 try 1 '
 int main() {
   char* str = "Hello";

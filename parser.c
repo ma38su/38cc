@@ -215,13 +215,23 @@ Token *consume_ident() {
   return tmp;
 }
 
+Node *consume_char() {
+  if (token->kind != TK_CHAR) {
+    return NULL;
+  }
+  Node *node = new_node(ND_NUM);
+  node->type = char_type;
+  node->val = *token->str;
+  token = token->next;
+  return node;
+}
+
 Node *consume_str() {
   if (token->kind != TK_STR) {
     return NULL;
   }
 
   GVar *gvar = find_or_gen_str_gvar(token);
-  Token *tmp = token;
   token = token->next;
 
   Node *node = new_node(ND_GVAR);
@@ -383,6 +393,12 @@ Node *primary() {
   }
 
   Node *node;
+
+  node = consume_char();
+  if (node) {
+    return node;
+  }
+
   node = consume_str();
   if (node) {
     return node;
