@@ -5,11 +5,11 @@ try() {
   input="$2"
 
   #echo "./38cc \"$input\" > tmp.s"
-  ./38cc "$input" > tmp.s
-  #cat -n tmp.s
-  
-  gcc -g -o tmp tmp.s
-  ./tmp
+  echo "$input" > tmp/tmp.c
+  ./38cc tmp/tmp.c > tmp/38cc.s
+  #cat -n tmp_38cc.s
+  gcc -g -o tmp/exe tmp/38cc.s
+  ./tmp/exe
   actual="$?"
 
   if [ "$actual" = "$expected" ]; then
@@ -409,6 +409,13 @@ int main() {
   char* str13 = "Hello13";
   char* str14 = "Hello14";
   return 1;
+}
+'
+
+try 0 '
+int main() {
+  puts("Hello World");
+  return 0;
 }
 '
 

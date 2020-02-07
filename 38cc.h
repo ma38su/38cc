@@ -75,7 +75,7 @@ struct Node {
   Node *rhs;    // right-hand side
   char *ident;  // for function
   Vector *list;
-  int val;      // for ND_NUM
+  int val;      // for ND_NUM or ND_CALL(plt)
   Type *type;    // for lvar
   int offset;   // for lvar
 };
@@ -100,7 +100,7 @@ struct Function {
   Type *ret_type;
   char *name;
   int len;
-  int size;
+  int plt;
 };
 
 // global vars

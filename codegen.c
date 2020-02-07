@@ -43,8 +43,9 @@ char *reg8s[] = {
 };
 
 void print_header() {
-  printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
+  printf("  .intel_syntax noprefix\n");
+  gen_gvars();
+  printf("  .global main\n");
 }
 
 char* get_args_register(int size, int index) {
@@ -95,7 +96,20 @@ void gen_function_call(Node *node) {
       ++args;
     }
   }
-  printf("  call %s\n", node->ident);
+  int padding = 0;
+  if (padding) {
+    printf("  sub rsp, 8\n");
+  //printf("  mov rax, 0\n");
+  }
+  if (node->val) {
+    printf("  call %s@PLT\n", node->ident);
+  } else {
+    printf("  call %s\n", node->ident);
+  }
+
+  if (padding) {
+    printf("  add rsp, 8\n");
+  }
 
   // after called, return value is stored rax
   printf("  push rax\n");
@@ -189,6 +203,7 @@ void gen_gvars() {
     printf("%s:\n", var->name);
     if (*(var->name) == '.') {
       printf("  .string \"%s\"\n", var->str);
+      printf("  .text\n");
     } else if (var->type == char_type) {
       printf("  .byte %d\n", var->val);
     } else if (var->type == short_type) {
@@ -216,6 +231,8 @@ bool gen_gvar(Node *node) {
     printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
   } else if (node->type == long_type) {
     printf("  mov rax, %s[rip]\n", node->ident);
+  } else if (node->type == str_type) {
+    printf("  lea rax, %s[rip]\n", node->ident);
   }
   printf("  push rax\n");
   return true;
@@ -297,7 +314,7 @@ void gen_deref(int size) {
 
 // push store address
 void gen_lval(Node *node) {
-  printf("  # gen_lval");
+  printf("  # gen_lval\n");
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
   } else {

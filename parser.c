@@ -15,7 +15,7 @@ int sizeof_lvars();
 GVar *find_gvar(Token *tok);
 GVar *find_or_gen_str_gvar(Token *tok);
 Type *find_type(Token *tok);
-Type *find_function(Token *tok);
+Function *find_function(Token *tok);
 
 // current token
 Token *token;
@@ -57,10 +57,12 @@ Type *new_array_type(Type* type, int len) {
   return array_type;
 }
 
-Type *new_function_type(char* name, int len, Type* ret_type) {
-  Type *func_type = new_type(name, len, 8);
-  func_type->ptr_to = ret_type;
-  return func_type;
+Function *new_function(char* name, int len, Type* ret_type) {
+  Function *func = calloc(1, sizeof(Function));
+  func->name = name;
+  func->len = len;
+  func->ret_type = ret_type;
+  return func;
 }
 
 void init_types() {
@@ -81,7 +83,8 @@ void init_types() {
   vec_add(types, char_type);
   vec_add(types, long_type);
 
-  Type *puts_func = new_function_type("puts", 4, void_type);
+  Function *puts_func = new_function("puts", 4, void_type);
+  puts_func->plt = 1;
   vec_add(functions, puts_func);
 }
 
@@ -427,9 +430,15 @@ Node *primary() {
     Node *node = new_node(ND_CALL);
     node->list = consume_args();
     node->ident = substring(tok->str, tok->len);
-    node->type = find_function(tok);
-    if (!node->type) {
+    Function *func = find_function(tok);
+    if (!func) {
       error("func not found: %s", node->ident);
+    }
+    node->type = func->ret_type;
+    node->val = func->plt;
+
+    if (!node->type) {
+      error("return type of function is not found: %s", node->ident);
     }
     return node;
   }
@@ -678,7 +687,7 @@ Node *global() {
   if (consume("(")) {
 
     // before parse function statement for recursive call
-    Type *func_type = new_function_type(tok->str, tok->len, type);
+    Function *func_type = new_function(tok->str, tok->len, type);
     vec_add(functions, func_type);
 
     Node *block;
@@ -698,7 +707,7 @@ Node *global() {
     node->ident = substring(tok->str, tok->len);
     node->lhs = block;
     node->val = sizeof_args(args) + sizeof_lvars();
-    node->type = func_type;
+    node->type = func_type->ret_type;
 
     // local変数を戻す(サイズ計算後)
     locals = tmp_locals;
@@ -766,13 +775,13 @@ Type *find_type(Token *tok) {
   return NULL;
 }
 
-Type *find_function(Token *tok) {
-  Type *type;
+Function *find_function(Token *tok) {
+  Function *func;
   VNode *itr = functions->head;
   while (itr != NULL) {
-    type = (Type*) itr->value;
-    if (type->len == tok->len && !memcmp(tok->str, type->name, type->len)) {
-      return type;
+    func = (Function*) itr->value;
+    if (func->len == tok->len && !memcmp(tok->str, func->name, func->len)) {
+      return func;
     }
     itr = itr->next;
   }

@@ -1,1 +1,1 @@
-docker run -it --rm -v $HOME/Documents/mos/cc:/38cc -w /38cc compilerbook gcc $1 -o tmp
+docker run -it --rm -v $HOME/Documents/mos/cc:/38cc -w /38cc compilerbook /bin/bash _asm_38cc_run.sh
