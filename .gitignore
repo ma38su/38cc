@@ -1,5 +1,5 @@
 *.o
 *.s
 tmp
-test
 38cc
+*.code-workspace
