@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h#include <stdio.h>>
 
 #include "38cc.h"
 #include "vector.h"
@@ -8,6 +9,7 @@
 Node *new_node(NodeKind kind);
 Node *stmt();
 Node *mul();
+Node *expr();
 Type *consume_type();
 int sizeof_lvars();
 GVar *find_gvar(Token *tok);
@@ -31,6 +33,8 @@ Type *int_type;
 Type *long_type;
 
 Type *str_type;
+
+int gstr_len = 0; // number of global string variable
 
 Type *new_type(char* name, int len, int size) {
   Type *type;
@@ -784,6 +788,24 @@ GVar *find_gvar(Token *tok) {
   return NULL;
 }
 
+
+int to_digit(int n) {
+  int digit = 1;
+  while (n >= 10) {
+    n /= 10;
+    digit++;
+  }
+  return digit;
+}
+
+char *gen_gstr_name(int n) {
+  int digit = to_digit(n);
+  int name_len = 3 + digit + 1;
+  char* name = calloc(name_len, sizeof(char));
+  sprintf(name, ".LC%d", n);
+  return name;
+}
+
 GVar *find_or_gen_str_gvar(Token *tok) {
   for (GVar *var = globals; var; var = var->next) {
     int str_len = strlen(var->str);
@@ -795,7 +817,7 @@ GVar *find_or_gen_str_gvar(Token *tok) {
   }
 
   GVar *gvar = calloc(1, sizeof(GVar));
-  gvar->name = ".LC0";
+  gvar->name = gen_gstr_name(gstr_len++);
   gvar->type = str_type;
 
   gvar->str = substring(tok->str, tok->len);

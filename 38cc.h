@@ -117,25 +117,31 @@ extern Type *long_type;
 
 extern Type *str_type;
 
-void print_header();
-Node *expr();
 int type_is_array(Type *type);
 int type_is_ptr(Type *type);
 int sizeof_node(Node* node);
 
-void gen_gvars();
-void gen_defined(Node *node);
 char *substring(char *str, int len);
 
+char *read_file(char *path);
 Token *tokenize(char *p);
-void print_header();
 
 LVar *find_var(Token *tok);
 LVar *find_lvar(Token *tok);
 Type *find_type(Token *tok);
+
+void gen_gvars();
+void gen_defined(Node *node);
+void print_header();
+
+void program();
+
+void print_header();
+
+
+
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
-void program();
 void assert(int condition);
 
 #endif

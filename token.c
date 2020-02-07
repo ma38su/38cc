@@ -5,8 +5,6 @@
 
 #include "38cc.h"
 
-int str_count;
-
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
@@ -30,6 +28,14 @@ int lvar_len(char *p0) {
   return p - p0;
 }
 
+char *next_ptr(char *p0, char c) {
+  char *p = p0;
+  while (*p != c) {
+    p++;
+  }
+  return p;
+}
+
 Token *tokenize(char *p) {
   Token head;
   head.next = NULL;
@@ -47,9 +53,7 @@ Token *tokenize(char *p) {
     // skip line comment
     if (memcmp(p, "//", 2) == 0) {
       p += 2;
-      while (*p != '\n') {
-        p++;
-      }
+      p = next_ptr(p, '\n');
       p++;
       continue;
     }
@@ -79,16 +83,36 @@ Token *tokenize(char *p) {
     if (*p == '"') {
       p++;
 
-      char* p0 = p;
-      while (*p != '"') {
-        p++;
-      }
+      cur = new_token(TK_STR, cur, p);
 
-      cur = new_token(TK_STR, cur, p0);
+      char* p0 = p;
+      p = next_ptr(p, '"');
       cur->len = p - p0;
 
       p++;
       continue;
+    }
+
+    if (*p == '#') {
+      int l = 8;
+      if (memcmp(p, "#include", l) == 0) {
+        while (isspace(*p)) {
+          p++;
+        }
+
+        if (*p == '"') {
+          p = next_ptr(p, '"');
+        } else if (*p == '<') {
+          p = next_ptr(p, '>');
+        } else {
+          error_at(p, "unexpected token");
+        }
+        p++;
+        //cur = new_token(TK_SIZEOF, cur, p);
+
+        p += l;
+        continue;
+      }
     }
 
     if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 ||

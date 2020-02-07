@@ -31,6 +31,8 @@ int main(int argc, char **argv) {
   }
 
   user_input = argv[1];
+  //user_input = read_file(argv[1]);
+
   token = tokenize(user_input);
   // dump_tokenize();
   // return 0;
