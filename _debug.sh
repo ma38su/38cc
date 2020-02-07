@@ -23,17 +23,19 @@ try() {
   fi
 }
 
-try 11 '
-int a = 11;
+try 1 '
 int main() {
-  return a;
+  char *hello = "Hello";
+  char h = '\''h'\'';
+  char a = hello[0];
+  return a == h;
 }
 '
 
-try 1 '
+try 0 '
 int main() {
-  char* str = "Hello";
-  return 1;
+  puts("Hello");
+  return 0;
 }
 '
 

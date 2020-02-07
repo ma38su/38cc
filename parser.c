@@ -32,6 +32,7 @@ Type *short_type;
 Type *int_type;
 Type *long_type;
 
+Type *void_type;
 Type *str_type;
 
 int gstr_len = 0; // number of global string variable
@@ -71,12 +72,21 @@ void init_types() {
   int_type = new_type("int", 3, 4);
   long_type = new_type("long", 4, 8);
 
+  void_type = new_type("void", 4, 8);
+
   str_type = new_ptr_type(char_type);
 
   vec_add(types, int_type);
   vec_add(types, short_type);
   vec_add(types, char_type);
   vec_add(types, long_type);
+
+  Type *puts_func = new_function_type("puts", 4, void_type);
+  vec_add(functions, puts_func);
+}
+
+int type_is_ptr_or_array(Type *type) {
+  return type_is_ptr(type) || type_is_array(type);
 }
 
 int type_is_array(Type *type) {
@@ -88,7 +98,7 @@ int type_is_ptr(Type *type) {
 }
 
 bool type_is_func(Type *type) {
-  return type->ptr_to && !type_is_ptr(type) && !type_is_array(type);
+  return type->ptr_to && !type_is_ptr_or_array(type);
 }
 
 Node *new_node(NodeKind kind) {
@@ -121,8 +131,8 @@ Type *to_type(Type *lhs_type, Type *rhs_type) {
     rhs_type = rhs_type->ptr_to;
   }
 
-  int lhs_ptr = type_is_ptr(lhs_type) || type_is_array(lhs_type);
-  int rhs_ptr = type_is_ptr(rhs_type) || type_is_array(rhs_type);
+  int lhs_ptr = type_is_ptr_or_array(lhs_type);
+  int rhs_ptr = type_is_ptr_or_array(rhs_type);
   if (lhs_ptr && rhs_ptr) {
     return int_type;
   } else if (lhs_ptr) {
@@ -439,7 +449,7 @@ Node *primary() {
     node->type = gvar->type;
     node->ident = substring(tok->str, tok->len);
   }
-  if (type_is_array(node->type) && consume("[")) {
+  if (type_is_ptr_or_array(node->type) && consume("[")) {
     Node *index = expr();
     node = new_node_deref(
         new_node_lr(ND_ADD, node, index));

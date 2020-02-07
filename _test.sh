@@ -390,6 +390,8 @@ int main() {
 '
 
 try 1 '
+#include <stdio.h>
+
 int main() {
   char* str0 = "Hello0";
   char* str1 = "Hello1";

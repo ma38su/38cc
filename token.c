@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+// for debug
+#include <stdio.h>
+
 #include "38cc.h"
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {
@@ -68,6 +71,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    // character literal
     if (*p == '\'') {
       p++;
       cur = new_token(TK_CHAR, cur, p);
@@ -79,6 +83,7 @@ Token *tokenize(char *p) {
       p++;
       continue;
     }
+
     // string literal
     if (*p == '"') {
       p++;
@@ -93,25 +98,35 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    // character literal
     if (*p == '#') {
       int l = 8;
       if (memcmp(p, "#include", l) == 0) {
+        p += l;
+
         while (isspace(*p)) {
           p++;
         }
 
-        if (*p == '"') {
-          p = next_ptr(p, '"');
-        } else if (*p == '<') {
+        if (*p == '<') {
+          char *p0 = ++p;
           p = next_ptr(p, '>');
+          int len = p - p0;
+          char *std_hfile = substring(p0, len);
+          printf("# include std %s\n", std_hfile);
+        } else if (*p == '"') {
+          char *p0 = ++p;
+          p = next_ptr(p, '"');
+          int len = p - p0;
+          char *hfile = substring(p0, len);
+          printf("# include %s\n", hfile);
         } else {
           error_at(p, "unexpected token");
         }
         p++;
-        //cur = new_token(TK_SIZEOF, cur, p);
-
-        p += l;
         continue;
+      } else {
+        error_at(p, "not supported");
       }
     }
 
