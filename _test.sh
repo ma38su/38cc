@@ -4,8 +4,7 @@ try() {
   expected="$1"
   input="$2"
 
-  #echo "./38cc \"$input\" > tmp.s"
-  echo "$input" > tmp/tmp.c
+  echo "$input" | cpp > tmp/tmp.c
   ./38cc tmp/tmp.c > tmp/38cc.s
   #cat -n tmp_38cc.s
   gcc -g -o tmp/exe tmp/38cc.s
@@ -413,6 +412,8 @@ int main() {
 '
 
 try 0 '
+#include <stdio.h>
+
 int main() {
   puts("Hello World");
   return 0;

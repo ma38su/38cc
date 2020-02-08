@@ -99,14 +99,14 @@ void gen_function_call(Node *node) {
   int padding = 0;
   if (padding) {
     printf("  sub rsp, 8\n");
-  //printf("  mov rax, 0\n");
   }
+  // reset for return val
+  printf("  mov rax, 0\n");
   if (node->val) {
     printf("  call %s@PLT\n", node->ident);
   } else {
     printf("  call %s\n", node->ident);
   }
-  //printf("  call %s\n", node->ident);
 
   if (padding) {
     printf("  add rsp, 8\n");
