@@ -37,13 +37,14 @@ typedef enum {
   TK_NUM,       // integer number
   TK_CHAR,      // 1 character literal
   TK_STR,       // 1 string literal
+  TK_TYPEDEF,
   TK_SIZEOF,    // sizeof
   TK_IDENT,     // identity
   TK_RETURN,    // return
-  TK_IF,        // return
-  TK_ELSE,      // return
-  TK_FOR,       // return
-  TK_WHILE,     // return
+  TK_IF,        // if
+  TK_ELSE,      // else
+  TK_FOR,       // for
+  TK_WHILE,     // while
   TK_EOF,       // End of File
 } TokenKind;
 

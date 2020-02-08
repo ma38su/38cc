@@ -106,6 +106,7 @@ void gen_function_call(Node *node) {
   } else {
     printf("  call %s\n", node->ident);
   }
+  //printf("  call %s\n", node->ident);
 
   if (padding) {
     printf("  add rsp, 8\n");

@@ -5,9 +5,10 @@ try() {
   input="$2"
 
   #echo "./38cc \"$input\" > tmp.s"
-  echo "$input" > tmp/tmp.c
+  echo "$input" | cpp > tmp/tmp.c
 
   ./38cc tmp/tmp.c > tmp/38cc.s
+  #gcc -no-pie -g -o tmp/exe_38cc tmp/38cc.s
   gcc -g -o tmp/exe_38cc tmp/38cc.s
   ./tmp/exe_38cc
   actual="$?"
@@ -22,12 +23,12 @@ try() {
     echo ""
   else
 
-    gcc -S -masm=intel -S tmp/tmp.c -o tmp/gcc.s
+    gcc -S -masm=intel -fno-pie tmp/tmp.c -o tmp/gcc.s
     echo "--- gcc ---"
     cat -n tmp/gcc.s
     echo ""
   
-    gcc -g -o tmp/exe_gcc tmp/gcc.s
+    gcc -no-pie -o tmp/exe_gcc tmp/gcc.s
     ./tmp/exe_gcc
     gcc_ret="$?"
     echo "gcc output is \"$gcc_ret\"."

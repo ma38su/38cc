@@ -23,7 +23,8 @@ bool is_alnum(char c) {
 
 int lvar_len(char *p0) {
   char *p = p0;
-  if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z')) {
+  if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z')
+      || *p == '_') {
     while (is_alnum(*p)) {
       p++;
     }
@@ -71,6 +72,14 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    // skip preprocessor
+    if (*p == '#') {
+      p++;
+      p = next_ptr(p, '\n');
+      p++;
+      continue;
+    }
+
     // character literal
     if (*p == '\'') {
       p++;
@@ -98,36 +107,65 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    // character literal
-    if (*p == '#') {
-      int l = 8;
-      if (memcmp(p, "#include", l) == 0) {
-        p += l;
-
-        while (isspace(*p)) {
-          p++;
+    if (memcmp(p, "enum", 4) == 0) {
+      p += 4;
+      int brace = 0;
+      for (;;) {
+        if (brace == 0 && *p == ';') {
+          break;
         }
-
-        if (*p == '<') {
-          char *p0 = ++p;
-          p = next_ptr(p, '>');
-          int len = p - p0;
-          char *std_hfile = substring(p0, len);
-          printf("# include std %s\n", std_hfile);
-        } else if (*p == '"') {
-          char *p0 = ++p;
-          p = next_ptr(p, '"');
-          int len = p - p0;
-          char *hfile = substring(p0, len);
-          printf("# include %s\n", hfile);
-        } else {
-          error_at(p, "unexpected token");
+        if (*p == '{') {
+          brace++;
+        } else if (*p == '}') {
+          brace--;
         }
         p++;
-        continue;
-      } else {
-        error_at(p, "not supported");
       }
+      p++;
+      continue;
+    }
+    if (memcmp(p, "struct", 6) == 0) {
+      p += 6;
+      int brace = 0;
+      for (;;) {
+        if (brace == 0 && *p == ';') {
+          break;
+        }
+        if (*p == '{') {
+          brace++;
+        } else if (*p == '}') {
+          brace--;
+        }
+        p++;
+      }
+      p++;
+      continue;
+    }
+    if (memcmp(p, "extern", 6) == 0) {
+      p += 6;
+      p = next_ptr(p, ';');
+      p++;
+      continue;
+    }
+    if (memcmp(p, "typedef", 7) == 0) {
+      //cur = new_token(TK_TYPEDEF, cur, p);
+      //cur->len = 7;
+      p += 7;
+
+      int brace = 0;
+      for (;;) {
+        if (brace == 0 && *p == ';') {
+          break;
+        }
+        if (*p == '{') {
+          brace++;
+        } else if (*p == '}') {
+          brace--;
+        }
+        p++;
+      }
+      p++;
+      continue;
     }
 
     if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 ||

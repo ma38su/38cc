@@ -313,7 +313,7 @@ Type *expect_type() {
   Token *tok;
   tok = consume_ident();
   if (!tok) {
-    error("illegal type: %s", substring(token->str, token->len));
+    error_at(token->str, "illegal type: %s", substring(token->str, token->len));
   }
 
   Type *type;
