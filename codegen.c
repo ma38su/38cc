@@ -86,15 +86,13 @@ void gen_function_call(Node *node) {
     printf("  # set args %d to call %s\n",
         node->list->size, node->ident);
 
-    VNode *itr = node->list->head;
     int args = 0;
-    while (itr != NULL) {
+    for (int i = 0; i < node->list->size; ++i) {
       char *r = get_args_register(8, args);
       printf("  # set arg%d to %s\n", args, r);
-      gen((Node *)itr->value);
+      gen((Node *) vec_get(node->list, i));
       printf("  pop %s\n", r);
 
-      itr = itr->next;
       ++args;
     }
   }
@@ -124,15 +122,12 @@ void gen_block(Node *node) {
   }
 
   printf("  # block begin\n\n");
-  VNode *itr = node->list->head;
-  Node *n;
-  while (itr != NULL) {
-    n = (Node *)itr->value;
+  for (int i = 0; i < node->list->size; ++i) {
+    Node *n = (Node *) vec_get(node->list, i);
     if (gen(n)) {
       printf("  pop rax\n");
       printf("  # end line\n\n");
     }
-    itr = itr->next;
   }
   printf("\n");
   printf("  # block end\n");
@@ -270,9 +265,8 @@ void gen_defined_function(Node *node) {
   if (node->list) {
     int index = node->list->size;
 
-    VNode *itr = node->list->tail;
-    while (itr != NULL) {
-      Node *arg = (Node *) itr->value;
+    for (int i = 0; i < node->list->size; ++i) {
+      Node *arg = (Node *) vec_get(node->list, i);
       printf("  # extract arg \"%s\"\n", arg->ident);
       gen_addr(arg);
       printf("  pop rax\n");
@@ -281,7 +275,6 @@ void gen_defined_function(Node *node) {
       int size = arg->type->size;
       char *r = get_args_register(size, index);
       printf("  mov [rax], %s\n", r);
-      itr = itr->prev;
     }
   }
 
