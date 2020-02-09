@@ -14,7 +14,7 @@ debug: 38cc
 	./_debug.sh
 
 clean:
-	rm -f 38cc *.o *~ tmp*
+	rm -f 38cc *.o *~ tmp/*
 
 .PHONY: test clean
 

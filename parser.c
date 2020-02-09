@@ -318,7 +318,7 @@ char *substring(char *str, int len) {
 Vector *consume_args() {
   Vector *args = NULL;
   if (!consume(")")) {
-    args = calloc(1, sizeof(Vector));
+    args = new_vector();
     for (;;) {
       if (consume_kind(TK_VA)) {
         expect(")");
@@ -739,11 +739,9 @@ int sizeof_args(Vector *args) {
     return 0;
   }
   int size = 0;
-  VNode *itr = args->head;
-  while (itr) {
-    Node *node = itr->value;
+  for (int i = 0; i < args->size; ++i) {
+    Node *node = vec_get(args, i);
     size += node->type->size;
-    itr = itr->next;
   }
   return size;
 }
@@ -936,27 +934,21 @@ void program() {
 }
 
 Type *find_type(Token *tok) {
-  Type *type;
-  VNode *itr = types->head;
-  while (itr != NULL) {
-    type = (Type*) itr->value;
+  for (int i = 0; i < types->size; ++i) {
+    Type *type = vec_get(types, i);
     if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
       return type;
     }
-    itr = itr->next;
   }
   return NULL;
 }
 
 Function *find_function(Token *tok) {
-  Function *func;
-  VNode *itr = functions->head;
-  while (itr != NULL) {
-    func = (Function*) itr->value;
+  for (int i = 0; i < functions->size; ++i) {
+    Function *func = vec_get(functions, i);
     if (func->len == tok->len && memcmp(tok->str, func->name, func->len) == 0) {
       return func;
     }
-    itr = itr->next;
   }
   return NULL;
 }
