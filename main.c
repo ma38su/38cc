@@ -43,7 +43,6 @@ int main(int argc, char **argv) {
 
   print_header();
   for (int i = 0; code[i]; i++) {
-    printf("# gen %d\n", i);
     gen_defined(code[i]);
   }
   return 0;

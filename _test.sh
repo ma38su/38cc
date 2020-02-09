@@ -420,6 +420,15 @@ int main() {
 }
 '
 
+try 0 '
+#include <stdio.h>
+
+int main() {
+  printf("Hello World");
+  return 0;
+}
+'
+
 exit
 
 try $((0xff - 4 + 1)) 'int main() {return -4;}'

@@ -59,7 +59,9 @@ char* get_args_register(int size, int index) {
   } else if (size == 4) {
     return reg32s[index];
   } else {
-    assert(size == 8);
+    if (size != 8) {
+      error("illegal arg size: %d", size);
+    }
     return reg64s[index];
   }
 }
@@ -201,19 +203,23 @@ bool gen_return(Node *node) {
 
 void gen_gvars() {
   for (GVar *var = globals; var; var = var->next) {
-    printf("%s:\n", var->name);
     if (*(var->name) == '.') {
+      printf("%s:\n", var->name);
       printf("  .string \"%s\"\n", var->str);
-      printf("  .text\n");
     } else if (var->type == char_type) {
+      printf("%s:\n", var->name);
       printf("  .byte %d\n", var->val);
     } else if (var->type == short_type) {
+      printf("%s:\n", var->name);
       printf("  .word %d\n", var->val);
     } else if (var->type == int_type) {
+      printf("%s:\n", var->name);
       printf("  .long %d\n", var->val);
-    } else {
-      assert(var->type == long_type);
+    } else if (var->type == long_type) {
+      printf("%s:\n", var->name);
       printf("  .quad %d\n", var->val);
+    } else {
+      printf("# unsupported type: %s: %s\n", var->name, var->type->name);
     }
   }
 }
@@ -242,6 +248,10 @@ bool gen_gvar(Node *node) {
 void gen_defined_function(Node *node) {
   if (node->kind != ND_FUNCTION) {
     error("node is not function");
+  }
+  if (!node->lhs) {
+    // skip extern function;
+    return;
   }
   // function label
   printf("%s:\n", node->ident);
@@ -307,7 +317,9 @@ void gen_deref(int size) {
   } else if (size == 4) {
     printf("  movsxd rax, dword ptr [rax]\n");
   } else {
-    assert(size == 8);
+    if (size != 8) {
+      error("illegal defref size: %d", size);
+    }
     printf("  mov rax, [rax]\n");
   }
   printf("  push rax\n");
@@ -396,7 +408,9 @@ bool gen(Node *node) {
     } else if (size == 4) {
       printf("  mov [rax], edi\n");
     } else {
-      assert(size == 8);
+      if (size != 8) {
+        error("illegal size: %d", size);
+      }
       printf("  mov [rax], rdi\n");
     }
     printf("  push rdi\n");

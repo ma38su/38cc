@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ulimit -c unlimited
+
 try() {
   expected="$1"
   input="$2"
@@ -12,16 +14,21 @@ try() {
   gcc -g -o tmp/exe_38cc tmp/38cc.s
   ./tmp/exe_38cc
   actual="$?"
-  echo "\"$input\" => $actual is not expected. $expected is expected,"
-
-  echo "--- 38cc ---"
-  cat -n tmp/38cc.s
-  echo ""
 
   if [ "$actual" = "$expected" ]; then
+    echo "--- 38cc ---"
+    cat -n tmp/38cc.s
+    echo ""
+
     echo "\"$input\" => $actual is expected"
     echo ""
   else
+    echo "--- 38cc ---"
+    ./38cc tmp/tmp.c
+    echo ""
+
+    echo "\"$input\" => $actual is not expected. $expected is expected."
+
 
     gcc -S -masm=intel -fno-pie tmp/tmp.c -o tmp/gcc.s
     echo "--- gcc ---"
@@ -31,7 +38,7 @@ try() {
     gcc -no-pie -o tmp/exe_gcc tmp/gcc.s
     ./tmp/exe_gcc
     gcc_ret="$?"
-    echo "gcc output is \"$gcc_ret\"."
+    echo "gcc output is \"$gcc_ret\". $expected is expected."
     echo ""
 
     exit 1
@@ -39,12 +46,30 @@ try() {
 }
 
 
-try 0 '
+try 15 '
+int add(int a, int b) {
+  return a + b;
+}
+int main() {
+  return add(9, 6);
+}
+'
+
+try 1 '
 #include <stdio.h>
 
 int main() {
   puts("Hello");
-  return 0;
+  return 1;
+}
+' 
+
+try 29 '
+int a = 11;
+char b = 8;
+short c = 10;
+int main() {
+  return a + b + c;
 }
 '
 

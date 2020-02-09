@@ -21,7 +21,7 @@ Function *find_function(Token *tok);
 Token *token;
 
 char *user_input;
-Node *code[100];
+Node *code[1000];
 LVar *locals;
 GVar *globals;
 Vector *types;  // Type*
@@ -78,14 +78,11 @@ void init_types() {
 
   str_type = new_ptr_type(char_type);
 
+  vec_add(types, void_type);
   vec_add(types, int_type);
   vec_add(types, short_type);
   vec_add(types, char_type);
   vec_add(types, long_type);
-
-  Function *puts_func = new_function("puts", 4, void_type);
-  puts_func->plt = 1;
-  vec_add(functions, puts_func);
 }
 
 int type_is_ptr_or_array(Type *type) {
@@ -93,11 +90,11 @@ int type_is_ptr_or_array(Type *type) {
 }
 
 int type_is_array(Type *type) {
-  return memcmp(type->name, "[]", type->len) == 0;
+  return type->len == 2 && memcmp(type->name, "[]", 2) == 0;
 }
 
 int type_is_ptr(Type *type) {
-  return memcmp(type->name, "*", type->len) == 0;
+  return type->len == 1 && memcmp(type->name, "*", 1) == 0;
 }
 
 bool type_is_func(Type *type) {
@@ -149,9 +146,10 @@ Type *to_type(Type *lhs_type, Type *rhs_type) {
     return int_type;
   } else if (lhs_type == short_type || rhs_type == short_type) {
     return short_type;
-  } else {
-    assert(lhs_type == char_type || rhs_type == char_type);
+  } else if (lhs_type == char_type || rhs_type == char_type) {
     return char_type;
+  } else {
+    error("parser assertion error");
   }
 }
 
@@ -209,7 +207,7 @@ bool consume(char *op) {
 // read reserved symbol
 void expect(char *op) {
   if (!token_is(token, op)) {
-    error("token is '%s' not '%s'. tk-kind: %d",
+    error_at(token->str, "token is '%s' not '%s'. tk-kind: %d",
         substring(token->str, token->len), op, token->kind);
   }
   token = token->next;
@@ -247,7 +245,6 @@ Node *consume_str() {
   if (token->kind != TK_STR) {
     return NULL;
   }
-
   GVar *gvar = find_or_gen_str_gvar(token);
   token = token->next;
 
@@ -257,16 +254,41 @@ Node *consume_str() {
   return node;
 }
 
+int is_pre_type(Token* tok) {
+  return (tok->len == 4 && memcmp(tok->str, "auto", 4) == 0) ||
+      (tok->len == 6 && memcmp(tok->str, "static", 6) == 0) ||
+      (tok->len == 6 && memcmp(tok->str, "signed", 6) == 0) ||
+      (tok->len == 8 && memcmp(tok->str, "unsigned", 8) == 0) ||
+      (tok->len == 4 && memcmp(tok->str, "long", 4) == 0) ||
+      (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
+}
+
 Type *consume_type() {
+  if (consume_kind(TK_CONST)) {
+    // skip
+  }
+
   if (token->kind != TK_IDENT) {
     return NULL;
   }
-  Type *type = find_type(token);
-  if (!type) {
+
+  Type *type;
+  char *p0 = token->str;
+  for (;;) {
+    Type *type1 = find_type(token);
+    if (type1 || is_pre_type(token)) {
+      type = type1;
+      token = token->next;
+      continue;
+    }
+    break;
+  }
+  if (p0 == token->str) {
     return NULL;
   }
-  token = token->next;
-
+  if (!type) {
+    error_at(token->str, "# type is not set");
+  }
   while (consume("*")) {
     type = new_ptr_type(type);
   }
@@ -276,8 +298,7 @@ Type *consume_type() {
 // read reserved integer number
 int expect_number() {
   if (token->kind != TK_NUM) {
-    error("token is '%s' not number. tk-kind: %d",
-        substring(token->str, token->len), token->kind);
+    error_at(token->str, "token is not number. (tk-kind: %d)", token->kind);
   }
   int val = token->val;
   token = token->next;
@@ -299,6 +320,11 @@ Vector *consume_args() {
   if (!consume(")")) {
     args = calloc(1, sizeof(Vector));
     for (;;) {
+      if (consume_kind(TK_VA)) {
+        expect(")");
+        break;
+      }
+
       vec_add(args, expr());
       if (consume(")")) {
         break;
@@ -313,13 +339,13 @@ Type *expect_type() {
   Token *tok;
   tok = consume_ident();
   if (!tok) {
-    error_at(token->str, "illegal type: %s", substring(token->str, token->len));
+    error_at(token->str, "illegal type name");
   }
 
   Type *type;
   type = find_type(tok);
   if (!type) {
-    error("undefined type: %s", substring(tok->str, tok->len));
+    error_at(token->str, "undefined type");
   }
 
   return type;
@@ -327,7 +353,6 @@ Type *expect_type() {
 
 // defined local variable
 LVar *consume_lvar_define() {
-
   Type *type = consume_type();
   if (!type) {
     return NULL;
@@ -335,10 +360,10 @@ LVar *consume_lvar_define() {
 
   Token *tok = consume_ident();
   if (!tok) {
-    error("illegal lvar name");
+    error_at(token->str, "illegal lvar name");
   }
   if (find_lvar(tok)) {
-    error("duplicated defined lvar %s", substring(tok->str, tok->len));
+    error_at(tok->str, "duplicated defined lvar");
   }
 
   int new_size;
@@ -375,12 +400,66 @@ Vector *defined_args() {
     for (;;) {
       LVar *lvar = consume_lvar_define();
       if (!lvar) {
-        error("illegal lvar");
+        error_at(token->str, "illegal arg");
       }
       Node *node = new_node(ND_LVAR);
       node->ident = substring(lvar->name, lvar->len);
       node->offset = lvar->offset;
       node->type = lvar->type;
+
+      vec_add(args, node);
+      if (consume(")")) {
+        break;
+      }
+      expect(",");
+    }
+  }
+  return args;
+}
+
+Vector *defined_extern_args() {
+  Vector *args = NULL;
+  if (!consume(")")) {
+    args = calloc(1, sizeof(Vector));
+    for (;;) {
+      if (consume_kind(TK_VA)) {
+        if (consume(")")) {
+          break;
+        }
+        expect(",");
+        continue;
+      }
+
+      Type *type = consume_type();
+      if (!type) {
+        error_at(token->str,
+            "illegal extern arg type (size: %d)", args->size);
+      }
+
+      if (consume_kind(TK_RESTRICT)) {
+        // skip __restrict
+      }
+      if (consume_kind(TK_CONST)) {
+        // skip const
+      }
+
+      int new_size;
+      Token *tok = consume_ident();
+      if (tok) {
+        if (consume("[")) {
+          int array_len = expect_number();
+          expect("]");
+
+          new_size = type->size * array_len;
+          type = new_array_type(type, array_len);
+        } else {
+          new_size = type->size;
+        }
+      }
+
+      Node *node = new_node(ND_LVAR);
+      node->type = type;
+      node->ident = "";
 
       vec_add(args, node);
       if (consume(")")) {
@@ -403,6 +482,7 @@ int sizeof_node(Node* node) {
 }
 
 Node *primary() {
+
   if (consume("(")) {
     Node *node = expr();
     expect(")");
@@ -432,13 +512,13 @@ Node *primary() {
     node->ident = substring(tok->str, tok->len);
     Function *func = find_function(tok);
     if (!func) {
-      error("func not found: %s", node->ident);
+      error_at(tok->str, "func is not found");
     }
     node->type = func->ret_type;
     node->val = func->plt;
 
     if (!node->type) {
-      error("return type of function is not found: %s", node->ident);
+      error(tok->str, "return type of function is not found");
     }
     return node;
   }
@@ -452,7 +532,7 @@ Node *primary() {
   } else {
     GVar *gvar = find_gvar(tok);
     if (!gvar) {
-      error("undefined lvar: %s", substring(tok->str, tok->len));
+      error_at(tok->str, "undefined gvar");
     }
     node = new_node(ND_GVAR);
     node->type = gvar->type;
@@ -676,19 +756,82 @@ Node *reduce_node(Node* node) {
 }
 
 Node *global() {
+  if (consume_kind(TK_TYPEDEF)) {
+    int brace = 0;
+    Token *tok;
 
-  Type *type = expect_type();
-  Token *tok = consume_ident();
-  if (!tok) {
-    error("illegal defined function ident");
+    for (;;) {
+      if (brace == 0 && consume(";")) {
+        break;
+      }
+      if (consume("{")) {
+        brace++;
+        continue;
+      } else if (consume("}")) {
+        brace--;
+        continue;
+      }
+      tok = token;
+      token = token->next;
+    }
+    if (tok->kind == TK_IDENT) {
+      Type *def_type = new_type(tok->str, tok->len, 8);
+      vec_add(types, def_type);
+    }
+    return NULL;
   }
 
-  Node *node;
-  if (consume("(")) {
+  int is_extern = 0;
+  if (consume_kind(TK_EXTERN)) {
+    is_extern = 1;
+  }
+  if (consume_kind(TK_STRUCT)) {
+    if (!find_type(token)) {
+      Type *struct_type = new_type(token->str, token->len, 8);
+      vec_add(types, struct_type);
+    }
+    token = token->next;
 
+    int brace = 0;
+    for (;;) {
+      if (brace == 0 && consume(";")) {
+        break;
+      }
+      if (consume("{")) {
+        brace++;
+        continue;
+      } else if (consume("}")) {
+        brace--;
+        continue;
+      }
+      token = token->next;
+    }
+    return NULL;
+  }
+
+  Type *type = consume_type();
+  if (!type) {
+    if (is_extern) {
+      printf("# type is not found: %s\n",
+          substring(token->str, token->len));
+      while (!consume(";")) {
+        token = token->next;
+      }
+      return NULL;
+    }
+    error_at(token->str, "type is not found");
+  }
+
+  if (consume_kind(TK_CONST)) {
+  }
+  Token *tok = consume_ident();
+  if (!tok) {
+    error_at(token->str, "illegal defined function ident");
+  }
+  if (consume("(")) {
     // before parse function statement for recursive call
-    Function *func_type = new_function(tok->str, tok->len, type);
-    vec_add(functions, func_type);
+    Function *func = new_function(tok->str, tok->len, type);
+    vec_add(functions, func);
 
     Node *block;
     Vector *args;
@@ -696,18 +839,29 @@ Node *global() {
     LVar *tmp_locals = locals;
     locals = NULL;
 
-    args = defined_args();
-    block = block_stmt();
-    if (!block) {
-      error("illegal defined block");
+    if (is_extern) {
+      args = defined_extern_args();
+
+      while (!consume(";")) {
+        // skip unsupported tokens
+        token = token->next;
+      }
+      func->plt = 1;
+    } else {
+      args = defined_args();
+      block = block_stmt();
+      if (!block) {
+        error_at(token->str, "illegal defined block");
+      }
     }
 
+    Node *node;
     node = new_node(ND_FUNCTION);
     node->list = args;
     node->ident = substring(tok->str, tok->len);
     node->lhs = block;
     node->val = sizeof_args(args) + sizeof_lvars();
-    node->type = func_type->ret_type;
+    node->type = func->ret_type;
 
     // local変数を戻す(サイズ計算後)
     locals = tmp_locals;
@@ -717,18 +871,27 @@ Node *global() {
 
     GVar *gvar = find_gvar(tok);
     if (gvar) {
-      error("duplicated defined gvar: %s", substring(tok->str, tok->len));
+      error_at(tok->str, "duplicated defined gvar");
     }
+
     gvar = calloc(1, sizeof(GVar));
     gvar->name = substring(tok->str, tok->len);
+    gvar->len = tok->len;
 
     int new_size;
     if (consume("[")) {
-      int array_len = expect_number();
-      expect("]");
+      if (token->kind == TK_NUM) {
+        // gvar[n]
+        int array_len = expect_number();
+        expect("]");
 
-      new_size = type->size * array_len;
-      type = new_array_type(type, array_len);
+        new_size = type->size * array_len;
+        type = new_array_type(type, array_len);
+      } else {
+        // []
+        type = new_array_type(type, type->size);
+        expect("]");
+      }
     } else {
       new_size = type->size;
     }
@@ -745,6 +908,12 @@ Node *global() {
 
     if (consume("=")) {
       gvar->val = reduce_node(equality())->val;
+    } else {
+      if (node->type != str_type) {
+        gvar->val = 0;
+      } else {
+        printf("# not initialize gvar str\n");
+      }
     }
     expect(";");
     return node;
@@ -757,9 +926,13 @@ void program() {
 
   int i = 0;
   while (!at_eof()) {
-    code[i++] = global();
+    Node* n = global();
+    if (n) {
+      code[i++] = n;
+    }
   }
   code[i] = NULL;
+  printf("# program loaded %dsteps\n", i);
 }
 
 Type *find_type(Token *tok) {
@@ -767,7 +940,7 @@ Type *find_type(Token *tok) {
   VNode *itr = types->head;
   while (itr != NULL) {
     type = (Type*) itr->value;
-    if (type->len == tok->len && !memcmp(tok->str, type->name, type->len)) {
+    if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
       return type;
     }
     itr = itr->next;
@@ -780,7 +953,7 @@ Function *find_function(Token *tok) {
   VNode *itr = functions->head;
   while (itr != NULL) {
     func = (Function*) itr->value;
-    if (func->len == tok->len && !memcmp(tok->str, func->name, func->len)) {
+    if (func->len == tok->len && memcmp(tok->str, func->name, func->len) == 0) {
       return func;
     }
     itr = itr->next;
@@ -790,7 +963,7 @@ Function *find_function(Token *tok) {
 
 LVar *find_lvar(Token *tok) {
   for (LVar *var = locals; var; var = var->next) {
-    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
+    if (var->len == tok->len && memcmp(tok->str, var->name, var->len) == 0) {
       return var;
     }
   }
@@ -799,14 +972,12 @@ LVar *find_lvar(Token *tok) {
 
 GVar *find_gvar(Token *tok) {
   for (GVar *var = globals; var; var = var->next) {
-    int len = strlen(var->name);
-    if (len == tok->len && !memcmp(tok->str, var->name, len)) {
+    if (tok->len == var->len && memcmp(tok->str, var->name, var->len) == 0) {
       return var;
     }
   }
   return NULL;
 }
-
 
 int to_digit(int n) {
   int digit = 1;
@@ -826,12 +997,13 @@ char *gen_gstr_name(int n) {
 }
 
 GVar *find_or_gen_str_gvar(Token *tok) {
-  for (GVar *var = globals; var; var = var->next) {
-    int str_len = strlen(var->str);
-    if (*(var->name) == '.'
-        && str_len == tok->len
-        && !memcmp(tok->str, var->str, str_len)) {
-      return var;
+  if (globals) {
+    for (GVar *var = globals; var; var = var->next) {
+      if (*(var->name) == '.'
+          && var->len == tok->len
+          && memcmp(tok->str, var->str, var->len) == 0) {
+        return var;
+      }
     }
   }
 
@@ -840,6 +1012,7 @@ GVar *find_or_gen_str_gvar(Token *tok) {
   gvar->type = str_type;
 
   gvar->str = substring(tok->str, tok->len);
+  gvar->len = tok->len;
 
   gvar->next = globals;
   globals = gvar;

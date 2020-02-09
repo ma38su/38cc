@@ -37,6 +37,11 @@ typedef enum {
   TK_NUM,       // integer number
   TK_CHAR,      // 1 character literal
   TK_STR,       // 1 string literal
+  TK_STRUCT,
+  TK_CONST,
+  TK_RESTRICT,
+  TK_VA,        // ...
+  TK_EXTERN,
   TK_TYPEDEF,
   TK_SIZEOF,    // sizeof
   TK_IDENT,     // identity
@@ -93,6 +98,7 @@ struct GVar {
   GVar *next;
   Type *type;
   char *name;
+  int len;
   int val; // int
   char *str;
 };

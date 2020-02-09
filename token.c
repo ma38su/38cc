@@ -124,47 +124,41 @@ Token *tokenize(char *p) {
       p++;
       continue;
     }
+    if (memcmp(p, "__restrict", 10) == 0) {
+      cur = new_token(TK_RESTRICT, cur, p);
+      cur->len = 10;
+      p += 10;
+      continue;
+    }
+    if (memcmp(p, "const", 5) == 0) {
+      cur = new_token(TK_CONST, cur, p);
+      cur->len = 5;
+      p += 5;
+      continue;
+    }
     if (memcmp(p, "struct", 6) == 0) {
+      cur = new_token(TK_STRUCT, cur, p);
+      cur->len = 6;
       p += 6;
-      int brace = 0;
-      for (;;) {
-        if (brace == 0 && *p == ';') {
-          break;
-        }
-        if (*p == '{') {
-          brace++;
-        } else if (*p == '}') {
-          brace--;
-        }
-        p++;
-      }
-      p++;
       continue;
     }
     if (memcmp(p, "extern", 6) == 0) {
+      cur = new_token(TK_EXTERN, cur, p);
+      cur->len = 6;
       p += 6;
-      p = next_ptr(p, ';');
-      p++;
       continue;
     }
     if (memcmp(p, "typedef", 7) == 0) {
-      //cur = new_token(TK_TYPEDEF, cur, p);
-      //cur->len = 7;
+      cur = new_token(TK_TYPEDEF, cur, p);
+      cur->len = 7;
       p += 7;
+      continue;
+    }
 
-      int brace = 0;
-      for (;;) {
-        if (brace == 0 && *p == ';') {
-          break;
-        }
-        if (*p == '{') {
-          brace++;
-        } else if (*p == '}') {
-          brace--;
-        }
-        p++;
-      }
-      p++;
+    if (memcmp(p, "...", 3) == 0) {
+      cur = new_token(TK_VA, cur, p);
+      cur->len = 3;
+      p += 3;
       continue;
     }
 
