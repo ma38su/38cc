@@ -238,6 +238,9 @@ void gen_gvars() {
     } else if (type_is_ptr(var->type)) {
       printf("%s:\n", var->name);
       printf("  .quad %s\n", var->str);
+    } else if (type_is_array(var->type)) {
+      printf("%s:\n", var->name);
+      printf("  .string \"%s\"\n", var->str);
     } else {
       printf("# unsupported type: %s: %s\n", var->name, var->type->name);
     }
