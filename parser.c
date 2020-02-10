@@ -924,6 +924,9 @@ Node *global() {
           error("expected gvar (string literal)");
         }
         gvar->str = subnode->ident;
+      } else {
+        Node* reduced = reduce_node(equality());
+        gvar->val = reduced->val;
       }
       gvar->init = 1;
     } else {
