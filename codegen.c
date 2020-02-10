@@ -5,6 +5,11 @@
 
 int label_id = 0;
 
+void gen_gvars();
+void gen_gvars_uninit();
+
+void gen_defined(Node *node);
+
 bool gen(Node *node);
 void gen_num(int num);
 void gen_deref(int size);
@@ -42,10 +47,16 @@ char *reg8s[] = {
   "r9b"  // 5
 };
 
-void print_header() {
+void codegen() {
   printf("  .intel_syntax noprefix\n");
+  gen_gvars_uninit();
+  //printf("  .section  .rodata\n");
   gen_gvars();
+
   printf("  .global main\n");
+  for (int i = 0; code[i]; ++i) {
+    gen_defined(code[i]);
+  }
 }
 
 char* get_args_register(int size, int index) {
@@ -196,12 +207,20 @@ bool gen_return(Node *node) {
   return false;
 }
 
+void gen_gvars_uninit() {
+  for (GVar *var = globals; var; var = var->next) {
+    if (var->init || var->extn) {
+      continue;
+    }
+    printf("  .comm   %s,%d,%d\n", var->name, var->type->size, var->type->size);
+  }
+}
 void gen_gvars() {
   for (GVar *var = globals; var; var = var->next) {
-    if (*(var->name) == '.') {
-      printf("%s:\n", var->name);
-      printf("  .string \"%s\"\n", var->str);
-    } else if (var->type == char_type) {
+    if (!var->init || var->extn) {
+      continue;
+    }
+    if (var->type == char_type) {
       printf("%s:\n", var->name);
       printf("  .byte %d\n", var->val);
     } else if (var->type == short_type) {
@@ -213,6 +232,12 @@ void gen_gvars() {
     } else if (var->type == long_type) {
       printf("%s:\n", var->name);
       printf("  .quad %d\n", var->val);
+    } else if (*(var->name) == '.') {
+      printf("%s:\n", var->name);
+      printf("  .string \"%s\"\n", var->str);
+    } else if (type_is_ptr(var->type)) {
+      printf("%s:\n", var->name);
+      printf("  .quad %s\n", var->str);
     } else {
       printf("# unsupported type: %s: %s\n", var->name, var->type->name);
     }
@@ -233,8 +258,12 @@ bool gen_gvar(Node *node) {
     printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
   } else if (node->type == long_type) {
     printf("  mov rax, %s[rip]\n", node->ident);
-  } else if (node->type == str_type) {
+  } else if (type_is_array(node->type) && node->type->ptr_to == char_type) {
     printf("  lea rax, %s[rip]\n", node->ident);
+  } else if (type_is_ptr(node->type) && node->type->ptr_to == char_type) {
+    printf("  mov rax, qword ptr %s[rip]\n", node->ident);
+  } else {
+    printf("  # not support gvar %s, type: %s\n", node->ident, node->type->name);
   }
   printf("  push rax\n");
   return true;

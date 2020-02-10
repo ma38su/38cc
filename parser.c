@@ -13,7 +13,7 @@ Node *expr();
 Type *consume_type();
 int sizeof_lvars();
 GVar *find_gvar(Token *tok);
-GVar *find_or_gen_str_gvar(Token *tok);
+GVar *find_or_gen_gstr(Token *tok);
 Type *find_type(Token *tok);
 Function *find_function(Token *tok);
 
@@ -33,7 +33,7 @@ Type *int_type;
 Type *long_type;
 
 Type *void_type;
-Type *str_type;
+Type *ptr_char_type;
 
 int gstr_len = 0; // number of global string variable
 
@@ -77,7 +77,7 @@ void init_types() {
 
   void_type = new_type("void", 4, 8);
 
-  str_type = new_ptr_type(char_type);
+  ptr_char_type = new_ptr_type(char_type);
 
   vec_add(types, void_type);
   vec_add(types, int_type);
@@ -247,7 +247,7 @@ Node *consume_str() {
   if (token->kind != TK_STR) {
     return NULL;
   }
-  GVar *gvar = find_or_gen_str_gvar(token);
+  GVar *gvar = find_or_gen_gstr(token);
   token = token->next;
 
   Node *node = new_node(ND_GVAR);
@@ -522,7 +522,7 @@ Node *primary() {
       error_at(tok->str, "func is not found");
     }
     node->type = func->ret_type;
-    node->val = func->plt;
+    node->val = func->extn;
 
     if (!node->type) {
       error(tok->str, "return type of function is not found");
@@ -754,8 +754,8 @@ int sizeof_args(Vector *args) {
 }
 
 Node *reduce_node(Node* node) {
-  if (node->kind != ND_NUM) {
-    error_at(token->str, "not supported");
+  if (node->kind != ND_GVAR && node->kind != ND_STR && node->kind != ND_NUM) {
+    error_at(token->str, "not supported %d", node->kind);
   }
   return node;
 }
@@ -851,13 +851,14 @@ Node *global() {
         // skip unsupported tokens
         token = token->next;
       }
-      func->plt = 1;
+      func->extn = 1;
     } else {
       args = defined_args();
       block = block_stmt();
       if (!block) {
         error_at(token->str, "illegal defined block");
       }
+      func->extn = 0;
     }
 
     Node *node;
@@ -876,10 +877,15 @@ Node *global() {
 
     GVar *gvar = find_gvar(tok);
     if (gvar) {
-      error_at(tok->str, "duplicated defined gvar");
+      if (gvar->extn && !is_extern) {
+        error_at(tok->str, "duplicated defined gvar");
+      }
+      gvar->extn = 0;
+    } else {
+      gvar = calloc(1, sizeof(GVar));
+      gvar->extn = is_extern;
     }
 
-    gvar = calloc(1, sizeof(GVar));
     gvar->name = substring(tok->str, tok->len);
     gvar->len = tok->len;
 
@@ -903,17 +909,25 @@ Node *global() {
     globals = gvar;
 
     Node *node = new_node(ND_GVAR);
-    node->type = gvar->type;
     node->ident = substring(tok->str, tok->len);
 
     if (consume("=")) {
-      gvar->val = reduce_node(equality())->val;
+      Node* val_node = reduce_node(equality());
+      if (val_node->kind == ND_GVAR) {
+        gvar->str = val_node->ident;
+      } else {
+        gvar->val = val_node->val;
+      }
+      node->type = val_node->type;
+      gvar->init = 1;
     } else {
-      if (node->type != str_type) {
+      if (node->type != ptr_char_type) {
         gvar->val = 0;
       } else {
         printf("# not initialize gvar str\n");
       }
+      node->type = gvar->type;
+      gvar->init = 0;
     }
     expect(";");
     return node;
@@ -990,7 +1004,7 @@ char *gen_gstr_name(int n) {
   return name;
 }
 
-GVar *find_or_gen_str_gvar(Token *tok) {
+GVar *find_or_gen_gstr(Token *tok) {
   if (globals) {
     for (GVar *var = globals; var; var = var->next) {
       if (*(var->name) == '.'
@@ -1003,7 +1017,8 @@ GVar *find_or_gen_str_gvar(Token *tok) {
 
   GVar *gvar = calloc(1, sizeof(GVar));
   gvar->name = gen_gstr_name(gstr_len++);
-  gvar->type = str_type;
+  gvar->type = new_array_type(char_type, tok->len);
+  gvar->init = 1;
 
   gvar->str = substring(tok->str, tok->len);
   gvar->len = tok->len;

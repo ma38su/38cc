@@ -12,8 +12,12 @@ $(OBJS): 38cc.h $(SRCS)
 test: 38cc test.c
 	cpp test.c -o .test.c
 	./38cc .test.c > test.s
+	cat .test.c
+	cat test.s
 	$(CC) test.s -o test
 	./test
+	$(CC) -S -masm=intel .test.c -o gcc_test.s
+	cat gcc_test.s
 
 shtest: 38cc test.c
 	./_test.sh
