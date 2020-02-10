@@ -910,15 +910,21 @@ Node *global() {
 
     Node *node = new_node(ND_GVAR);
     node->ident = substring(tok->str, tok->len);
-
+    node->type = gvar->type;
     if (consume("=")) {
-      Node* val_node = reduce_node(equality());
-      if (val_node->kind == ND_GVAR) {
-        gvar->str = val_node->ident;
-      } else {
-        gvar->val = val_node->val;
+      if (type_is_array(type) && type->ptr_to == char_type) {
+        if (token->kind != TK_STR) {
+          error("expected string literal");
+        }
+        gvar->str = substring(token->str, token->len);
+        token = token->next;
+      } else if (type_is_ptr(type) && type->ptr_to == char_type) {
+        Node* subnode = reduce_node(equality());
+        if (subnode->kind != ND_GVAR) {
+          error("expected gvar (string literal)");
+        }
+        gvar->str = subnode->ident;
       }
-      node->type = val_node->type;
       gvar->init = 1;
     } else {
       if (node->type != ptr_char_type) {
@@ -926,7 +932,6 @@ Node *global() {
       } else {
         printf("# not initialize gvar str\n");
       }
-      node->type = gvar->type;
       gvar->init = 0;
     }
     expect(";");
