@@ -43,6 +43,7 @@ Type *new_type(char* name, int len, int size) {
   type->name = name;
   type->len = len;
   type->size = size;
+  return type;
 }
 
 Type *new_ptr_type(Type* type) {
@@ -140,6 +141,7 @@ Type *to_type(Type *lhs_type, Type *rhs_type) {
   } else if (rhs_ptr) {
     return rhs_type;
   }
+
   if (lhs_type == long_type || rhs_type == long_type) {
     return long_type;
   } else if (lhs_type == int_type || rhs_type == int_type) {
@@ -148,9 +150,9 @@ Type *to_type(Type *lhs_type, Type *rhs_type) {
     return short_type;
   } else if (lhs_type == char_type || rhs_type == char_type) {
     return char_type;
-  } else {
-    error("parser assertion error");
   }
+  error("parser assertion error");
+  return NULL;
 }
 
 Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
@@ -191,13 +193,13 @@ Node *new_node_num(int val) {
   return node;
 }
 
-bool token_is(Token *tok, char *op) {
+bool token_is_reserved(Token *tok, char *op) {
   return tok && tok->kind == TK_RESERVED && strlen(op) == tok->len &&
          memcmp(op, tok->str, tok->len) == 0;
 }
 
 bool consume(char *op) {
-  if (!token_is(token, op)) {
+  if (!token_is_reserved(token, op)) {
     return false;
   }
   token = token->next;
@@ -206,7 +208,7 @@ bool consume(char *op) {
 
 // read reserved symbol
 void expect(char *op) {
-  if (!token_is(token, op)) {
+  if (!token_is_reserved(token, op)) {
     error_at(token->str, "token is '%s' not '%s'. tk-kind: %d",
         substring(token->str, token->len), op, token->kind);
   }
@@ -393,9 +395,19 @@ LVar *consume_lvar_define() {
   return lvar;
 }
 
+int consume_void_type() {
+  if (token->kind == TK_IDENT && token->len == 4 && memcmp(token->str, "void", 4) == 0) {
+    token = token->next;
+    return 1;
+  }
+  return 0;
+}
+
 Vector *defined_args() {
   Vector *args = NULL;
-  if (!consume(")")) {
+  if (consume_void_type()) {
+    expect(")");
+  } else if (!consume(")")) {
     args = calloc(1, sizeof(Vector));
     for (;;) {
       LVar *lvar = consume_lvar_define();
@@ -443,19 +455,14 @@ Vector *defined_extern_args() {
         // skip const
       }
 
-      int new_size;
       Token *tok = consume_ident();
-      if (tok) {
-        if (consume("[")) {
-          int array_len = expect_number();
-          expect("]");
-
-          new_size = type->size * array_len;
-          type = new_array_type(type, array_len);
-        } else {
-          new_size = type->size;
-        }
+      // some arg var names are ommited.
+      if (tok && consume("[")) {
+        int array_len = expect_number();
+        expect("]");
+        type = new_array_type(type, array_len);
       }
+
 
       Node *node = new_node(ND_LVAR);
       node->type = type;
@@ -747,10 +754,10 @@ int sizeof_args(Vector *args) {
 }
 
 Node *reduce_node(Node* node) {
-  if (node->kind == ND_NUM) {
-    return node;
+  if (node->kind != ND_NUM) {
+    error_at(token->str, "not supported");
   }
-  error("not supported");
+  return node;
 }
 
 Node *global() {
@@ -831,7 +838,7 @@ Node *global() {
     Function *func = new_function(tok->str, tok->len, type);
     vec_add(functions, func);
 
-    Node *block;
+    Node *block = NULL;
     Vector *args;
 
     LVar *tmp_locals = locals;
@@ -876,22 +883,17 @@ Node *global() {
     gvar->name = substring(tok->str, tok->len);
     gvar->len = tok->len;
 
-    int new_size;
     if (consume("[")) {
       if (token->kind == TK_NUM) {
         // gvar[n]
         int array_len = expect_number();
         expect("]");
-
-        new_size = type->size * array_len;
         type = new_array_type(type, array_len);
       } else {
-        // []
+        // gvar[]
         type = new_array_type(type, type->size);
         expect("]");
       }
-    } else {
-      new_size = type->size;
     }
 
     gvar->type = type;

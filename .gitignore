@@ -4,4 +4,5 @@ core
 *.s
 tmp
 38cc
+test
 *.code-workspace

@@ -45,8 +45,6 @@ Token *tokenize(char *p) {
   head.next = NULL;
   Token *cur = &head;
 
-  int cnt = *p;
-
   while (*p) {
     // skip blank
     if (isspace(*p)) {
