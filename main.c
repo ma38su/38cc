@@ -6,26 +6,6 @@
 
 char *filename;
 
-void dump_tokenize() {
-  Token *p;
-  int count = 0;
-
-  p = token;
-  while (p) {
-    if (p->kind == TK_NUM) {
-      printf(" %d", p->val);
-    } else {
-      printf(" %s", substring(p->str, p->len));
-    }
-    if (++count >= 10) {
-      printf("\n");
-      count = 0;
-    }
-    p = p->next;
-  }
-  printf("\n");
-}
-
 int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "Illegal num of argmuments.\n");
@@ -36,15 +16,9 @@ int main(int argc, char **argv) {
   user_input = read_file(filename);
 
   token = tokenize(user_input);
-  // dump_tokenize();
-  // return 0;
 
   program();
-
-  print_header();
-  for (int i = 0; code[i]; i++) {
-    gen_defined(code[i]);
-  }
+  codegen();
   return 0;
 }
 
@@ -92,8 +66,3 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-void assert(int condition) {
-  if (!condition) {
-    error("assertion error");
-  }
-}

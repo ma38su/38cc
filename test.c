@@ -1,6 +1,12 @@
 #include <stdio.h>
 
-int main(void) {
-  printf("Hello World!\n");
+int a;
+int b;
+char c;
+
+
+int main() {
+  printf("Hello\n");
   return 0;
 }
+

@@ -99,15 +99,17 @@ struct GVar {
   Type *type;
   char *name;
   int len;
-  int val; // int
-  char *str;
+  int val;   // int
+  char *str; // string
+  int extn;
+  int init;   // initialized 1 or not 0.
 };
 
 struct Function {
   Type *ret_type;
   char *name;
   int len;
-  int plt;
+  int extn;
 };
 
 // global vars
@@ -131,24 +133,16 @@ int sizeof_node(Node* node);
 char *substring(char *str, int len);
 
 char *read_file(char *path);
-Token *tokenize(char *p);
 
 LVar *find_var(Token *tok);
 LVar *find_lvar(Token *tok);
 Type *find_type(Token *tok);
 
-void gen_gvars();
-void gen_defined(Node *node);
-void print_header();
-
+Token *tokenize(char *p);
 void program();
-
-void print_header();
-
-
+void codegen();
 
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
-void assert(int condition);
 
 #endif
