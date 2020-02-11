@@ -6,13 +6,6 @@
 #include "38cc.h"
 #include "vector.h"
 
-Node *new_node(NodeKind kind);
-Node *stmt();
-Node *expr();
-Node *equality();
-Node *mul();
-Node *unary();
-
 Type *consume_type();
 Node *consume_member();
 int sizeof_lvars();
@@ -20,6 +13,15 @@ GVar *find_gvar(Token *tok);
 GVar *find_or_gen_gstr(Token *tok);
 Type *find_type(Token *tok);
 Function *find_function(Token *tok);
+
+Node *new_node(NodeKind kind);
+Node *stmt();
+Node *expr();
+Node *equality();
+Node *mul();
+Node *unary();
+
+int reduce_node(Node* node);
 
 // current token
 Token *token;
@@ -62,6 +64,15 @@ Type *new_array_type(Type* type, int len) {
   ary_type->kind = TY_ARRAY;
   ary_type->to = type;
   return ary_type;
+}
+
+int is_pre_type(Token* tok) {
+  return (tok->len == 4 && memcmp(tok->str, "auto", 4) == 0) ||
+      (tok->len == 6 && memcmp(tok->str, "static", 6) == 0) ||
+      (tok->len == 6 && memcmp(tok->str, "signed", 6) == 0) ||
+      (tok->len == 8 && memcmp(tok->str, "unsigned", 8) == 0) ||
+      (tok->len == 4 && memcmp(tok->str, "long", 4) == 0) ||
+      (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
 }
 
 Function *new_function(char* name, int len, Type* ret_type) {
@@ -354,15 +365,6 @@ Node *consume_struct() {
   }
   expect(";");
   return node;
-}
-
-int is_pre_type(Token* tok) {
-  return (tok->len == 4 && memcmp(tok->str, "auto", 4) == 0) ||
-      (tok->len == 6 && memcmp(tok->str, "static", 6) == 0) ||
-      (tok->len == 6 && memcmp(tok->str, "signed", 6) == 0) ||
-      (tok->len == 8 && memcmp(tok->str, "unsigned", 8) == 0) ||
-      (tok->len == 4 && memcmp(tok->str, "long", 4) == 0) ||
-      (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
 }
 
 Node *consume_member() {
