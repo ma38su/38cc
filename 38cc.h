@@ -28,8 +28,10 @@ typedef enum {
   ND_MOD,     // 20 %
   ND_ASSIGN,  // 21 =
   ND_RETURN,  // 22 return
-  ND_FUNCTION,// 23
-  ND_CALL,    // 24
+  ND_STRUCT,  // 23 struct
+  ND_ENUM,    // 24
+  ND_FUNCTION,// 25
+  ND_CALL,    // 26
 } NodeKind;
 
 typedef enum {
@@ -37,9 +39,9 @@ typedef enum {
   TK_NUM,       // integer number
   TK_CHAR,      // 1 character literal
   TK_STR,       // 1 string literal
-  TK_STRUCT,
-  TK_CONST,
-  TK_RESTRICT,
+  TK_ENUM,      // enum
+  TK_STRUCT,    // struct
+  TK_CONST,     // const
   TK_VA,        // ...
   TK_EXTERN,
   TK_TYPEDEF,
@@ -61,10 +63,19 @@ typedef struct GVar GVar;
 typedef struct Function Function;
 
 struct Type {
+  enum {
+    TY_VOID,
+    TY_PRM,
+    TY_PTR,
+    TY_ARRAY,
+    TY_STRUCT,
+  } kind;
+
   char *name;
   int len;
   int size;
-  Type *ptr_to;
+
+  Type *to; // ptr or array. *char = * -> char
 };
 
 struct Token {
@@ -77,12 +88,14 @@ struct Token {
 
 struct Node {
   NodeKind kind;
+
   Node *lhs;    // left-hand side
   Node *rhs;    // right-hand side
+
   char *ident;  // for function
   Vector *list;
-  int val;      // for ND_NUM or ND_CALL(plt)
-  Type *type;    // for lvar
+  int val;      // for ND_NUM or ND_CALL(extern)
+  Type *type;   // for lvar
   int offset;   // for lvar
 };
 
@@ -113,6 +126,7 @@ struct Function {
 };
 
 // global vars
+extern char *filename;
 extern char *user_input;
 extern Token *token;
 extern Node *code[];
@@ -142,6 +156,7 @@ Token *tokenize(char *p);
 void program();
 void codegen();
 
+void message_at(char *loc, char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void error(char *fmt, ...);
 
