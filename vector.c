@@ -1,5 +1,7 @@
 #include <stdlib.h>
+
 #include "vector.h"
+
 
 Vector *new_vector() {
   Vector* vector = calloc(1, sizeof(Vector));
