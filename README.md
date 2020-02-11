@@ -2,7 +2,7 @@
 
 38cc is a compiler for the C programming language. The compiler supports only limited features.
 
-The compiler supports x86-64 Linux only. It's tested on docker image "compilerbook".
+The compiler supports x86-64 Linux only. It's tested on docker image "ubuntu".
 
 ### Build
 
