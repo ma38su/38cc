@@ -1,5 +1,5 @@
 CFLAGS=-Wall -std=c11 -g -static
-SRCS=main.c main.c token.c parser.c codegen.c reader.c debug.c vector.c
+SRCS=main.c token.c parser.c codegen.c reader.c debug.c vector.c
 OBJS=main.o token.o parser.o codegen.o reader.o debug.o vector.o
 #SRCS=$(wildcard *.c)
 #OBJS=$(SRCS:.c=.o)
@@ -22,6 +22,10 @@ test: 38cc test.c
 
 shtest: 38cc test.c
 	./_test.sh
+
+maptest:
+	gcc map_test.c map.c -o map_test
+	./map_test
 
 selfhost: 38cc vector.c
 	cat vector.c | cpp > .vector.c
