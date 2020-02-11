@@ -8,9 +8,13 @@
 
 Node *new_node(NodeKind kind);
 Node *stmt();
-Node *mul();
 Node *expr();
+Node *equality();
+Node *mul();
+Node *unary();
+
 Type *consume_type();
+Node *consume_member();
 int sizeof_lvars();
 GVar *find_gvar(Token *tok);
 GVar *find_or_gen_gstr(Token *tok);
@@ -48,14 +52,16 @@ Type *new_type(char* name, int len, int size) {
 
 Type *new_ptr_type(Type* type) {
   Type *ptr_type = new_type("*", 1, 8);
-  ptr_type->ptr_to = type;
+  ptr_type->kind = TY_PTR;
+  ptr_type->to = type;
   return ptr_type;
 }
 
 Type *new_array_type(Type* type, int len) {
-  Type *array_type = new_type("[]", 2, type->size * len);
-  array_type->ptr_to = type;
-  return array_type;
+  Type *ary_type = new_type("[]", 2, type->size * len);
+  ary_type->kind = TY_ARRAY;
+  ary_type->to = type;
+  return ary_type;
 }
 
 Function *new_function(char* name, int len, Type* ret_type) {
@@ -71,11 +77,19 @@ void init_types() {
   functions = calloc(1, sizeof(Vector));
 
   char_type = new_type("char", 4, 1);
+  char_type->kind = TY_PRM;
+
   short_type = new_type("short", 5, 2);
+  short_type->kind = TY_PRM;
+
   int_type = new_type("int", 3, 4);
+  int_type->kind = TY_PRM;
+
   long_type = new_type("long", 4, 8);
+  long_type->kind = TY_PRM;
 
   void_type = new_type("void", 4, 8);
+  void_type->kind = TY_VOID;
 
   ptr_char_type = new_ptr_type(char_type);
 
@@ -99,7 +113,7 @@ int type_is_ptr(Type *type) {
 }
 
 bool type_is_func(Type *type) {
-  return type->ptr_to && !type_is_ptr_or_array(type);
+  return type->to && !type_is_ptr_or_array(type);
 }
 
 Node *new_node(NodeKind kind) {
@@ -115,21 +129,21 @@ Node *new_node_deref(Node *lhs) {
   if (!lhs->type) {
     error("no type at new_node_deref %d", lhs->kind);
   }
-  if (!lhs->type->ptr_to) {
+  if (!lhs->type->to) {
     error("type is not ptr at new_node_deref");
   }
   Node *node = new_node(ND_DEREF);
   node->lhs = lhs;
-  node->type = lhs->type->ptr_to;
+  node->type = lhs->type->to;
   return node;
 }
 
 Type *to_type(Type *lhs_type, Type *rhs_type) {
   if (type_is_func(lhs_type)) {
-    lhs_type = lhs_type->ptr_to;
+    lhs_type = lhs_type->to;
   }
   if (type_is_func(rhs_type)) {
-    rhs_type = rhs_type->ptr_to;
+    rhs_type = rhs_type->to;
   }
 
   int lhs_ptr = type_is_ptr_or_array(lhs_type);
@@ -198,6 +212,7 @@ bool token_is_reserved(Token *tok, char *op) {
          memcmp(op, tok->str, tok->len) == 0;
 }
 
+// for only reserved
 bool consume(char *op) {
   if (!token_is_reserved(token, op)) {
     return false;
@@ -208,11 +223,10 @@ bool consume(char *op) {
 
 // read reserved symbol
 void expect(char *op) {
-  if (!token_is_reserved(token, op)) {
+  if (!consume(op)) {
     error_at(token->str, "token is '%s' not '%s'. tk-kind: %d",
         substring(token->str, token->len), op, token->kind);
   }
-  token = token->next;
 }
 
 bool consume_kind(TokenKind kind) {
@@ -230,6 +244,37 @@ Token *consume_ident() {
   Token *tmp = token;
   token = token->next;
   return tmp;
+}
+
+Type *consume_type() {
+  // skip const
+  consume_kind(TK_CONST);
+
+  if (token->kind != TK_IDENT) {
+    return NULL;
+  }
+
+  Type *type;
+  char *p0 = token->str;
+  for (;;) {
+    Type *type1 = find_type(token);
+    if (type1 || is_pre_type(token)) {
+      type = type1;
+      token = token->next;
+      continue;
+    }
+    break;
+  }
+  if (p0 == token->str) {
+    return NULL;
+  }
+  if (!type) {
+    error_at(token->str, "type is not set");
+  }
+  while (consume("*")) {
+    type = new_ptr_type(type);
+  }
+  return type;
 }
 
 Node *consume_char() {
@@ -256,6 +301,61 @@ Node *consume_str() {
   return node;
 }
 
+Node *consume_enum() {
+  if (!consume_kind(TK_ENUM)) {
+    return NULL;
+  }
+
+  Token *tag = consume_ident();
+
+  Vector *members = new_vector();
+  expect("{");
+  while (!consume("}")) {
+    Token *member = consume_ident();
+    vec_add(members, member);
+    if (!consume(",")) {
+      expect("}");
+      break;
+    }
+  }
+  Token *ident = consume_ident();
+
+  expect(";");
+  
+  Node *node = new_node(ND_ENUM);
+  if (ident) {
+    node->ident = substring(ident->str, ident->len);
+  }
+  
+  return node;
+}
+
+Node *consume_struct() {
+  if (!consume_kind(TK_STRUCT)) {
+    return NULL;
+  }
+
+  Node *node = new_node(ND_STRUCT);
+
+  Token *tag = consume_ident();
+
+  if (consume("{")) {
+    Vector *members = new_vector();
+    while (!consume("}")) {
+      Node *mem = consume_member();
+    }
+    node->list = members;
+  }
+
+  consume("*");
+  Token *ident = consume_ident();
+  if (ident) {
+    node->ident = substring(ident->str, ident->len);
+  }
+  expect(";");
+  return node;
+}
+
 int is_pre_type(Token* tok) {
   return (tok->len == 4 && memcmp(tok->str, "auto", 4) == 0) ||
       (tok->len == 6 && memcmp(tok->str, "static", 6) == 0) ||
@@ -265,36 +365,33 @@ int is_pre_type(Token* tok) {
       (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
 }
 
-Type *consume_type() {
-  if (consume_kind(TK_CONST)) {
-    // skip
+Node *consume_member() {
+  Node *node;
+  node = consume_enum();
+  if (node) {
+    return node;
   }
 
-  if (token->kind != TK_IDENT) {
-    return NULL;
+  node = consume_struct();
+  if (node) {
+    return node;
   }
 
-  Type *type;
-  char *p0 = token->str;
-  for (;;) {
-    Type *type1 = find_type(token);
-    if (type1 || is_pre_type(token)) {
-      type = type1;
-      token = token->next;
-      continue;
-    }
-    break;
+  Type *type = consume_type();
+  Token *member = consume_ident();
+
+  int new_size;
+  if (consume("[")) {
+    int array_len = reduce_node(equality());
+    expect("]");
+
+    new_size = type->size * array_len;
+    type = new_array_type(type, array_len);
+    new_size = type->size;
   }
-  if (p0 == token->str) {
-    return NULL;
-  }
-  if (!type) {
-    error_at(token->str, "# type is not set");
-  }
-  while (consume("*")) {
-    type = new_ptr_type(type);
-  }
-  return type;
+
+  expect(";");
+  return NULL;
 }
 
 // read reserved integer number
@@ -448,12 +545,8 @@ Vector *defined_extern_args() {
             "illegal extern arg type (size: %d)", args->size);
       }
 
-      if (consume_kind(TK_RESTRICT)) {
-        // skip __restrict
-      }
-      if (consume_kind(TK_CONST)) {
-        // skip const
-      }
+      // skip const
+      consume_kind(TK_CONST);
 
       Token *tok = consume_ident();
       // some arg var names are ommited.
@@ -478,14 +571,31 @@ Vector *defined_extern_args() {
   return args;
 }
 
-int sizeof_node(Node* node) {
-  if (node->kind == ND_NUM || node->kind == ND_ADDR || node->kind == ND_DEREF) {
-    return node->type->size;
-  } else if (node->kind == ND_LVAR) {
-    return node->type->size;
-  } else {
-    return sizeof_node(node->lhs);
+Node *consume_sizeof() {
+  if (!consume_kind(TK_SIZEOF)) {
+    return NULL;
   }
+
+  expect("(");
+  Type *type = consume_type();
+  if (type) {
+    expect(")");
+    return new_node_num(type->size);
+  }
+
+  Node *node = equality();
+  expect(")");
+  return new_node_num(sizeof_node(node));
+}
+
+int sizeof_node(Node* node) {
+  if (node->kind == ND_NUM
+      || node->kind == ND_ADDR
+      || node->kind == ND_DEREF
+      || node->kind == ND_LVAR) {
+    return node->type->size;
+  }
+  return sizeof_node(node->lhs);
 }
 
 Node *primary() {
@@ -571,10 +681,12 @@ Node *unary() {
     node->type = new_ptr_type(node->lhs->type);
     return node;
   }
-  if (consume_kind(TK_SIZEOF)) {
-    Node *node = unary();
-    return new_node_num(sizeof_node(node));
+
+  Node *node = consume_sizeof();
+  if (node) {
+    return node;
   }
+
   return primary();
 }
 
@@ -753,18 +865,45 @@ int sizeof_args(Vector *args) {
   return size;
 }
 
-Node *reduce_node(Node* node) {
-  if (node->kind != ND_GVAR && node->kind != ND_STR && node->kind != ND_NUM) {
+int reduce_node(Node* node) {
+  if (node->kind == ND_ADD) {
+    return reduce_node(node->lhs) + reduce_node(node->rhs);
+  }
+  if (node->kind == ND_SUB) {
+    return reduce_node(node->lhs) - reduce_node(node->rhs);
+  }
+  if (node->kind == ND_MUL) {
+    return reduce_node(node->lhs) * reduce_node(node->rhs);
+  }
+  if (node->kind == ND_DIV) {
+    return reduce_node(node->lhs) / reduce_node(node->rhs);
+  }
+  if (node->kind == ND_MOD) {
+    return reduce_node(node->lhs) % reduce_node(node->rhs);
+  }
+  if (node->kind != ND_NUM) {
     error_at(token->str, "not supported %d", node->kind);
   }
-  return node;
+  return node->val;
 }
 
 Node *global() {
+
   if (consume_kind(TK_TYPEDEF)) {
+    /*
+    Node *node_enum = consume_enum();
+    if (node_enum) {
+      return NULL;
+    }
+
+    Node *node_strt = consume_struct();
+    if (node_strt) {
+      return NULL;
+    }
+    */
+
     int brace = 0;
     Token *tok;
-
     for (;;) {
       if (brace == 0 && consume(";")) {
         break;
@@ -780,6 +919,7 @@ Node *global() {
       token = token->next;
     }
     if (tok->kind == TK_IDENT) {
+      // TODO to support type alias
       Type *def_type = new_type(tok->str, tok->len, 8);
       vec_add(types, def_type);
     }
@@ -790,12 +930,26 @@ Node *global() {
   if (consume_kind(TK_EXTERN)) {
     is_extern = 1;
   }
+
+  Node *node_enum = consume_enum();
+  if (node_enum) {
+    return NULL;
+  }
+
+  Node *node_strt = consume_struct();
+  if (node_strt) {
+    return NULL;
+  }
+  /*
   if (consume_kind(TK_STRUCT)) {
-    if (!find_type(token)) {
-      Type *struct_type = new_type(token->str, token->len, 8);
-      vec_add(types, struct_type);
+    Token *tag = consume_ident();
+    if (tag) {
+      if (!find_type(tag)) {
+        Type *struct_type = new_type(tag->str, tag->len, 8);
+        struct_type->kind = TY_STRUCT;
+        vec_add(types, struct_type);
+      }
     }
-    token = token->next;
 
     int brace = 0;
     for (;;) {
@@ -811,14 +965,14 @@ Node *global() {
       }
       token = token->next;
     }
+    //error_at(token->str, "# tk-struct\n");
     return NULL;
   }
+  */
 
   Type *type = consume_type();
   if (!type) {
     if (is_extern) {
-      printf("# type is not found: %s\n",
-          substring(token->str, token->len));
       while (!consume(";")) {
         token = token->next;
       }
@@ -827,8 +981,9 @@ Node *global() {
     error_at(token->str, "type is not found");
   }
 
-  if (consume_kind(TK_CONST)) {
-  }
+  // skip const
+  consume_kind(TK_CONST);
+
   Token *tok = consume_ident();
   if (!tok) {
     error_at(token->str, "illegal defined function ident");
@@ -912,21 +1067,20 @@ Node *global() {
     node->ident = substring(tok->str, tok->len);
     node->type = gvar->type;
     if (consume("=")) {
-      if (type_is_array(type) && type->ptr_to == char_type) {
+      if (type_is_array(type) && type->to == char_type) {
         if (token->kind != TK_STR) {
           error("expected string literal");
         }
         gvar->str = substring(token->str, token->len);
         token = token->next;
-      } else if (type_is_ptr(type) && type->ptr_to == char_type) {
-        Node* subnode = reduce_node(equality());
+      } else if (type_is_ptr(type) && type->to == char_type) {
+        Node* subnode = equality();
         if (subnode->kind != ND_GVAR) {
           error("expected gvar (string literal)");
         }
         gvar->str = subnode->ident;
       } else {
-        Node* reduced = reduce_node(equality());
-        gvar->val = reduced->val;
+        gvar->val = reduce_node(equality());
       }
       gvar->init = 1;
     } else {

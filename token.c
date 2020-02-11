@@ -77,6 +77,23 @@ Token *tokenize(char *p) {
       p++;
       continue;
     }
+    // skip __extension__
+    if (memcmp(p, "__extension__", 13) == 0) {
+      p += 13;
+      continue;
+    }
+    // skip __restrict
+    if (memcmp(p, "__restrict", 10) == 0) {
+      p += 10;
+      continue;
+    }
+    // skip const
+    if (memcmp(p, "const", 5) == 0) {
+      cur = new_token(TK_CONST, cur, p);
+      cur->len = 5;
+      p += 5;
+      continue;
+    }
 
     // character literal
     if (*p == '\'') {
@@ -104,34 +121,10 @@ Token *tokenize(char *p) {
       p++;
       continue;
     }
-
     if (memcmp(p, "enum", 4) == 0) {
+      cur = new_token(TK_ENUM, cur, p);
+      cur->len = 4;
       p += 4;
-      int brace = 0;
-      for (;;) {
-        if (brace == 0 && *p == ';') {
-          break;
-        }
-        if (*p == '{') {
-          brace++;
-        } else if (*p == '}') {
-          brace--;
-        }
-        p++;
-      }
-      p++;
-      continue;
-    }
-    if (memcmp(p, "__restrict", 10) == 0) {
-      cur = new_token(TK_RESTRICT, cur, p);
-      cur->len = 10;
-      p += 10;
-      continue;
-    }
-    if (memcmp(p, "const", 5) == 0) {
-      cur = new_token(TK_CONST, cur, p);
-      cur->len = 5;
-      p += 5;
       continue;
     }
     if (memcmp(p, "struct", 6) == 0) {
@@ -152,7 +145,6 @@ Token *tokenize(char *p) {
       p += 7;
       continue;
     }
-
     if (memcmp(p, "...", 3) == 0) {
       cur = new_token(TK_VA, cur, p);
       cur->len = 3;

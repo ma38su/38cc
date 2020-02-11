@@ -261,9 +261,9 @@ bool gen_gvar(Node *node) {
     printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
   } else if (node->type == long_type) {
     printf("  mov rax, %s[rip]\n", node->ident);
-  } else if (type_is_array(node->type) && node->type->ptr_to == char_type) {
+  } else if (type_is_array(node->type) && node->type->to == char_type) {
     printf("  lea rax, %s[rip]\n", node->ident);
-  } else if (type_is_ptr(node->type) && node->type->ptr_to == char_type) {
+  } else if (type_is_ptr(node->type) && node->type->to == char_type) {
     printf("  mov rax, qword ptr %s[rip]\n", node->ident);
   } else {
     printf("  # not support gvar %s, type: %s\n", node->ident, node->type->name);
@@ -455,7 +455,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
-    gen_deref(node->lhs->type->ptr_to->size);
+    gen_deref(node->lhs->type->to->size);
     return true;
   }
 
