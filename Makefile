@@ -4,6 +4,8 @@ OBJS=main.o token.o parser.o codegen.o reader.o debug.o vector.o
 #SRCS=$(wildcard *.c)
 #OBJS=$(SRCS:.c=.o)
 
+FILE = test
+
 38cc: $(OBJS)
 	$(CC) -g -o 38cc $(OBJS) $(LDFLAGS)
 
@@ -35,8 +37,19 @@ selfhost: 38cc vector.c
 debug: 38cc
 	./_debug.sh
 
+asm:
+	./38cc tmp/tmp.s > tmp/38cc.s
+	gcc -o tmp/38cc_exe tmp/38cc.s
+	./tmp/38cc_exe
+
 clean:
 	rm -f 38cc *.s *.o *~ tmp/* .*.c
+
+gcc:
+	gcc -S -masm=intel ${FILE}.c -o ${FILE}.s
+	cat ${FILE}.s
+	gcc ${FILE}.s -o ${FILE}
+	./${FILE}
 
 .PHONY: test clean
 
