@@ -49,18 +49,27 @@ void test3() {
   }
 }
 
+void test4() {
+  int i;
+  for (i = 0; i < 10; i = i + 1) {
+    //int j = i + 1;
+    printf("1 + %d = %d\n", i, i + 1);
+  }
+}
+
+void test5() {
+  if (fib(10) == 55) {
+    printf("OK\n");
+  } else {
+    printf("NG\n");
+  }
+}
 
 int main() {
   test1();
   test2();
   test3();
-
-  int i;
-  for (i = 0; i < 10; i = i + 1) {
-    int j = i + 1;
-    printf("1 + %d = %d\n", i, j);
-    //printf("1 + %d = %d\n", i, i + 1);
-  }
+  test4();
 
   return 0;
 }
