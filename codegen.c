@@ -148,15 +148,15 @@ bool gen_while(Node *node) {
   if (node->kind != ND_WHILE) {
     error("not while");
   }
-  printf(".Lbegin%03d:\n", label_id);
+  int lid = label_id++;
+  printf(".Lbegin%03d:\n", lid);
   gen(node->lhs);
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
-  printf("  je  .Lend%03d\n", label_id);
+  printf("  je  .Lend%03d\n", lid);
   gen(node->rhs);
-  printf("  jmp .Lbegin%03d\n", label_id);
-  printf(".Lend%03d:\n", label_id);
-  label_id++;
+  printf("  jmp .Lbegin%03d\n", lid);
+  printf(".Lend%03d:\n", lid);
   return false;
 }
 
@@ -177,19 +177,19 @@ bool gen_if(Node *node) {
   gen(node->lhs);
   printf("  pop rax # if\n");
   printf("  cmp rax, 0\n");
+  int lid = label_id++;
   if (node->rhs->kind != ND_ELSE) {
-    printf("  je  .Lend%03d\n", label_id);
+    printf("  je  .Lend%03d\n", lid);
     gen(node->rhs);
-    printf(".Lend%03d:\n", label_id);
+    printf(".Lend%03d:\n", lid);
   } else {
-    printf("  je  .Lelse%03d\n", label_id);
+    printf("  je  .Lelse%03d\n", lid);
     gen(node->rhs->lhs);
-    printf("  jmp .Lend%03d\n", label_id);
-    printf(".Lelse%03d:\n", label_id);
+    printf("  jmp .Lend%03d\n", lid);
+    printf(".Lelse%03d:\n", lid);
     gen(node->rhs->rhs);
-    printf(".Lend%03d:\n", label_id);
+    printf(".Lend%03d:\n", lid);
   }
-  label_id++;
   return false;
 }
 

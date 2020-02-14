@@ -371,13 +371,24 @@ Node *consume_struct() {
     }
     node->list = members;
   }
+  return node;
+}
 
-  consume("*");
-  Token *ident = consume_ident();
-  if (ident) {
-    node->ident = substring(ident->str, ident->len);
+Node *consume_union() {
+  if (!consume_kind(TK_UNION)) {
+    return NULL;
   }
-  expect(";");
+
+  Node *node = new_node(ND_UNION);
+  Token *tag = consume_ident();
+  if (consume("{")) {
+    Vector *members = new_vector();
+    while (!consume("}")) {
+      Node *mem = consume_member();
+      vec_add(members, mem);
+    }
+    node->list = members;
+  }
   return node;
 }
 
@@ -385,12 +396,26 @@ Node *consume_member() {
   Node *node;
   node = consume_enum();
   if (node) {
+    Token *ident = consume_ident();
+    expect(";");
+    return node;
+  }
+
+  node = consume_union();
+  if (node) {
+    Token *ident = consume_ident();
     expect(";");
     return node;
   }
 
   node = consume_struct();
   if (node) {
+    consume("*");
+    Token *ident = consume_ident();
+    if (ident) {
+      node->ident = substring(ident->str, ident->len);
+    }
+    expect(";");
     return node;
   }
 
@@ -943,12 +968,20 @@ Node *global() {
       return NULL;
     }
 
-    /*
     Node *node_strt = consume_struct();
     if (node_strt) {
+      Token *ident = consume_ident();
+      if (!ident) {
+        error_at(token->str, "Illegal typedef enum");
+      }
+      if (ident->kind == TK_IDENT) {
+        // TODO to support type alias
+        Type *enum_type = new_type(ident->str, ident->len, 8);
+        vec_add(types, enum_type);
+      }
+      expect(";");
       return NULL;
     }
-    */
 
     int brace = 0;
     Token *tok;
@@ -981,12 +1014,20 @@ Node *global() {
 
   Node *node_enum = consume_enum();
   if (node_enum) {
+    if (is_extern) {
+      Token *ident = consume_ident();
+    }
     expect(";");
     return NULL;
   }
 
   Node *node_strt = consume_struct();
   if (node_strt) {
+    if (is_extern) {
+      consume("*");
+      Token *ident = consume_ident();
+    }
+    expect(";");
     return NULL;
   }
 

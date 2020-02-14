@@ -28,10 +28,11 @@ typedef enum {
   ND_MOD,     // 20 %
   ND_ASSIGN,  // 21 =
   ND_RETURN,  // 22 return
-  ND_STRUCT,  // 23 struct
-  ND_ENUM,    // 24
-  ND_FUNCTION,// 25
-  ND_CALL,    // 26
+  ND_ENUM,    // 23
+  ND_STRUCT,  // 24 struct
+  ND_UNION,   // 25 union
+  ND_FUNCTION,// 26
+  ND_CALL,    // 27
 } NodeKind;
 
 typedef enum {
@@ -41,6 +42,7 @@ typedef enum {
   TK_STR,       // 1 string literal
   TK_ENUM,      // enum
   TK_STRUCT,    // struct
+  TK_UNION,     // union
   TK_CONST,     // const
   TK_VA,        // ...
   TK_EXTERN,

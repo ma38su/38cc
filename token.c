@@ -133,6 +133,12 @@ Token *tokenize(char *p) {
       p += 6;
       continue;
     }
+    if (memcmp(p, "union", 5) == 0) {
+      cur = new_token(TK_UNION, cur, p);
+      cur->len = 5;
+      p += 5;
+      continue;
+    }
     if (memcmp(p, "extern", 6) == 0) {
       cur = new_token(TK_EXTERN, cur, p);
       cur->len = 6;
