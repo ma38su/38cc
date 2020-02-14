@@ -753,7 +753,17 @@ Node *equality() {
 
 Node *assign() {
   Node *node = equality();
-  if (consume("=")) {
+  if (consume("+=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, assign()));
+  } else if (consume("-=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, assign()));
+  } else if (consume("*=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_MUL, node, assign()));
+  } else if (consume("/=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_DIV, node, assign()));
+  } else if (consume("%=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_MOD, node, assign()));
+  } else if (consume("=")) {
     node = new_node_lr(ND_ASSIGN, node, assign());
   }
   return node;
