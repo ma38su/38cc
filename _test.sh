@@ -503,6 +503,16 @@ int main() {
 }
 '
 
+try 0 '
+#include <stdio.h>
+
+int main() {
+  int i = 1;
+  printf("1 + 10 = %d", i+10);
+  return 0;
+}
+'
+
 exit
 
 try $((0xff - 4 + 1)) 'int main() {return -4;}'

@@ -668,10 +668,12 @@ Node *primary() {
 }
 
 Node *unary() {
+  // pre ++
   if (consume("++")) {
     Node *node = primary();
     return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_node_num(1)));
   }
+  // pre -- 
   if (consume("--")) {
     Node *node = primary();
     return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_node_num(1)));

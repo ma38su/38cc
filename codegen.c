@@ -97,14 +97,14 @@ void gen_function_call(Node *node) {
     printf("  # set args %d to call %s\n",
         node->list->size, node->ident);
 
-    int args = 0;
     for (int i = 0; i < node->list->size; ++i) {
-      char *r = get_args_register(8, args);
-      printf("  # set arg%d to %s\n", args, r);
+      printf("  # extract arg%d to %s\n", i);
       gen((Node *) vec_get(node->list, i));
+    }
+    for (int i = node->list->size - 1; i >= 0; --i) {
+      char *r = get_args_register(8, i);
+      printf("  # set arg%d to %s\n", i, r);
       printf("  pop %s\n", r);
-
-      ++args;
     }
   }
   int padding = 0;
