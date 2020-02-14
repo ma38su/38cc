@@ -30,12 +30,12 @@ try() {
     echo "\"$input\" => $actual is not expected. $expected is expected."
 
 
-    gcc -S -masm=intel -fno-pie tmp/tmp.c -o tmp/gcc.s
+    gcc -S -masm=intel tmp/tmp.c -o tmp/gcc.s
     echo "--- gcc ---"
     cat -n tmp/gcc.s
     echo ""
   
-    gcc -no-pie -o tmp/exe_gcc tmp/gcc.s
+    gcc -o tmp/exe_gcc tmp/gcc.s
     ./tmp/exe_gcc
     gcc_ret="$?"
     echo "gcc output is \"$gcc_ret\". $expected is expected."
@@ -45,42 +45,12 @@ try() {
   fi
 }
 
-
-try 15 '
-int add(int a, int b) {
-  return a + b;
-}
-int main() {
-  return add(9, 6);
-}
-'
-
 try 1 '
 #include <stdio.h>
 
 int main() {
-  puts("Hello");
+  int i = 1;
+  printf("1 + 10 = %d\n", i + 10);
   return 1;
-}
-' 
-
-try 29 '
-int a = 11;
-char b = 8;
-short c = 10;
-int main() {
-  return a + b + c;
-}
-'
-
-exit
-
-try 1 '
-int main() {
-  char *hello = "hello";
-  //char h = '\''h'\'';
-  //char a = hello[1];
-  //return a == h;
-  return hello[0];
 }
 '

@@ -52,7 +52,6 @@ void test3() {
 void test4() {
   int i;
   for (i = 0; i < 10; i = i + 1) {
-    //int j = i + 1;
     printf("1 + %d = %d\n", i, i + 1);
   }
 }
