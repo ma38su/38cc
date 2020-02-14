@@ -38,6 +38,7 @@ Type *short_type;
 Type *int_type;
 Type *long_type;
 
+Type *enum_type; // TODO
 Type *void_type;
 Type *ptr_char_type;
 
@@ -98,6 +99,8 @@ void init_types() {
 
   long_type = new_type("long", 4, 8);
   long_type->kind = TY_PRM;
+
+  enum_type = new_type("enum", 4, 8);
 
   void_type = new_type("void", 4, 8);
   void_type->kind = TY_VOID;
@@ -319,23 +322,33 @@ Node *consume_enum() {
 
   Token *tag = consume_ident();
 
-  Vector *members = new_vector();
   expect("{");
   while (!consume("}")) {
-    Token *member = consume_ident();
-    vec_add(members, member);
+    Token *tok = consume_ident();
+
+    GVar *gvar = find_gvar(tok);
+    if (gvar) {
+      error_at(tok->str, "duplicated defined gvar");
+    }
+    gvar = calloc(1, sizeof(GVar));
+    gvar->name = substring(tok->str, tok->len);
+    gvar->len = tok->len;
+    gvar->extn = 0;
+    gvar->type = enum_type;
+
+    gvar->next = globals;
+    globals = gvar;
+    printf("# enum %s\n", gvar->name);
+
     if (!consume(",")) {
       expect("}");
       break;
     }
   }
-  Token *ident = consume_ident();
-
-  expect(";");
   
   Node *node = new_node(ND_ENUM);
-  if (ident) {
-    node->ident = substring(ident->str, ident->len);
+  if (tag) {
+    node->ident = substring(tag->str, tag->len);
   }
   
   return node;
@@ -354,6 +367,7 @@ Node *consume_struct() {
     Vector *members = new_vector();
     while (!consume("}")) {
       Node *mem = consume_member();
+      vec_add(members, mem);
     }
     node->list = members;
   }
@@ -371,6 +385,7 @@ Node *consume_member() {
   Node *node;
   node = consume_enum();
   if (node) {
+    expect(";");
     return node;
   }
 
@@ -912,12 +927,23 @@ int reduce_node(Node* node) {
 Node *global() {
 
   if (consume_kind(TK_TYPEDEF)) {
-    /*
+
     Node *node_enum = consume_enum();
     if (node_enum) {
+      Token *ident = consume_ident();
+      if (!ident) {
+        error_at(token->str, "Illegal typedef enum");
+      }
+      if (ident->kind == TK_IDENT) {
+        // TODO to support type alias
+        Type *enum_type = new_type(ident->str, ident->len, 8);
+        vec_add(types, enum_type);
+      }
+      expect(";");
       return NULL;
     }
 
+    /*
     Node *node_strt = consume_struct();
     if (node_strt) {
       return NULL;
@@ -955,6 +981,7 @@ Node *global() {
 
   Node *node_enum = consume_enum();
   if (node_enum) {
+    expect(";");
     return NULL;
   }
 

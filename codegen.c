@@ -98,7 +98,7 @@ void gen_function_call(Node *node) {
         node->list->size, node->ident);
 
     for (int i = 0; i < node->list->size; ++i) {
-      printf("  # extract arg%d to %s\n", i);
+      printf("  # push arg%d to stack\n", i);
       gen((Node *) vec_get(node->list, i));
     }
     for (int i = node->list->size - 1; i >= 0; --i) {
