@@ -117,7 +117,7 @@ try 10 '
 int main() {
   int i;
   i = 1;
-  while (i < 10) i = i + 1;
+  while (i < 10) i += 1;
   return i;
 }'
 
@@ -131,7 +131,7 @@ int main() {
 try 5 '
 int main() {
   int i;
-  for (i = 5; i < 10; i = i + 1) return i;
+  for (i = 5; i < 10; ++i) return i;
 }'
 
 try 45 '
@@ -142,6 +142,36 @@ int main() {
   for (i = 1; i < 10; i = i + 1)
     sum = sum + i;
   return sum;
+}
+'
+
+try 4 '
+int main() {
+  int i = 3;
+  return ++i;
+}
+'
+
+try 4 '
+int main() {
+  int i = 3;
+  ++i;
+  return i;
+}
+'
+
+try 4 '
+int main() {
+  int i = 5;
+  --i;
+  return i;
+}
+'
+
+try 4 '
+int main() {
+  int i = 5;
+  return --i;
 }
 '
 

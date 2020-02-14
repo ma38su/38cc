@@ -668,6 +668,14 @@ Node *primary() {
 }
 
 Node *unary() {
+  if (consume("++")) {
+    Node *node = primary();
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_node_num(1)));
+  }
+  if (consume("--")) {
+    Node *node = primary();
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_node_num(1)));
+  }
   if (consume("-")) {
     return new_node_lr(ND_SUB, new_node_num(0), primary());
   }
@@ -952,35 +960,6 @@ Node *global() {
   if (node_strt) {
     return NULL;
   }
-  /*
-  if (consume_kind(TK_STRUCT)) {
-    Token *tag = consume_ident();
-    if (tag) {
-      if (!find_type(tag)) {
-        Type *struct_type = new_type(tag->str, tag->len, 8);
-        struct_type->kind = TY_STRUCT;
-        vec_add(types, struct_type);
-      }
-    }
-
-    int brace = 0;
-    for (;;) {
-      if (brace == 0 && consume(";")) {
-        break;
-      }
-      if (consume("{")) {
-        brace++;
-        continue;
-      } else if (consume("}")) {
-        brace--;
-        continue;
-      }
-      token = token->next;
-    }
-    //error_at(token->str, "# tk-struct\n");
-    return NULL;
-  }
-  */
 
   Type *type = consume_type();
   if (!type) {
