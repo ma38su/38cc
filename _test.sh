@@ -61,10 +61,15 @@ int main() {
 try 5 'int main() {return 5; return 8;}'
 
 try 13 'int main() {return 2 + 11; return 3 + 21;}'
+
 try 9 'int main() {if (1) return 9; return 7;}'
+
 try 13 'int main() {if (0) return 11; return 13;}'
+
 try 5 'int main() {if (0) return 3; else return 5;}'
+
 try 3 'int main() {if (1) return 3; else return 5;}'
+
 try 8 '
 int main() {
   int i;
@@ -72,6 +77,42 @@ int main() {
   i = i + 5;
   return i;
 }'
+
+try 1 '
+int main() {
+  int i = 0;
+  i += 1;
+  return i;
+}'
+
+try 4 '
+int main() {
+  int i = 5;
+  i -= 1;
+  return i;
+}'
+
+try 65 '
+int main() {
+  int i = 5;
+  i *= 13;
+  return i;
+}'
+
+try 3 '
+int main() {
+  int i = 12;
+  i /= 4;
+  return i;
+}'
+
+try 3 '
+int main() {
+  int i = 21;
+  i /= 6;
+  return i;
+}'
+
 try 10 '
 int main() {
   int i;
@@ -79,17 +120,20 @@ int main() {
   while (i < 10) i = i + 1;
   return i;
 }'
+
 try 1 '
 int main() {
   int i;
   i = 1;
   while (i < 10) return i;
 }'
+
 try 5 '
 int main() {
   int i;
   for (i = 5; i < 10; i = i + 1) return i;
 }'
+
 try 45 '
 int main() {
   int sum;
