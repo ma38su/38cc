@@ -1,5 +1,11 @@
 #include <stdio.h>
 
+typedef enum {
+  MAME_A,
+  MAME_B,
+  MAME_C,
+} Mame;
+
 int a;
 int b;
 char c;
@@ -64,11 +70,26 @@ void test5() {
   }
 }
 
+void test6() {
+  Mame a = MAME_A;
+  Mame b = MAME_B;
+  Mame c = MAME_A;
+  if (a == b) {
+    printf("NG\n");
+  } else if (a == c) {
+    printf("OK\n");
+  } else {
+    printf("NG\n");
+  }
+}
+
 int main() {
   test1();
   test2();
   test3();
   test4();
+  test5();
+  test6();
 
   return 0;
 }
