@@ -297,7 +297,7 @@ void gen_defined_function(Node *node) {
   if (node->list) {
     int index = node->list->size;
 
-    for (int i = 0; i < node->list->size; ++i) {
+    for (int i = node->list->size - 1; i >= 0; --i) {
       Node *arg = (Node *) vec_get(node->list, i);
       printf("  # extract arg \"%s\"\n", arg->ident);
       gen_addr(arg);

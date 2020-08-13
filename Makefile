@@ -15,12 +15,27 @@ test: 38cc test.c
 	ulimit -c unlimited
 	cpp test.c -o .test.c
 	./38cc .test.c > test.s
-	cat .test.c
+	#cat .test.c
+	#cat test.s
+	$(CC) test.s -o test
+	./test
+	#$(CC) -S -masm=intel .test.c -o gcc_test.s
+	#cat gcc_test.s
+
+test-s: test.s
+	$(CC) test.s -o test
+	./test
+
+test-debug: 38cc test.c
+	ulimit -c unlimited
+	cpp test.c -o .test.c
+	./38cc .test.c > test.s
+	#cat .test.c
+	#$(CC) -S -masm=intel .test.c -o gcc_test.s
+	#cat gcc_test.s
 	cat test.s
 	$(CC) test.s -o test
 	./test
-	$(CC) -S -masm=intel .test.c -o gcc_test.s
-	cat gcc_test.s
 
 shtest: 38cc test.c
 	./_test.sh
