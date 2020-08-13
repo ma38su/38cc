@@ -297,7 +297,7 @@ Node *consume_char() {
   }
   Node *node = new_node(ND_NUM);
   node->type = char_type;
-  node->val = *token->str;
+  node->val = token->val;
   token = token->next;
   return node;
 }

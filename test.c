@@ -1,21 +1,21 @@
 #include <stdio.h>
 
-/*
 int strcmp(char* m1, char* m2) {
   int i = 0;
   while (1) {
-    if (m1[i] == m2[i]) {
-      if (m1[i] == '\0') {
-        return 1;
-      }
-      i++;
-      continue;
+    if (*m1 != *m2) {
+      return 0;
     }
-    return 0;
+
+    if (*m1 == '\0') {
+      return 1;
+    }
+    m1 += 1;
+    m2 += 1;
   }
 }
-*/
 //#include <string.h>
+
 
 void assert(char* name, int ret) {
   if (ret) {
@@ -33,15 +33,20 @@ void assertInt(char *name, int expect, int actual) {
   }
 }
 
+void assertChar(char *name, char expect, char actual) {
+  if (actual == expect) {
+    printf("%s: OK, expect: '%c', actual: '%c'\n", name, expect, actual);
+  } else {
+    printf("%s: NG, expect: '%c', actual: '%c'\n", name, expect, actual);
+  }
+}
+
 void assertStr(char *name, char *expect, char *actual) {
-  puts("Unimplemented");
-  /*
   if (strcmp(actual, expect) == 0) {
     printf("%s: OK, expect: %s, actual: %s\n", name, expect, actual);
   } else {
     printf("%s: NG, expect: %s, actual: %s\n", name, expect, actual);
   }
-  */
 }
 
 typedef enum {
@@ -54,8 +59,8 @@ int a;
 int b;
 char c;
 
-char* s = "Hello";
-char t[] = "World";
+char s1[] = "Hello";
+char *s2 = "World";
 
 // 四則演算
 void test1() {
@@ -65,6 +70,11 @@ void test1() {
   assertInt("test1-3", 2 * 3, 3 * 2);
   assertInt("test1-3", -21, 7 * -3);
   assertInt("test1-3", 7 * -3, -3 * 7);
+}
+
+void test2() {
+  assertChar("test2-1", 'a', 'a');
+  assertChar("test2-2", 'b', 'b');
 }
 
 int test_func(int a, int b) {
@@ -85,12 +95,6 @@ int sum() {
   return sum;
 }
 
-// 関数呼び出し
-void test2() {
-  assert("test2-1", test_func(1, 2));
-  assertInt("test2-2", 45, sum());
-}
-
 int fib(int a) {                                                                                                                                                               
   if (a <= 0) {
     return 0;
@@ -101,8 +105,11 @@ int fib(int a) {
   return fib(a - 1) + fib(a - 2);
 }
 
+// 関数呼び出し
 void test3() {
-  assertInt("test3", 55, fib(10));
+  assert("test3-1", test_func(1, 2));
+  assertInt("test3-2", 45, sum());
+  assertInt("test3-3", 55, fib(10));
 }
 
 void test4() {
@@ -121,11 +128,17 @@ void test4() {
   sprintf(buf, "1 + %d = %d", i, i + 1);
   assertStr("test4-3", buf, "1 + 9 = 10");
 
-  assertStr("test4-4", s, "Hello");
-  assertStr("test4-5", t, "World");
+  assertStr("test4-4", s1, "Hello");
+  assertStr("test4-5", s2, "World");
 
-  sprintf(buf, "%s, %s\n", s, t);
-  assertStr("test4-4", buf, "Hello, World\n");
+  sprintf(buf, "Hello, %s", s2);
+  assertStr("test4-6", buf, "Hello, World");
+
+  sprintf(buf, "%s, World", s1);
+  assertStr("test4-7", buf, "Hello, World");
+
+    sprintf(buf, "%s, %s", s1, s2);
+  assertStr("test4-7", buf, "Hello, World");
 }
 
 void test5() {

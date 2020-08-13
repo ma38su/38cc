@@ -17,27 +17,47 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
 }
 
 bool is_alnum(char c) {
-  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
-         ('0' <= c && c <= '9') || (c == '_');
+  return ('a' <= c && c <= 'z')
+    || ('A' <= c && c <= 'Z')
+    || ('0' <= c && c <= '9')
+    || (c == '_');
 }
 
 int lvar_len(char *p0) {
   char *p = p0;
-  if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z')
-      || *p == '_') {
-    while (is_alnum(*p)) {
-      p++;
-    }
+  if (('a' <= *p && *p <= 'z')
+    || ('A' <= *p && *p <= 'Z')
+    || *p == '_') {
+
+    while (is_alnum(*p)) p++;
   }
   return p - p0;
 }
 
 char *next_ptr(char *p0, char c) {
   char *p = p0;
-  while (*p != c) {
-    p++;
-  }
+  while (*p != c) p++;
   return p;
+}
+
+char to_escape_char(char v) {
+  if (v == '0') {
+    return '\0';
+  } else if (v == 'a') {
+    return '\a'; // beep
+  } else if (v == 'b') {
+    return '\b'; // backspace
+  } else if (v == 'f') {
+    return '\f';
+  } else if (v == 'n') {
+    return '\n';
+  } else if (v == 'r') {
+    return '\r';
+  } else if (v == 't') {
+    return '\t';
+  } else {
+    return v;
+  }
 }
 
 Token *tokenize(char *p) {
@@ -98,9 +118,17 @@ Token *tokenize(char *p) {
     // character literal
     if (*p == '\'') {
       p++;
+
       cur = new_token(TK_CHAR, cur, p);
-      cur->len = 1;
+
+      if (*p == '\\') {
+        cur->len = 3;
+        cur->val = to_escape_char(*(++p));
+      } else {
+        cur->len = 1;
+      }
       p++;
+
       if (*p != '\'') {
         error_at(p, "unexpected token. expected token is \"'\"");
       }
