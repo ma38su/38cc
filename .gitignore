@@ -5,4 +5,5 @@ core
 tmp
 38cc
 test
+test_gcc
 *.code-workspace
