@@ -42,6 +42,7 @@ Type *char_type;
 Type *short_type;
 Type *int_type;
 Type *long_type;
+Type *double_type;
 
 Type *void_type;
 Type *ptr_char_type;
@@ -105,6 +106,9 @@ void init_types() {
   long_type = new_type("long", 4, 8);
   long_type->kind = TY_PRM;
 
+  double_type = new_type("double", 6, 8);
+  double_type->kind = TY_PRM;
+
   void_type = new_type("void", 4, 8);
   void_type->kind = TY_VOID;
 
@@ -115,6 +119,7 @@ void init_types() {
   vec_add(types, short_type);
   vec_add(types, char_type);
   vec_add(types, long_type);
+  vec_add(types, double_type);
 }
 
 int type_is_ptr_or_array(Type *type) {
@@ -655,8 +660,17 @@ Node *primary() {
   Token *tok;
 
   if (consume("(")) {
-    node = expr();
-    expect(")");
+    Type *type = consume_type();
+    if (type) {
+      expect(")");
+
+      // TODO cast (not supported)
+      node = expr();
+
+    } else {
+      node = expr();
+      expect(")");
+    }
     return node;
   }
 

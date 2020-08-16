@@ -200,7 +200,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("=,(){}[]<>+-*/%^;&", *p)) {
+    if (strchr("=,.(){}[]<>+-*/%^;&", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       cur->len = 1;
       continue;
@@ -209,6 +209,24 @@ Token *tokenize(char *p) {
     if (isdigit(*p)) {
       cur = new_token(TK_NUM, cur, p);
       cur->val = strtol(p, &p, 10);
+      continue;
+    }
+
+    if (memcmp(p, "__inline", 8) == 0) {
+      p += 8;
+      continue;
+    }
+    if (memcmp(p, "__restrict", 10) == 0) {
+      p += 10;
+      continue;
+    }
+    if (memcmp(p, "__builtin_bswap32", 17) == 0 || memcmp(p, "__builtin_bswap64", 17) == 0) {
+      p += 17;
+      continue;
+    }
+
+    if (memcmp(p, "static", 6) == 0) {
+      p += 6;
       continue;
     }
 

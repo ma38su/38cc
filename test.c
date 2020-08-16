@@ -203,9 +203,24 @@ void test6() {
   assert("test5-10", b + 1 == c);
 
   assert("test5-11", MAME_A == SAKE_1);
-  assert("test5-11", MAME_A != SAKE_2);
+  assert("test5-12", MAME_A != SAKE_2);
 }
 
+struct Company {
+  int id;
+  char *name;
+};
+
+typedef struct Company Company;
+
+void test7() {
+  Company p;
+  p.id = 10;
+  p.name = "ma38su";
+
+  assertStr("test7-1", "ma38su", p.name);
+  assertInt("test7-2", 10, p.id);
+}
 
 int main() {
 
@@ -215,6 +230,7 @@ int main() {
   test4();
   test5();
   test6();
+  test7();
 
   return 0;
 }
