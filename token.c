@@ -122,10 +122,11 @@ Token *tokenize(char *p) {
       cur = new_token(TK_CHAR, cur, p);
 
       if (*p == '\\') {
-        cur->len = 3;
+        cur->len = 4;
         cur->val = to_escape_char(*(++p));
       } else {
-        cur->len = 1;
+        cur->len = 3;
+        cur->val = *p;
       }
       p++;
 
@@ -186,12 +187,13 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0 ||
-        memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0 ||
-        memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0 ||
-        memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0 ||
-        memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0 ||
-        memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0) {
+    if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0
+      || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0
+      || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
+      || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
+      || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
+      || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0
+      || memcmp(p, "&&", 2) == 0 || memcmp(p, "||", 2) == 0) {
       cur = new_token(TK_RESERVED, cur, p);
       cur->len = 2;
       p += 2;

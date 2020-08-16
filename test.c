@@ -1,21 +1,27 @@
 #include <stdio.h>
 
+//#include <string.h>
 int strcmp(char* m1, char* m2) {
+  char* tmp_1 = m1;
+  char* tmp_2 = m2;
+
   int i = 0;
+
   while (1) {
-    if (*m1 != *m2) {
+    if (m1[i] != m2[i]) {
+      if (m1[i] < m2[i]) {
+        return 1;
+      } else {
+        return -1;
+      }
+    }
+
+    if (m1[i] == '\0') {
       return 0;
     }
-
-    if (*m1 == '\0') {
-      return 1;
-    }
-    m1 += 1;
-    m2 += 1;
+    ++i;
   }
 }
-//#include <string.h>
-
 
 void assert(char* name, int ret) {
   if (ret) {
@@ -73,8 +79,23 @@ void test1() {
 }
 
 void test2() {
+  char *msg = "Hello, World\n";
   assertChar("test2-1", 'a', 'a');
   assertChar("test2-2", 'b', 'b');
+  assertChar("test2-3", 'H', *msg);
+  assertChar("test2-4", 'e', *(msg+1));
+  assertChar("test2-5", 'l', *(msg+2));
+  assertChar("test2-6", 'l', *(msg+3));
+  assertChar("test2-7", 'o', *(msg+4));
+  assertChar("test2-7", ',', *(msg+5));
+  assertChar("test2-7", ' ', *(msg+6));
+  assertChar("test2-7", 'W', *(msg+7));
+  assertChar("test2-7", 'o', *(msg+8));
+  assertChar("test2-7", 'r', *(msg+9));
+  assertChar("test2-7", 'l', *(msg+10));
+  assertChar("test2-7", 'd', *(msg+11));
+  assertChar("test2-7", '\n', *(msg+12));
+  assertChar("test2-7", '\0', *(msg+13));
 }
 
 int test_func(int a, int b) {
@@ -89,7 +110,7 @@ int test_func(int a, int b) {
 int sum() {
   int sum = 0;
   int i;
-  for (i = 0; i < 10; i = i + 1) {
+  for (i = 0; i < 10; ++i) {
     sum = sum + i;
   } 
   return sum;
@@ -153,6 +174,7 @@ void test5() {
 }
 
 int main() {
+
   test1();
   test2();
   test3();
