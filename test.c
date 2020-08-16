@@ -71,11 +71,11 @@ char *s2 = "World";
 // 四則演算
 void test1() {
   assertInt("test1-1", 5, 2 + 3);
-  assertInt("test1-1", 2 + 3, 3 + 2);
-  assertInt("test1-2", 6, 2 * 3);
-  assertInt("test1-3", 2 * 3, 3 * 2);
-  assertInt("test1-3", -21, 7 * -3);
-  assertInt("test1-3", 7 * -3, -3 * 7);
+  assertInt("test1-2", 2 + 3, 3 + 2);
+  assertInt("test1-3", 6, 2 * 3);
+  assertInt("test1-4", 2 * 3, 3 * 2);
+  assertInt("test1-5", -21, 7 * -3);
+  assertInt("test1-6", 7 * -3, -3 * 7);
 }
 
 void test2() {
@@ -87,15 +87,15 @@ void test2() {
   assertChar("test2-5", 'l', *(msg+2));
   assertChar("test2-6", 'l', *(msg+3));
   assertChar("test2-7", 'o', *(msg+4));
-  assertChar("test2-7", ',', *(msg+5));
-  assertChar("test2-7", ' ', *(msg+6));
-  assertChar("test2-7", 'W', *(msg+7));
-  assertChar("test2-7", 'o', *(msg+8));
-  assertChar("test2-7", 'r', *(msg+9));
-  assertChar("test2-7", 'l', *(msg+10));
-  assertChar("test2-7", 'd', *(msg+11));
-  assertChar("test2-7", '\n', *(msg+12));
-  assertChar("test2-7", '\0', *(msg+13));
+  assertChar("test2-8", ',', *(msg+5));
+  assertChar("test2-9", ' ', *(msg+6));
+  assertChar("test2-10", 'W', *(msg+7));
+  assertChar("test2-11", 'o', *(msg+8));
+  assertChar("test2-12", 'r', *(msg+9));
+  assertChar("test2-13", 'l', *(msg+10));
+  assertChar("test2-14", 'd', *(msg+11));
+  assertChar("test2-15", '\n', *(msg+12));
+  assertChar("test2-16", '\0', *(msg+13));
 }
 
 int test_func(int a, int b) {
@@ -159,7 +159,7 @@ void test4() {
   assertStr("test4-7", buf, "Hello, World");
 
     sprintf(buf, "%s, %s", s1, s2);
-  assertStr("test4-7", buf, "Hello, World");
+  assertStr("test4-8", buf, "Hello, World");
 }
 
 void test5() {
@@ -173,6 +173,21 @@ void test5() {
   assert("test5-4", c == a);
 }
 
+void test6() {
+  int i = 0;
+  assertInt("test6-1", 0, i);
+  assertInt("test6-2", 1, ++i);
+  assertInt("test6-3", 1, i);
+  assertInt("test6-4", 0, --i);
+  assertInt("test6-5", 0, i);
+  /*
+  assertInt("test6-6", 0, i++);
+  assertInt("test6-7", 1, i);
+  assertInt("test6-8", 1, i--);
+  assertInt("test6-9", 0, i);
+  */
+}
+
 int main() {
 
   test1();
@@ -180,6 +195,7 @@ int main() {
   test3();
   test4();
   test5();
+  test6();
 
   return 0;
 }
