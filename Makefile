@@ -22,6 +22,10 @@ test: 38cc test.c
 	#$(CC) -S -masm=intel .test.c -o gcc_test.s
 	#cat gcc_test.s
 
+test-gcc: test.c
+	gcc -o test_gcc test.c
+	./test_gcc
+
 test-s: test.s
 	$(CC) test.s -o test
 	./test
