@@ -630,14 +630,19 @@ Node *consume_sizeof() {
   return new_node_num(sizeof_node(node));
 }
 
-int sizeof_node(Node* node) {
+Type *typeof(Node* node) {
   if (node->kind == ND_NUM
       || node->kind == ND_ADDR
       || node->kind == ND_DEREF
       || node->kind == ND_LVAR) {
-    return node->type->size;
+    return node->type;
   }
-  return sizeof_node(node->lhs);
+  return typeof(node->lhs);
+}
+
+int sizeof_node(Node* node) {
+  Type *type = typeof(node);
+  return type->size;
 }
 
 Node *primary() {
