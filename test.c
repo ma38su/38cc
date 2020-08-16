@@ -171,10 +171,14 @@ void test5() {
   Mame b = MAME_B;
   Mame c = MAME_A;
 
-  assert("test5-1", a != b);
-  assert("test5-2", b != a);
-  assert("test5-3", a == c);
-  assert("test5-4", c == a);
+  assert("test5-1", MAME_A == MAME_A);
+  assert("test5-1", MAME_A != MAME_B);
+  assert("test5-2", MAME_B != MAME_A);
+
+  assert("test5-3", a != b);
+  assert("test5-4", b != a);
+  assert("test5-5", a == c);
+  assert("test5-6", c == a);
 }
 
 void test6() {
