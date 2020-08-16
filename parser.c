@@ -14,6 +14,8 @@ GVar *find_or_gen_gstr(Token *tok);
 Type *find_type(Token *tok);
 Function *find_function(Token *tok);
 
+Enum *find_enum(Token *tok);
+
 Node *new_node(NodeKind kind);
 Node *stmt();
 Node *expr();
@@ -30,6 +32,9 @@ char *user_input;
 Node *code[1000];
 LVar *locals;
 GVar *globals;
+
+Vector *enums;
+
 Vector *types;  // Type*
 Vector *functions;
 
@@ -38,7 +43,6 @@ Type *short_type;
 Type *int_type;
 Type *long_type;
 
-Type *enum_type; // TODO
 Type *void_type;
 Type *ptr_char_type;
 
@@ -85,6 +89,7 @@ Function *new_function(char* name, int len, Type* ret_type) {
 }
 
 void init_types() {
+  enums = calloc(1, sizeof(Vector));
   types = calloc(1, sizeof(Vector));
   functions = calloc(1, sizeof(Vector));
 
@@ -99,8 +104,6 @@ void init_types() {
 
   long_type = new_type("long", 4, 8);
   long_type->kind = TY_PRM;
-
-  enum_type = new_type("enum", 4, 8);
 
   void_type = new_type("void", 4, 8);
   void_type->kind = TY_VOID;
@@ -322,23 +325,24 @@ Node *consume_enum() {
 
   Token *tag = consume_ident();
 
+  int enum_id = 0;
   expect("{");
   while (!consume("}")) {
     Token *tok = consume_ident();
 
-    GVar *gvar = find_gvar(tok);
-    if (gvar) {
+    Enum *evar = find_enum(tok);
+    if (evar) {
       error_at(tok->str, "duplicated defined gvar");
     }
-    gvar = calloc(1, sizeof(GVar));
-    gvar->name = substring(tok->str, tok->len);
-    gvar->len = tok->len;
-    gvar->extn = 0;
-    gvar->type = enum_type;
+    evar = calloc(1, sizeof(Enum));
+    //evar->tag = substring(tag->str, tag->len);
+    
+    evar->name = substring(tok->str, tok->len);
+    evar->len = tok->len;
 
-    gvar->next = globals;
-    globals = gvar;
-    printf("# enum %s\n", gvar->name);
+    evar->val = enum_id++;
+
+    vec_add(enums, evar);
 
     if (!consume(",")) {
       expect("}");
@@ -350,7 +354,7 @@ Node *consume_enum() {
   if (tag) {
     node->ident = substring(tag->str, tag->len);
   }
-  
+
   return node;
 }
 
@@ -696,13 +700,21 @@ Node *primary() {
     node->ident = substring(tok->str, tok->len);
     node->offset = lvar->offset;
   } else {
-    GVar *gvar = find_gvar(tok);
-    if (!gvar) {
-      error_at(tok->str, "undefined gvar");
+    Enum *evar = find_enum(tok);
+    if (evar) {
+      node = new_node(ND_NUM); // ENUM
+      node->type = int_type;
+      node->ident = substring(tok->str, tok->len);
+      node->val = evar->val;
+    } else {
+      GVar *gvar = find_gvar(tok);
+      if (!gvar) {
+        error_at(tok->str, "undefined ident: %s", substring(tok->str, tok->len));
+      }
+      node = new_node(ND_GVAR);
+      node->type = gvar->type;
+      node->ident = substring(tok->str, tok->len);
     }
-    node = new_node(ND_GVAR);
-    node->type = gvar->type;
-    node->ident = substring(tok->str, tok->len);
   }
   if (type_is_ptr_or_array(node->type) && consume("[")) {
     Node *index = expr();
@@ -991,8 +1003,8 @@ Node *global() {
       }
       if (ident->kind == TK_IDENT) {
         // TODO to support type alias
-        Type *enum_type = new_type(ident->str, ident->len, 8);
-        vec_add(types, enum_type);
+        Type *struct_type = new_type(ident->str, ident->len, 8);
+        vec_add(types, struct_type);
       }
       expect(";");
       return NULL;
@@ -1219,6 +1231,16 @@ LVar *find_lvar(Token *tok) {
 GVar *find_gvar(Token *tok) {
   for (GVar *var = globals; var; var = var->next) {
     if (tok->len == var->len && memcmp(tok->str, var->name, var->len) == 0) {
+      return var;
+    }
+  }
+  return NULL;
+}
+
+Enum *find_enum(Token *tok) {
+  for (int i = 0; i < enums->size; ++i) {
+    Enum *var = vec_get(enums, i);
+    if (var->len == tok->len && memcmp(tok->str, var->name, var->len) == 0) {
       return var;
     }
   }

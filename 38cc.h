@@ -64,6 +64,7 @@ typedef struct Node Node;
 typedef struct LVar LVar;
 typedef struct GVar GVar;
 typedef struct Function Function;
+typedef struct Enum Enum;
 
 struct Type {
   enum {
@@ -119,6 +120,15 @@ struct GVar {
   char *str; // string
   int extn;
   int init;   // initialized 1 or not 0.
+};
+
+struct Enum {
+  char *tag; // for debug
+
+  char *name;
+  int len;  // length of string
+
+  int val;
 };
 
 struct Function {

@@ -61,6 +61,12 @@ typedef enum {
   MAME_C,
 } Mame;
 
+typedef enum {
+  SAKE_1,
+  SAKE_2,
+  SAKE_3,
+} Sake;
+
 int a;
 int b;
 char c;
@@ -78,29 +84,21 @@ void test1() {
   assertInt("test1-6", 7 * -3, -3 * 7);
 }
 
+// test for increment operator and decrement operator
 void test2() {
-  char *msg = "Hello, World\n";
-  assertChar("test2-1", 'a', 'a');
-  assertChar("test2-2", 'b', 'b');
-  assertChar("test2-3", 'H', *msg);
-  assertChar("test2-4", 'e', *(msg+1));
-  assertChar("test2-5", 'l', *(msg+2));
-  assertChar("test2-6", 'l', *(msg+3));
-  assertChar("test2-7", 'o', *(msg+4));
-  assertChar("test2-8", ',', *(msg+5));
-  assertChar("test2-9", ' ', *(msg+6));
-  assertChar("test2-10", 'W', *(msg+7));
-  assertChar("test2-11", 'o', *(msg+8));
-  assertChar("test2-12", 'r', *(msg+9));
-  assertChar("test2-13", 'l', *(msg+10));
-  assertChar("test2-14", 'd', *(msg+11));
-  assertChar("test2-15", '\n', *(msg+12));
-  assertChar("test2-16", '\0', *(msg+13));
+  int i = 0;
+  assertInt("test6-1", 0, i);
+  assertInt("test6-2", 1, ++i);
+  assertInt("test6-3", 1, i);
+  assertInt("test6-4", 0, --i);
+  assertInt("test6-5", 0, i);
 
-  assertChar("test2-17", 'H', *(msg++));
-  assertChar("test2-18", 'l', *(++msg));
-
+  assertInt("test6-6", 0, i++);
+  assertInt("test6-7", 1, i);
+  assertInt("test6-8", 1, i--);
+  assertInt("test6-9", 0, i);
 }
+
 
 int test_func(int a, int b) {
   if (a == 1) {
@@ -167,33 +165,47 @@ void test4() {
 }
 
 void test5() {
-  Mame a = MAME_A;
-  Mame b = MAME_B;
-  Mame c = MAME_A;
+  char *msg = "Hello, World\n";
+  assertChar("test2-1", 'a', 'a');
+  assertChar("test2-2", 'b', 'b');
+  assertChar("test2-3", 'H', *msg);
+  assertChar("test2-4", 'e', *(msg+1));
+  assertChar("test2-5", ' ', *(msg+6));
+  assertChar("test2-6", 'W', *(msg+7));
+  assertChar("test2-7", 'd', *(msg+11));
+  assertChar("test2-8", '\n', *(msg+12));
+  assertChar("test2-9", '\0', *(msg+13));
 
-  assert("test5-1", MAME_A == MAME_A);
-  assert("test5-1", MAME_A != MAME_B);
-  assert("test5-2", MAME_B != MAME_A);
-
-  assert("test5-3", a != b);
-  assert("test5-4", b != a);
-  assert("test5-5", a == c);
-  assert("test5-6", c == a);
+  assertChar("test2-10", 'H', *(msg++));
+  assertChar("test2-11", 'l', *(++msg));
+  assertChar("test2-12", 'e', *(--msg));
+  assertChar("test2-13", 'e', *(msg--));
+  assertChar("test2-14", 'H', *msg);
 }
 
 void test6() {
-  int i = 0;
-  assertInt("test6-1", 0, i);
-  assertInt("test6-2", 1, ++i);
-  assertInt("test6-3", 1, i);
-  assertInt("test6-4", 0, --i);
-  assertInt("test6-5", 0, i);
+  Mame a = MAME_A;
+  Mame b = MAME_B;
+  Mame c = MAME_C;
 
-  assertInt("test6-6", 0, i++);
-  assertInt("test6-7", 1, i);
-  assertInt("test6-8", 1, i--);
-  assertInt("test6-9", 0, i);
+  assert("test5-1", MAME_A == 0);
+  assert("test5-2", MAME_A == 1);
+  assert("test5-3", MAME_C == 2);
+
+  assert("test5-4", MAME_A == MAME_A);
+  assert("test5-5", MAME_A != MAME_B);
+  assert("test5-6", MAME_B != MAME_A);
+
+  assert("test5-7", a != b);
+  assert("test5-8", b != a);
+
+  assert("test5-9", a + 2 == c);
+  assert("test5-10", b + 1 == c);
+
+  assert("test5-11", MAME_A == SAKE_1);
+  assert("test5-11", MAME_A != SAKE_2);
 }
+
 
 int main() {
 
