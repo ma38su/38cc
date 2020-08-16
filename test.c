@@ -96,6 +96,10 @@ void test2() {
   assertChar("test2-14", 'd', *(msg+11));
   assertChar("test2-15", '\n', *(msg+12));
   assertChar("test2-16", '\0', *(msg+13));
+
+  assertChar("test2-17", 'H', *(msg++));
+  assertChar("test2-18", 'l', *(++msg));
+
 }
 
 int test_func(int a, int b) {
@@ -180,12 +184,11 @@ void test6() {
   assertInt("test6-3", 1, i);
   assertInt("test6-4", 0, --i);
   assertInt("test6-5", 0, i);
-  /*
+
   assertInt("test6-6", 0, i++);
   assertInt("test6-7", 1, i);
   assertInt("test6-8", 1, i--);
   assertInt("test6-9", 0, i);
-  */
 }
 
 int main() {

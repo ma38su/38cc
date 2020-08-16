@@ -144,7 +144,7 @@ Node *new_node_deref(Node *lhs) {
     error("no type at new_node_deref %d", lhs->kind);
   }
   if (!lhs->type->to) {
-    error("type is not ptr at new_node_deref");
+    error("type is not ptr at new_node_deref: %s", lhs->type->name);
   }
   Node *node = new_node(ND_DEREF);
   node->lhs = lhs;
@@ -194,7 +194,7 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
       || kind == ND_LT
       || kind == ND_LE) {
     node->type = int_type;
-  } else if (kind == ND_ASSIGN) {
+  } else if (kind == ND_ASSIGN || kind == ND_ASSIGN_POST) {
     node->type = lhs->type;
   } else {
 
@@ -647,13 +647,14 @@ int sizeof_node(Node* node) {
 
 Node *primary() {
 
+  Node *node;
+  Token *tok;
+
   if (consume("(")) {
-    Node *node = expr();
+    node = expr();
     expect(")");
     return node;
   }
-
-  Node *node;
 
   node = consume_char();
   if (node) {
@@ -665,15 +666,16 @@ Node *primary() {
     return node;
   }
 
-  Token *tok = consume_ident();
+  tok = consume_ident();
   if (!tok) {
     return new_node_num(expect_number());
   }
 
   if (consume("(")) {
-    Node *node = new_node(ND_CALL);
+    node = new_node(ND_CALL);
     node->list = consume_args();
     node->ident = substring(tok->str, tok->len);
+
     Function *func = find_function(tok);
     if (!func) {
       error_at(tok->str, "func is not found");
@@ -709,6 +711,14 @@ Node *primary() {
 
     expect("]");
   }
+
+  // post ++ or --
+  if (consume("++")) {
+    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_node_num(1)));
+  } else if (consume("--")) {
+    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_node_num(1)));
+  }
+
   return node;
 }
 

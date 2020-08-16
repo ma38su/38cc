@@ -415,10 +415,15 @@ bool gen(Node *node) {
   if (node->kind == ND_GVAR) {
     return gen_gvar(node);
   }
-  if (node->kind == ND_ASSIGN) {
+
+  if (node->kind == ND_ASSIGN || node->kind == ND_ASSIGN_POST) {
+
+    if (node->kind == ND_ASSIGN_POST) {
+      gen(node->lhs);
+    }
+
     gen_lval(node->lhs);
 
-    printf("  # assign rhs\n");
     gen(node->rhs);
 
     printf("  # assign\n");
@@ -438,9 +443,13 @@ bool gen(Node *node) {
       }
       printf("  mov [rax], rdi\n");
     }
-    printf("  push rdi\n");
+
+    if (node->kind != ND_ASSIGN_POST) {
+      printf("  push rdi\n");
+    }
     return true;
   }
+
   if (node->kind == ND_BLOCK) {
     gen_block(node);
     return false;
