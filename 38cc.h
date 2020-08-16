@@ -74,8 +74,8 @@ struct Type {
   } kind;
 
   char *name;
-  int len;
-  int size;
+  int len;  // length of string
+  int size; // size of type
 
   Type *to; // ptr or array. *char = * -> char
 };
@@ -84,7 +84,7 @@ struct Token {
   TokenKind kind;
   Token *next;
   int val;    // integer value if kind == TK_NUM
-  char *str;  // length of string
+  char *str;  // string of token
   int len;    // length of token
 };
 
