@@ -5,35 +5,36 @@
 #include "vector.h"
 
 typedef enum {
-  ND_NUM,     // 0 integer number
-  ND_STR,     // 1 string literal
-  ND_LVAR,    // 2 local variable
-  ND_GVAR,    // 3 global variable
-  ND_DEREF,   // 4
-  ND_ADDR,    // 5
-  ND_EQ,      // 6 ==
-  ND_NE,      // 7 !=
-  ND_LT,      // 8 <
-  ND_LE,      // 9 <=
-  ND_BLOCK,   // 10 {}
-  ND_IF,      // 11 return
-  ND_ELSE,    // 12 return
-  ND_WHILE,   // 13 return
-  ND_NONE,    // 14 return
-  ND_FOR,     // 15 return
-  ND_ADD,     // 16 +
-  ND_SUB,     // 17 -
-  ND_MUL,     // 18 *
-  ND_DIV,     // 19 /
-  ND_MOD,     // 20 %
-  ND_ASSIGN,  // 21 =
-  ND_ASSIGN_POST, // 22 for i++ and i--
-  ND_RETURN,  // 23 return
-  ND_ENUM,    // 24
-  ND_STRUCT,  // 25 struct
-  ND_UNION,   // 26 union
-  ND_FUNCTION,// 27
-  ND_CALL,    // 28
+  ND_NUM,         // 0 integer number
+  ND_STR,         // 1 string literal
+  ND_LVAR,        // 2 local variable
+  ND_GVAR,        // 3 global variable
+  ND_DEREF,       // 4
+  ND_ADDR,        // 5
+  ND_MEMBER,      // 6 . (struct member access)
+  ND_EQ,          // 7 ==
+  ND_NE,          // 8 !=
+  ND_LT,          // 9 <
+  ND_LE,          // 10 <=
+  ND_BLOCK,       // 11 {}
+  ND_IF,          // 12 return
+  ND_ELSE,        // 13 return
+  ND_WHILE,       // 14 return
+  ND_NONE,        // 15 return
+  ND_FOR,         // 16 return
+  ND_ADD,         // 17 +
+  ND_SUB,         // 18 -
+  ND_MUL,         // 19 *
+  ND_DIV,         // 20 /
+  ND_MOD,         // 21 %
+  ND_ASSIGN,      // 22 =
+  ND_ASSIGN_POST, // 23 for i++ and i--
+  ND_RETURN,      // 24 return
+  ND_ENUM,        // 25
+  ND_STRUCT,      // 26 struct
+  ND_UNION,       // 27 union
+  ND_FUNCTION,    // 28
+  ND_CALL,        // 29
 } NodeKind;
 
 typedef enum {
