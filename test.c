@@ -277,26 +277,59 @@ typedef struct User User;
 void test7() {
   User p;
 
-  assertInt("test7-1", 1, sizeof(Char));
-  assertInt("test7-2", 2, sizeof(Short));
-  assertInt("test7-3", 4, sizeof(Int));
+  char char_val;
+  int int_val;
 
-  assertInt("test7-4", 4, sizeof(ShortChar));
-  assertInt("test7-5", 8, sizeof(IntChar));
-  assertInt("test7-6", 16, sizeof(LongChar));
-  assertInt("test7-7", 24, sizeof(CharLongChar));
-  assertInt("test7-8", 16, sizeof(CharCharLong));
-  assertInt("test7-9", 8, sizeof(IntShortShort));
-  assertInt("test7-10", 12, sizeof(ShortIntShort));
+  char *char_ptr;
+  int *int_ptr;
 
-  assertInt("test7-11", 16, sizeof(User));
-  assertInt("test7-12", 16, sizeof(p));
+  int int_array_7[7];
+  char char_array_7[7];
+
+  assertInt("test7-1", 1, sizeof(char));
+  assertInt("test7-2", 1, sizeof(char_val));
+  assertInt("test7-3", 8, sizeof(&char_val));
+
+  assertInt("test7-4", 4, sizeof(int));
+  assertInt("test7-5", 4, sizeof(int_val));
+  assertInt("test7-6", 8, sizeof(&int_val));
+
+  assertInt("test7-7", 8, sizeof(char *));
+  assertInt("test7-8", 8, sizeof(char_ptr));
+  assertInt("test7-9", 1, sizeof(*char_ptr));
+
+  assertInt("test7-10", 8, sizeof(int *));
+  assertInt("test7-11", 8, sizeof(int_ptr));
+  assertInt("test7-12", 4, sizeof(*int_ptr));
+
+  assertInt("test7-13", 1 * 7, sizeof(char_array_7));
+  assertInt("test7-14", 1, sizeof(*char_array_7));
+  assertInt("test7-15", 1, sizeof(char_array_7[1]));
+
+  assertInt("test7-16", 4 * 7, sizeof(int_array_7));
+  assertInt("test7-17", 4, sizeof(*int_array_7));
+  assertInt("test7-18", 4, sizeof(int_array_7[1]));
+
+  assertInt("test7-19", 1, sizeof(Char));
+  assertInt("test7-20", 2, sizeof(Short));
+  assertInt("test7-21", 4, sizeof(Int));
+
+  assertInt("test7-22", 4, sizeof(ShortChar));
+  assertInt("test7-23", 8, sizeof(IntChar));
+  assertInt("test7-24", 16, sizeof(LongChar));
+  assertInt("test7-25", 24, sizeof(CharLongChar));
+  assertInt("test7-26", 16, sizeof(CharCharLong));
+  assertInt("test7-27", 8, sizeof(IntShortShort));
+  assertInt("test7-28", 12, sizeof(ShortIntShort));
+
+  assertInt("test7-29", 16, sizeof(User));
+  assertInt("test7-30", 16, sizeof(p));
 
   p.id = 1;
   p.name = "ma38su";
 
-  assertStr("test7-13", "ma38su", p.name);
-  assertInt("test7-14", 1, p.id);
+  assertStr("test7-31", "ma38su", p.name);
+  assertInt("test7-32", 1, p.id);
 }
 
 int main() {
