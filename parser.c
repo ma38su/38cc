@@ -737,14 +737,6 @@ Node *primary() {
 
     expect("]");
   }
-
-  // post ++ or --
-  if (consume("++")) {
-    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_node_num(1)));
-  } else if (consume("--")) {
-    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_node_num(1)));
-  }
-
   return node;
 }
 
@@ -765,6 +757,7 @@ Node *unary() {
   if (consume("+")) {
     return primary();
   }
+
   if (consume("*")) {
     return new_node_deref(unary());
   }
@@ -780,7 +773,16 @@ Node *unary() {
     return node;
   }
 
-  return primary();
+  node = primary();
+
+  // post ++ or --
+  if (consume("++")) {
+    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_node_num(1)));
+  } else if (consume("--")) {
+    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_node_num(1)));
+  }
+
+  return node;
 }
 
 Node *mul() {
