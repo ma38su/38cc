@@ -217,15 +217,84 @@ void test6() {
   assert("test5-12", MAME_A != SAKE_2);
 }
 
+typedef struct {
+  char val;
+} Char;
+
+typedef struct {
+  short val;
+} Short;
+
+typedef struct {
+  int val;
+} Int;
+
+typedef struct {
+  short val1;
+  char val2;
+} ShortChar;
+
+typedef struct {
+  int val1;
+  char val2;
+} IntChar;
+
+typedef struct {
+  long val1;
+  char val2;
+} LongChar;
+
+typedef struct {
+  char val1;
+  long val2;
+  char val3;
+} CharLongChar;
+
+typedef struct {
+  char val1;
+  char val2;
+  long val3;
+} CharCharLong;
+
+typedef struct {
+  short val1;
+  int val2;
+  short val3;
+} ShortIntShort;
+
+typedef struct {
+  int val1;
+  short val2;
+  short val3;
+} IntShortShort;
+
 struct User {
   int id;
   char *name;
 };
-
 typedef struct User User;
 
 void test7() {
   User p;
+
+  assertInt("test7-1", 1, sizeof(Char));
+  assertInt("test7-2", 2, sizeof(Short));
+  assertInt("test7-3", 4, sizeof(Int));
+
+  assertInt("test7-4", 4, sizeof(ShortChar));
+  assertInt("test7-5", 8, sizeof(IntChar));
+  assertInt("test7-6", 16, sizeof(LongChar));
+  assertInt("test7-7", 24, sizeof(CharLongChar));
+  assertInt("test7-8", 16, sizeof(CharCharLong));
+  assertInt("test7-9", 8, sizeof(IntShortShort));
+  assertInt("test7-10", 12, sizeof(ShortIntShort));
+
+  assertInt("test7-6", 16, sizeof(User));
+  assertInt("test7-6", 16, sizeof(p));
+
+  printf("sizeof %ld\n", sizeof(User));
+  printf("sizeof %ld\n", sizeof(p));
+
   p.id = 1;
   p.name = "ma38su";
 
