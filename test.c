@@ -10,12 +10,10 @@ int strcmp(char* m1, char* m2) {
   int i = 0;
 
   while (1) {
-    if (m1[i] != m2[i]) {
-      if (m1[i] < m2[i]) {
-        return 1;
-      } else {
-        return -1;
-      }
+    if (m1[i] < m2[i]) {
+      return 1;
+    } else if (m1[i] > m2[i]) {
+      return -1;
     }
 
     if (m1[i] == '\0') {
@@ -268,14 +266,7 @@ typedef struct {
   short val3;
 } IntShortShort;
 
-struct User {
-  int id;
-  char *name;
-};
-typedef struct User User;
-
 void test7() {
-  User p;
 
   char char_val;
   int int_val;
@@ -322,16 +313,28 @@ void test7() {
   assertInt("test7-27", 8, sizeof(IntShortShort));
   assertInt("test7-28", 12, sizeof(ShortIntShort));
 
-  assertInt("test7-29", 16, sizeof(User));
-  assertInt("test7-30", 16, sizeof(p));
-
-  p.id = 1;
-  p.name = "ma38su";
-
-  assertStr("test7-31", "ma38su", p.name);
-  assertInt("test7-32", 1, p.id);
 }
 
+/*
+struct User {
+  int id;
+  char *name;
+};
+typedef struct User User;
+
+void test8() {
+  User p;
+
+  assertInt("test8-1", 16, sizeof(User));
+  assertInt("test8-2", 16, sizeof(p));
+
+  // p.id = 1;
+  // p.name = "ma38su";
+
+  assertInt("test8-3", 1, p.id);
+  assertStr("test8-4", "ma38su", p.name);
+}
+*/
 int main() {
 
   test1();
@@ -341,6 +344,7 @@ int main() {
   test5();
   test6();
   test7();
+  //test8();
 
   return 0;
 }

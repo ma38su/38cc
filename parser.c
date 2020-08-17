@@ -12,6 +12,7 @@ int sizeof_lvars();
 GVar *find_gvar(Token *tok);
 GVar *find_or_gen_gstr(Token *tok);
 Type *find_type(Token *tok);
+Type *find_or_gen_struct_type(Token *tok);
 Function *find_function(Token *tok);
 
 Enum *find_enum(Token *tok);
@@ -278,7 +279,7 @@ Type *consume_type() {
 
   Type *type;
   char *p0 = token->str;
-  for (;;) {
+  while (1) {
     Type *type1 = find_type(token);
     if (type1 || is_pre_type(token)) {
       type = type1;
@@ -356,10 +357,11 @@ Node *consume_enum() {
   }
   
   Node *node = new_node(ND_ENUM);
+  node->type = int_type;
+
   if (tag) {
     node->ident = substring(tag->str, tag->len);
   }
-
   return node;
 }
 
@@ -369,17 +371,59 @@ Node *consume_struct() {
   }
 
   Node *node = new_node(ND_STRUCT);
-
   Token *tag = consume_ident();
 
   if (consume("{")) {
     Vector *members = new_vector();
+
+    int unit = 1;
+    int size_struct = 0;
     while (!consume("}")) {
       Node *mem = consume_member();
+      if (!mem)
+        error_at(token->str, "no member");
+      if (!mem->type)
+        error_at(token->str, "no member type");
+
       vec_add(members, mem);
+
+      int size_mem = mem->type->size;
+      if (unit < size_mem) {
+        if (size_mem > 8) {
+          unit = 8;
+        } else {
+          unit = size_mem;
+        }
+      }
+      if ((size_struct % size_mem) == 0) {
+        size_struct += size_mem;
+      } else {
+        size_struct = (size_struct / size_mem + 2) * size_mem;
+      }
     }
+
+    if ((size_struct % unit) != 0) {
+      size_struct = (size_struct / unit + 1) * unit;
+    }
+
     node->list = members;
+
+    if (tag) {
+      node->type = find_or_gen_struct_type(tag);
+      if (node->type->size != 0) error("override type");
+      node->type->size = size_struct;
+
+      vec_add(types, node->type);
+    } else {
+      node->type = new_type("_struct", 1, size_struct); // TODO
+      node->type->kind = TY_STRUCT;
+    }
+
+  } else {
+    if (!tag) error_at(token->str, "illegal struct");
+    node->type = find_or_gen_struct_type(tag);
   }
+
   return node;
 }
 
@@ -403,6 +447,7 @@ Node *consume_union() {
 
 Node *consume_member() {
   Node *node;
+
   node = consume_enum();
   if (node) {
     Token *ident = consume_ident();
@@ -414,35 +459,44 @@ Node *consume_member() {
   if (node) {
     Token *ident = consume_ident();
     expect(";");
+
+    if (ident) {
+      node->ident = substring(ident->str, ident->len);
+    }
+    node->type = new_type("union", 5, 8); // TODO
     return node;
   }
 
   node = consume_struct();
   if (node) {
-    consume("*");
+    while (consume("*")) {
+      node->type = new_ptr_type(node->type);
+    }
+
     Token *ident = consume_ident();
+    expect(";");
+
     if (ident) {
       node->ident = substring(ident->str, ident->len);
     }
-    expect(";");
     return node;
   }
 
   Type *type = consume_type();
   Token *member = consume_ident();
 
-  int new_size;
   if (consume("[")) {
     int array_len = reduce_node(equality());
     expect("]");
 
-    new_size = type->size * array_len;
     type = new_array_type(type, array_len);
-    new_size = type->size;
   }
-
   expect(";");
-  return NULL;
+
+  node = new_node(ND_LVAR);
+  node->type = type;
+
+  return node;
 }
 
 // read reserved integer number
@@ -643,6 +697,7 @@ Type *typeof(Node* node) {
   if (node->kind == ND_NUM
       || node->kind == ND_ADDR
       || node->kind == ND_DEREF
+      || node->kind == ND_STRUCT // TODO
       || node->kind == ND_LVAR) {
     return node->type;
   }
@@ -1016,30 +1071,36 @@ Node *global() {
 
   if (consume_kind(TK_TYPEDEF)) {
 
-    Node *node_enum = consume_enum();
-    if (node_enum) {
+    if (consume_enum()) {
       Token *ident = consume_ident();
       if (!ident) {
         error_at(token->str, "Illegal typedef enum");
       }
       if (ident->kind == TK_IDENT) {
         // TODO to support type alias
-        Type *enum_type = new_type(ident->str, ident->len, 8);
+        Type *enum_type = new_type(ident->str, ident->len, 4);
+        enum_type->kind = TY_PRM;
+
         vec_add(types, enum_type);
       }
       expect(";");
       return NULL;
     }
 
-    Node *node_strt = consume_struct();
-    if (node_strt) {
+    Node *node_struct = consume_struct();
+    if (node_struct) {
       Token *ident = consume_ident();
-      if (!ident) {
-        error_at(token->str, "Illegal typedef enum");
-      }
+      if (!ident) error_at(token->str, "Illegal typedef struct");
+
       if (ident->kind == TK_IDENT) {
         // TODO to support type alias
-        Type *struct_type = new_type(ident->str, ident->len, 8);
+
+        if (!node_struct->type) error_at(token->str, "No defined type");
+
+        int size_t = node_struct->type->size;
+        Type *struct_type = new_type(ident->str, ident->len, size_t);
+        struct_type->kind = TY_TYPEDEF;
+
         vec_add(types, struct_type);
       }
       expect(";");
@@ -1075,8 +1136,7 @@ Node *global() {
     is_extern = 1;
   }
 
-  Node *node_enum = consume_enum();
-  if (node_enum) {
+  if (consume_enum()) {
     if (is_extern) {
       Token *ident = consume_ident();
     }
@@ -1084,11 +1144,18 @@ Node *global() {
     return NULL;
   }
 
-  Node *node_strt = consume_struct();
-  if (node_strt) {
+  Node *node_struct = consume_struct();
+  if (node_struct) {
     if (is_extern) {
-      consume("*");
+
+      // 変数宣言
+      Type *t = node_struct->type;
+      while (consume("*")) {
+         t = new_ptr_type(t);
+      }
       Token *ident = consume_ident();
+
+      // TODO
     }
     expect(";");
     return NULL;
@@ -1243,6 +1310,22 @@ Type *find_type(Token *tok) {
     }
   }
   return NULL;
+}
+
+Type *find_or_gen_struct_type(Token *tok) {
+  for (int i = 0; i < types->size; ++i) {
+    Type *type = vec_get(types, i);
+    if (type->kind != TY_STRUCT) continue;
+    if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
+      return type;
+    }
+  }
+
+  Type *type = new_type(tok->str, tok->len, 0);
+  type->kind = TY_STRUCT;
+
+  vec_add(types, type);
+  return type;
 }
 
 Function *find_function(Token *tok) {

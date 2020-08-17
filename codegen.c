@@ -332,6 +332,25 @@ void gen_defined(Node *node) {
   }
 }
 
+void _gen_deref(Node *node) {
+  int size = node->type->size;
+
+  printf("  pop rax\n");
+  if (size == 1) {
+    printf("  movsx rax, byte ptr [rax]\n");
+  } else if (size == 2) {
+    printf("  movsx rax, word ptr [rax]\n");
+  } else if (size == 4) {
+    printf("  movsxd rax, dword ptr [rax]\n");
+  } else if (size == 8) {
+    printf("  mov rax, [rax]\n");
+  } else {
+    char *type_name = substring(node->type->name, node->type->len);
+    error("illegal defref size: %d, %d, %s", node->type->kind, size, type_name);
+  }
+  printf("  push rax\n");
+}
+
 void gen_deref(int size) {
   printf("  pop rax\n");
 
@@ -349,7 +368,6 @@ void gen_deref(int size) {
   }
   printf("  push rax\n");
 }
-
 // push store address
 void gen_lval(Node *node) {
   printf("  # gen_lval\n");
@@ -372,6 +390,17 @@ int max_size(Node* lhs, Node* rhs) {
     return lsize;
   } else {
     return rsize;
+  }
+}
+
+int type_is_struct_ref(Type* type) {
+  if (type == TY_PTR) {
+    return type_is_struct_ref(type->to);
+  }
+  if (type == TY_STRUCT) {
+    return 1;
+  } else {
+    return 0;
   }
 }
 
@@ -407,6 +436,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_addr(node);
+
     if (!type_is_array(node->type)) {
       gen_deref(node->type->size);
     }
@@ -437,11 +467,11 @@ bool gen(Node *node) {
       printf("  mov [rax], di\n");
     } else if (size == 4) {
       printf("  mov [rax], edi\n");
-    } else {
-      if (size != 8) {
-        error("illegal size: %d", size);
-      }
+    } else if (size == 8) {
       printf("  mov [rax], rdi\n");
+    } else {
+      char *type_name = substring(node->type->name, node->type->len);
+      error("illegal size: %d, %d, %s", node->type->kind, size, type_name);
     }
 
     if (node->kind != ND_ASSIGN_POST) {
