@@ -730,13 +730,7 @@ Node *primary() {
       node->ident = substring(tok->str, tok->len);
     }
   }
-  if (type_is_ptr_or_array(node->type) && consume("[")) {
-    Node *index = expr();
-    node = new_node_deref(
-        new_node_lr(ND_ADD, node, index));
 
-    expect("]");
-  }
   return node;
 }
 
@@ -775,14 +769,40 @@ Node *unary() {
 
   node = primary();
 
-  // post ++ or --
-  if (consume("++")) {
-    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_node_num(1)));
-  } else if (consume("--")) {
-    return new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_node_num(1)));
-  }
+  while (1) {
+    // post ++ or --
+    if (consume("++")) {
+      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_node_num(1)));
+      continue;
+    }
+    if (consume("--")) {
+      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_node_num(1)));
+      continue;
+    }
 
-  return node;
+    if (consume("[")) {
+      if (!type_is_ptr_or_array(node->type)) {
+        error_at((token->str - 1), "Not ptr");
+      }
+      Node *index = expr();
+      expect("]");
+      node = new_node_deref(new_node_lr(ND_ADD, node, index));
+      continue;
+    }
+
+    if (consume(".")) {
+      Node *member = consume_ident();
+      continue;
+    }
+
+    if (consume("->")) {
+      node = new_node_deref(node);
+      Node *member = consume_ident();
+      continue;
+    }
+
+    return node;
+  }
 }
 
 Node *mul() {

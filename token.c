@@ -18,16 +18,16 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
 
 bool is_alnum(char c) {
   return ('a' <= c && c <= 'z')
-    || ('A' <= c && c <= 'Z')
-    || ('0' <= c && c <= '9')
-    || (c == '_');
+      || ('A' <= c && c <= 'Z')
+      || ('0' <= c && c <= '9')
+      || (c == '_');
 }
 
 int lvar_len(char *p0) {
   char *p = p0;
   if (('a' <= *p && *p <= 'z')
-    || ('A' <= *p && *p <= 'Z')
-    || *p == '_') {
+      || ('A' <= *p && *p <= 'Z')
+      || *p == '_') {
 
     while (is_alnum(*p)) p++;
   }
@@ -188,12 +188,13 @@ Token *tokenize(char *p) {
     }
 
     if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0
-      || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0
-      || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
-      || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
-      || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
-      || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0
-      || memcmp(p, "&&", 2) == 0 || memcmp(p, "||", 2) == 0) {
+        || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0
+        || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
+        || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
+        || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
+        || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0
+        || memcmp(p, "&&", 2) == 0 || memcmp(p, "||", 2) == 0
+        || memcmp(p, "->", 2) == 0) {
       cur = new_token(TK_RESERVED, cur, p);
       cur->len = 2;
       p += 2;
@@ -220,7 +221,8 @@ Token *tokenize(char *p) {
       p += 10;
       continue;
     }
-    if (memcmp(p, "__builtin_bswap32", 17) == 0 || memcmp(p, "__builtin_bswap64", 17) == 0) {
+    if (memcmp(p, "__builtin_bswap32", 17) == 0
+        || memcmp(p, "__builtin_bswap64", 17) == 0) {
       p += 17;
       continue;
     }

@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+static int debug = 0;
+
 //#include <string.h>
 int strcmp(char* m1, char* m2) {
   char* tmp_1 = m1;
@@ -25,7 +27,9 @@ int strcmp(char* m1, char* m2) {
 
 void assert(char* name, int ret) {
   if (ret) {
-    printf("%s: OK\n", name);
+    if (debug) {
+      printf("%s: OK\n", name);
+    }
   } else {
     printf("%s: NG\n", name);
   }
@@ -33,7 +37,9 @@ void assert(char* name, int ret) {
 
 void assertInt(char *name, int expect, int actual) {
   if (actual == expect) {
-    printf("%s: OK, expect: %d, actual: %d\n", name, expect, actual);
+    if (debug) {
+      printf("%s: OK, expect: %d, actual: %d\n", name, expect, actual);
+    }
   } else {
     printf("%s: NG, expect: %d, actual: %d\n", name, expect, actual);
   }
@@ -41,7 +47,9 @@ void assertInt(char *name, int expect, int actual) {
 
 void assertChar(char *name, char expect, char actual) {
   if (actual == expect) {
-    printf("%s: OK, expect: '%c', actual: '%c'\n", name, expect, actual);
+    if (debug) {
+      printf("%s: OK, expect: '%c', actual: '%c'\n", name, expect, actual);
+    }
   } else {
     printf("%s: NG, expect: '%c', actual: '%c'\n", name, expect, actual);
   }
@@ -49,7 +57,9 @@ void assertChar(char *name, char expect, char actual) {
 
 void assertStr(char *name, char *expect, char *actual) {
   if (strcmp(actual, expect) == 0) {
-    printf("%s: OK, expect: %s, actual: %s\n", name, expect, actual);
+    if (debug) {
+      printf("%s: OK, expect: %s, actual: %s\n", name, expect, actual);
+    }
   } else {
     printf("%s: NG, expect: %s, actual: %s\n", name, expect, actual);
   }
@@ -165,6 +175,7 @@ void test4() {
 }
 
 void test5() {
+
   char *msg = "Hello, World\n";
   assertChar("test2-1", 'a', 'a');
   assertChar("test2-2", 'b', 'b');
@@ -189,7 +200,7 @@ void test6() {
   Mame c = MAME_C;
 
   assert("test5-1", MAME_A == 0);
-  assert("test5-2", MAME_A == 1);
+  assert("test5-2", MAME_B == 1);
   assert("test5-3", MAME_C == 2);
 
   assert("test5-4", MAME_A == MAME_A);
@@ -206,20 +217,20 @@ void test6() {
   assert("test5-12", MAME_A != SAKE_2);
 }
 
-struct Company {
+struct User {
   int id;
   char *name;
 };
 
-typedef struct Company Company;
+typedef struct User User;
 
 void test7() {
-  Company p;
-  p.id = 10;
+  User p;
+  p.id = 1;
   p.name = "ma38su";
 
   assertStr("test7-1", "ma38su", p.name);
-  assertInt("test7-2", 10, p.id);
+  assertInt("test7-2", 1, p.id);
 }
 
 int main() {
