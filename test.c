@@ -289,17 +289,14 @@ void test7() {
   assertInt("test7-9", 8, sizeof(IntShortShort));
   assertInt("test7-10", 12, sizeof(ShortIntShort));
 
-  assertInt("test7-6", 16, sizeof(User));
-  assertInt("test7-6", 16, sizeof(p));
-
-  printf("sizeof %ld\n", sizeof(User));
-  printf("sizeof %ld\n", sizeof(p));
+  assertInt("test7-11", 16, sizeof(User));
+  assertInt("test7-12", 16, sizeof(p));
 
   p.id = 1;
   p.name = "ma38su";
 
-  assertStr("test7-1", "ma38su", p.name);
-  assertInt("test7-2", 1, p.id);
+  assertStr("test7-13", "ma38su", p.name);
+  assertInt("test7-14", 1, p.id);
 }
 
 int main() {
