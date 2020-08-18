@@ -266,6 +266,24 @@ typedef struct {
   short val3;
 } IntShortShort;
 
+typedef struct {
+  long val1;
+  long val2;
+  long val3;
+} LongLongLong;
+
+typedef struct {
+  long val1;
+  long val2;
+  long val3;
+} LongLongLong;
+
+typedef struct {
+  int val1;
+  int val2;
+  int val3;
+} IntIntInt;
+
 void test7() {
 
   char char_val;
@@ -313,28 +331,50 @@ void test7() {
   assertInt("test7-27", 8, sizeof(IntShortShort));
   assertInt("test7-28", 12, sizeof(ShortIntShort));
 
+  assertInt("test7-29", 24, sizeof(LongLongLong));
+  assertInt("test7-30", 12, sizeof(IntIntInt));
 }
 
-/*
-struct User {
-  int id;
-  char *name;
-};
-typedef struct User User;
+//struct User User;
 
 void test8() {
-  User p;
+  LongLongLong p1;
+  IntIntInt p2;
 
-  assertInt("test8-1", 16, sizeof(User));
-  assertInt("test8-2", 16, sizeof(p));
+  assertInt("test8-1", 24, sizeof(p1));
+  assertInt("test8-2", 12, sizeof(p2));
 
-  // p.id = 1;
-  // p.name = "ma38su";
+  p1.val2 = 17;
+  p1.val1 = 13;
+  p1.val3 = 23;
 
-  assertInt("test8-3", 1, p.id);
-  assertStr("test8-4", "ma38su", p.name);
+  assertInt("test8-3", 13, p1.val1);
+  assertInt("test8-4", 17, p1.val2);
+  assertInt("test8-5", 23, p1.val3);
+
+  p2.val2 = 17;
+  p2.val1 = 13;
+  p2.val3 = 23;
+
+  assertInt("test8-6", 13, p2.val1);
+  assertInt("test8-7", 17, p2.val2);
+  assertInt("test8-8", 23, p2.val3);
 }
-*/
+
+void test9() {
+  LongLongLong p;
+
+  assertInt("test8-2", 24, sizeof(p));
+
+  p.val2 = 17;
+  p.val1 = 13;
+  p.val3 = 23;
+
+  assertInt("test8-1", 13, p.val1);
+  assertInt("test8-2", 17, p.val2);
+  assertInt("test8-3", 23, p.val3);
+}
+
 int main() {
 
   test1();
@@ -344,7 +384,7 @@ int main() {
   test5();
   test6();
   test7();
-  //test8();
+  test8();
 
   return 0;
 }

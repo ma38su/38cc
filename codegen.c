@@ -202,11 +202,11 @@ bool gen_return(Node *node) {
   }
   gen(node->lhs);
   printf("  pop rax\n");
-
   printf("  # epilogue by return\n");
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
-  printf("  ret\n");  // return rax value
+  printf("  # return rax value\n");
+  printf("  ret\n");
   return false;
 }
 

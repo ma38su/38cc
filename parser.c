@@ -897,7 +897,11 @@ Node *unary() {
         Member *tmp = vec_get(members, 1);
         error_at(token->str, "no member %s-%s", substring(ident->str, ident->len), substring(tmp->name, tmp->len));
       }
-      node = new_node_lr(ND_ADD, node, new_node_num(member->offset));
+
+      int new_offset = node->offset - member->offset;
+
+      node = new_node(ND_LVAR);
+      node->offset = new_offset;
       node->type = new_ptr_type(member->type);
 
       continue;
