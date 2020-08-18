@@ -12,7 +12,7 @@ void gen_defined(Node *node);
 
 bool gen(Node *node);
 void gen_num(int num);
-void gen_deref(int size);
+void gen_deref(Type *type);
 
 char *reg64s[] = {
   "rdi", // 0
@@ -78,9 +78,12 @@ char* get_args_register(int size, int index) {
 }
 
 void gen_addr(Node* node) {
+  /*
   if (node->kind != ND_LVAR) {
     error("not lvar: %d", node->kind);
   }
+  */
+
   printf("  # &%s\n", node->ident);
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
@@ -332,10 +335,14 @@ void gen_defined(Node *node) {
   }
 }
 
-void _gen_deref(Node *node) {
-  int size = node->type->size;
+void gen_deref(Type *type) {
+  if (type->kind == TY_STRUCT || type->kind == TY_TYPEDEF) {
+    return;
+  }
 
+  int size = type->size;
   printf("  pop rax\n");
+
   if (size == 1) {
     printf("  movsx rax, byte ptr [rax]\n");
   } else if (size == 2) {
@@ -345,26 +352,8 @@ void _gen_deref(Node *node) {
   } else if (size == 8) {
     printf("  mov rax, [rax]\n");
   } else {
-    char *type_name = substring(node->type->name, node->type->len);
-    error("illegal defref size: %d, %d, %s", node->type->kind, size, type_name);
-  }
-  printf("  push rax\n");
-}
-
-void gen_deref(int size) {
-  printf("  pop rax\n");
-
-  if (size == 1) {
-    printf("  movsx rax, byte ptr [rax]\n");
-  } else if (size == 2) {
-    printf("  movsx rax, word ptr [rax]\n");
-  } else if (size == 4) {
-    printf("  movsxd rax, dword ptr [rax]\n");
-  } else {
-    if (size != 8) {
-      error("illegal defref size: %d", size);
-    }
-    printf("  mov rax, [rax]\n");
+    char *type_name = substring(type->name, type->len);
+    error("illegal defref size: sizeof(%s) = %d %d", type_name, size, type->kind);
   }
   printf("  push rax\n");
 }
@@ -394,10 +383,10 @@ int max_size(Node* lhs, Node* rhs) {
 }
 
 int type_is_struct_ref(Type* type) {
-  if (type == TY_PTR) {
+  if (type->kind == TY_PTR) {
     return type_is_struct_ref(type->to);
   }
-  if (type == TY_STRUCT) {
+  if (type->kind == TY_STRUCT) {
     return 1;
   } else {
     return 0;
@@ -438,7 +427,7 @@ bool gen(Node *node) {
     gen_addr(node);
 
     if (!type_is_array(node->type)) {
-      gen_deref(node->type->size);
+      gen_deref(node->type);
     }
     return true;
   }
@@ -471,7 +460,7 @@ bool gen(Node *node) {
       printf("  mov [rax], rdi\n");
     } else {
       char *type_name = substring(node->type->name, node->type->len);
-      error("illegal size: %d, %d, %s", node->type->kind, size, type_name);
+      error("illegal assign defref: sizeof(%s) = %d", type_name, size);
     }
 
     if (node->kind != ND_ASSIGN_POST) {
@@ -494,7 +483,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
-    gen_deref(node->lhs->type->to->size);
+    gen_deref(node->lhs->type->to);
     return true;
   }
 

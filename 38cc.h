@@ -66,6 +66,7 @@ typedef struct LVar LVar;
 typedef struct GVar GVar;
 typedef struct Function Function;
 typedef struct Enum Enum;
+typedef struct Member Member;
 
 struct Type {
   enum {
@@ -82,6 +83,7 @@ struct Type {
   int size; // size of type
 
   Type *to; // ptr or array. *char = * -> char
+  Vector *members;
 };
 
 struct Token {
@@ -98,7 +100,9 @@ struct Node {
   Node *lhs;    // left-hand side
   Node *rhs;    // right-hand side
 
-  char *ident;  // for function
+  char *ident;
+  int len;
+
   Vector *list;
   int val;      // for ND_NUM or ND_CALL(extern)
   Type *type;   // for lvar
@@ -131,6 +135,13 @@ struct Enum {
   int len;  // length of string
 
   int val;
+};
+
+struct Member {
+  char *name;
+  int len;
+  Type *type;
+  int offset;
 };
 
 struct Function {
