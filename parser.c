@@ -13,6 +13,7 @@ GVar *find_gvar(Token *tok);
 GVar *find_or_gen_gstr(Token *tok);
 Type *find_type(Token *tok);
 Type *find_or_gen_struct_type(Token *tok);
+Type *find_struct_type(Token *tok);
 Function *find_function(Token *tok);
 Member *find_member(Vector *members, Token *tok);
 
@@ -44,6 +45,7 @@ Type *char_type;
 Type *short_type;
 Type *int_type;
 Type *long_type;
+Type *float_type;
 Type *double_type;
 
 Type *void_type;
@@ -75,12 +77,13 @@ Type *new_array_type(Type* type, int len) {
 }
 
 int is_pre_type(Token* tok) {
-  return (tok->len == 4 && memcmp(tok->str, "auto", 4) == 0) ||
-      (tok->len == 6 && memcmp(tok->str, "static", 6) == 0) ||
-      (tok->len == 6 && memcmp(tok->str, "signed", 6) == 0) ||
-      (tok->len == 8 && memcmp(tok->str, "unsigned", 8) == 0) ||
-      (tok->len == 4 && memcmp(tok->str, "long", 4) == 0) ||
-      (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
+  return (tok->len == 4 && memcmp(tok->str, "auto", 4) == 0)
+      || (tok->len == 6 && memcmp(tok->str, "static", 6) == 0)
+      || (tok->len == 8 && memcmp(tok->str, "volatile", 8) == 0)
+      || (tok->len == 6 && memcmp(tok->str, "signed", 6) == 0)
+      || (tok->len == 8 && memcmp(tok->str, "unsigned", 8) == 0)
+      || (tok->len == 4 && memcmp(tok->str, "long", 4) == 0)
+      || (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
 }
 
 Function *new_function(char* name, int len, Type* ret_type) {
@@ -108,11 +111,17 @@ void init_types() {
   long_type = new_type("long", 4, 8);
   long_type->kind = TY_PRM;
 
+  float_type = new_type("float", 5, 4);
+  float_type->kind = TY_PRM;
+
   double_type = new_type("double", 6, 8);
   double_type->kind = TY_PRM;
 
   void_type = new_type("void", 4, 8);
   void_type->kind = TY_VOID;
+
+  Type *builtin_va_list = new_type("__builtin_va_list", 17, 8);
+  builtin_va_list->kind = TY_VOID;
 
   ptr_char_type = new_ptr_type(char_type);
 
@@ -121,7 +130,10 @@ void init_types() {
   vec_add(types, short_type);
   vec_add(types, char_type);
   vec_add(types, long_type);
+  vec_add(types, float_type);
   vec_add(types, double_type);
+
+  vec_add(types, builtin_va_list);
 }
 
 int type_is_ptr_or_array(Type *type) {
@@ -273,31 +285,50 @@ Type *consume_type() {
   // skip const
   consume_kind(TK_CONST);
 
-  if (token->kind != TK_IDENT) {
-    return NULL;
-  }
-
   Type *type;
-  char *p0 = token->str;
-  while (1) {
-    Type *type1 = find_type(token);
-    if (type1 || is_pre_type(token)) {
-      type = type1;
-      token = token->next;
-      continue;
+  if (consume_kind(TK_STRUCT)) {
+    if (token->kind != TK_IDENT) return NULL;
+
+    type = find_struct_type(token);
+    if (!type) return NULL;
+    token = token->next;
+  } else {
+    if (token->kind != TK_IDENT) return NULL;
+
+    char *p0 = token;
+    while (1) {
+      Type *type1 = find_type(token);
+      if (is_pre_type(token)) {
+        type = type1;
+        token = token->next;
+        continue;
+      }
+      if (type1) {
+        type = type1;
+        token = token->next;
+      }
+      break;
     }
-    break;
-  }
-  if (p0 == token->str) {
-    return NULL;
-  }
-  if (!type) {
-    error_at(token->str, "type is not set");
+    if (p0 == token) return NULL;
+    if (!type) error_at(token->str, "type is not set");
   }
   while (consume("*")) {
     type = new_ptr_type(type);
   }
   return type;
+}
+
+Token *consume_fp() {
+  if (!consume("(")) return NULL;
+  
+  expect("*");
+  Token *tok = token;
+  if (tok->kind != TK_IDENT)
+    error_at(token->str, "illegal function pointer");
+
+  token = token->next;
+  expect(")");
+  return tok;
 }
 
 Node *consume_char() {
@@ -602,85 +633,104 @@ LVar *consume_lvar_define() {
   return lvar;
 }
 
-int consume_void_type() {
-  if (token->kind == TK_IDENT && token->len == 4 && memcmp(token->str, "void", 4) == 0) {
-    token = token->next;
+int consume_void_args() {
+  if (consume(")")) {
+    return 1;
+  }
+  if (token->kind == TK_IDENT
+      && token->len == 4 && memcmp(token->str, "void", 4) == 0
+      && token_is_reserved(token->next, ")")) {
+    token = token->next->next;
     return 1;
   }
   return 0;
 }
 
-Vector *defined_args() {
-  Vector *args = NULL;
-  if (consume_void_type()) {
-    expect(")");
-  } else if (!consume(")")) {
-    args = calloc(1, sizeof(Vector));
-    for (;;) {
-      LVar *lvar = consume_lvar_define();
-      if (!lvar) {
-        error_at(token->str, "illegal arg");
-      }
-      Node *node = new_node(ND_LVAR);
-      
-      node->ident = substring(lvar->name, lvar->len);
-      node->len = lvar->len;
+Vector *expect_defined_args() {
+  if (consume_void_args()) {
+    return NULL;
+  }
 
-      node->offset = lvar->offset;
-      node->type = lvar->type;
-
-      vec_add(args, node);
-      if (consume(")")) {
-        break;
-      }
-      expect(",");
+  Vector *args = calloc(1, sizeof(Vector));
+  for (;;) {
+    LVar *lvar = consume_lvar_define();
+    if (!lvar) {
+      error_at(token->str, "illegal arg");
     }
+
+    Node *node = new_node(ND_LVAR);
+    node->ident = substring(lvar->name, lvar->len);
+    node->len = lvar->len;
+
+    node->offset = lvar->offset;
+    node->type = lvar->type;
+
+    vec_add(args, node);
+    if (consume(")")) {
+      break;
+    }
+    expect(",");
   }
   return args;
 }
 
-Vector *defined_extern_args() {
-  Vector *args = NULL;
-  if (!consume(")")) {
-    args = calloc(1, sizeof(Vector));
-    for (;;) {
-      if (consume_kind(TK_VA)) {
-        if (consume(")")) {
-          break;
-        }
-        expect(",");
-        continue;
-      }
+Vector *expect_defined_extern_args() {
+  if (consume_void_args()) {
+    return NULL;
+  }
 
-      Type *type = consume_type();
-      if (!type) {
-        error_at(token->str,
-            "illegal extern arg type (size: %d)", args->size);
-      }
-
-      // skip const
-      consume_kind(TK_CONST);
-
-      Token *tok = consume_ident();
-      // some arg var names are ommited.
-      if (tok && consume("[")) {
-        int array_len = expect_number();
-        expect("]");
-        type = new_array_type(type, array_len);
-      }
-
-
-      Node *node = new_node(ND_LVAR);
-      node->type = type;
-      node->ident = "";
-      node->len = 0;
-
-      vec_add(args, node);
+  Vector *args = calloc(1, sizeof(Vector));
+  for (;;) {
+    if (consume_kind(TK_VA)) {
       if (consume(")")) {
         break;
       }
       expect(",");
+      continue;
     }
+
+    Type *type = consume_type();
+    if (!type) {
+      error_at(token->str,
+          "illegal extern arg type (size: %d)", args->size);
+    }
+
+    Token *tok;
+    if (tok = consume_fp()) {
+      expect("(");
+      while (!consume(")")) {
+        token = token->next;
+      }
+      type = new_type("fn", 2, 8);
+      type->kind = TY_PTR;
+    }
+
+    // skip const
+    consume_kind(TK_CONST);
+    consume("*");
+
+    // some arg var names are ommited.
+    if (tok = consume_ident() && consume("[")) {
+      if (consume("]")) {
+        type = new_ptr_type(type);
+      } else {
+        int array_len = expect_number();
+        expect("]");
+        type = new_array_type(type, array_len);
+      }
+    }
+
+    Node *node = new_node(ND_LVAR);
+    node->type = type;
+    node->ident = "";
+    node->len = 0;
+
+    vec_add(args, node);
+
+    if (consume(")")) {
+      break;
+    }
+    expect(",");
   }
   return args;
 }
@@ -1061,15 +1111,13 @@ Node *stmt() {
 }
 
 Node *block_stmt() {
-  Node *node = NULL;
-  if (consume("{")) {
-    node = new_node(ND_BLOCK);
-    Vector *stmt_list = calloc(1, sizeof(Vector));
-    do {
-      Node *sub = stmt();
-      vec_add(stmt_list, sub);
-    } while (!consume("}"));
-    node->list = stmt_list;
+  if (!consume("{")) return NULL;
+
+  Node *node = new_node(ND_BLOCK);
+  node->list = calloc(1, sizeof(Vector));
+
+  while (!consume("}")) {
+    vec_add(node->list, stmt());
   }
   return node;
 }
@@ -1111,8 +1159,32 @@ int reduce_node(Node* node) {
 Node *global() {
 
   if (consume_kind(TK_TYPEDEF)) {
+    Node *node;
+    if (node = consume_struct()) {
+      while (consume("*")) {
+        // TODO
+        //node->type = new_ptr_type(node->type);
+      }
 
-    if (consume_enum()) {
+      Token *ident = consume_ident();
+      if (!ident) error_at(token->str, "Illegal typedef struct");
+
+      if (ident->kind == TK_IDENT) {
+        // TODO to support type alias
+
+        if (!node->type) error_at(token->str, "No defined type");
+
+        int size_t = node->type->size;
+        Type *struct_type = new_type(ident->str, ident->len, size_t);
+        struct_type->kind = TY_TYPEDEF;
+        struct_type->to = node->type;
+
+        vec_add(types, struct_type);
+      }
+      expect(";");
+      return NULL;
+    }
+    if (node = consume_enum()) {
       Token *ident = consume_ident();
       if (!ident) {
         error_at(token->str, "Illegal typedef enum");
@@ -1127,54 +1199,50 @@ Node *global() {
       expect(";");
       return NULL;
     }
-
-    Node *node_struct = consume_struct();
-    if (node_struct) {
-      while (consume("*")) {
-        // TODO
-        //node->type = new_ptr_type(node->type);
-      }
-
+    if (node = consume_union()) {
       Token *ident = consume_ident();
-      if (!ident) error_at(token->str, "Illegal typedef struct");
-
-      if (ident->kind == TK_IDENT) {
-        // TODO to support type alias
-
-        if (!node_struct->type) error_at(token->str, "No defined type");
-
-        int size_t = node_struct->type->size;
-        Type *struct_type = new_type(ident->str, ident->len, size_t);
-        struct_type->kind = TY_TYPEDEF;
-        struct_type->to = node_struct->type;
-
-        vec_add(types, struct_type);
+      if (!ident) {
+        error_at(token->str, "Illegal typedef union");
       }
       expect(";");
       return NULL;
     }
 
-    int brace = 0;
-    Token *tok;
-    for (;;) {
-      if (brace == 0 && consume(";")) {
-        break;
+    Type *type = consume_type();
+    if (!type) {
+      fprintf(stderr, "NOT FOUND: %s\n", substring(token->str, token->len));
+      while (!consume(";")) {
+        token = token->next;
       }
-      if (consume("{")) {
-        brace++;
-        continue;
-      } else if (consume("}")) {
-        brace--;
-        continue;
-      }
-      tok = token;
-      token = token->next;
+      return NULL;
     }
-    if (tok->kind == TK_IDENT) {
-      // TODO to support type alias
-      Type *def_type = new_type(tok->str, tok->len, 8);
+
+    Token *ident;
+    if (ident = consume_ident()) {
+      if (consume("(")) {
+        expect_defined_extern_args();
+      } else {
+        //fprintf(stderr, "typedef: %s\n", substring(ident->str, ident->len));
+
+        Type *def_type = new_type(ident->str, ident->len, type->size);
+        def_type->kind = TY_TYPEDEF;
+        def_type->to = type;
+        vec_add(types, def_type);
+      }
+    } else if (ident = consume_fp()) {
+      if (consume("(")) {
+        expect_defined_extern_args();
+      }
+
+      //fprintf(stderr, "typedef(*fp): %s\n", substring(ident->str, ident->len));
+
+      Type *def_type = new_type(ident->str, ident->len, type->size);
+      def_type->kind = TY_TYPEDEF;
+      def_type->to = type;
       vec_add(types, def_type);
     }
+    expect(";");
+
     return NULL;
   }
 
@@ -1183,41 +1251,37 @@ Node *global() {
     is_extern = 1;
   }
 
-  if (consume_enum()) {
+  Node *node;
+  if (node = consume_struct()) {
+    if (is_extern) {
+      // 変数宣言
+      Type *t = node->type;
+      while (consume("*")) {
+         t = new_ptr_type(t);
+      }
+      Token *ident = consume_ident();
+      // TODO
+    }
+    expect(";");
+    return NULL;
+  }
+  if (node = consume_enum()) {
     if (is_extern) {
       Token *ident = consume_ident();
     }
     expect(";");
     return NULL;
   }
-
-  Node *node_struct = consume_struct();
-  if (node_struct) {
+  if (node = consume_union()) {
     if (is_extern) {
-
-      // 変数宣言
-      Type *t = node_struct->type;
-      while (consume("*")) {
-         t = new_ptr_type(t);
-      }
       Token *ident = consume_ident();
-
-      // TODO
     }
     expect(";");
     return NULL;
   }
 
   Type *type = consume_type();
-  if (!type) {
-    if (is_extern) {
-      while (!consume(";")) {
-        token = token->next;
-      }
-      return NULL;
-    }
-    error_at(token->str, "type is not found");
-  }
+  if (!type) error_at(token->str, "type is not found");
 
   // skip const
   consume_kind(TK_CONST);
@@ -1238,7 +1302,7 @@ Node *global() {
     locals = NULL;
 
     if (is_extern) {
-      args = defined_extern_args();
+      args = expect_defined_extern_args();
 
       while (!consume(";")) {
         // skip unsupported tokens
@@ -1246,7 +1310,7 @@ Node *global() {
       }
       func->extn = 1;
     } else {
-      args = defined_args();
+      args = expect_defined_args();
       block = block_stmt();
       if (!block) {
         error_at(token->str, "illegal defined block");
@@ -1362,7 +1426,7 @@ Type *find_type(Token *tok) {
   return NULL;
 }
 
-Type *find_or_gen_struct_type(Token *tok) {
+Type *find_struct_type(Token *tok) {
   for (int i = 0; i < types->size; ++i) {
     Type *type = vec_get(types, i);
     if (type->kind != TY_STRUCT) continue;
@@ -1370,8 +1434,14 @@ Type *find_or_gen_struct_type(Token *tok) {
       return type;
     }
   }
+  return NULL;
+}
 
-  Type *type = new_type(tok->str, tok->len, 0);
+Type *find_or_gen_struct_type(Token *tok) {
+  Type *type = find_struct_type(tok);
+  if (type) return type;
+
+  type = new_type(tok->str, tok->len, 0);
   type->kind = TY_STRUCT;
 
   vec_add(types, type);

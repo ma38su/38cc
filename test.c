@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 static int debug = 0;
 
@@ -253,12 +254,6 @@ typedef struct {
 } LongLongLong;
 
 typedef struct {
-  long val1;
-  long val2;
-  long val3;
-} LongLongLong;
-
-typedef struct {
   int val1;
   int val2;
   int val3;
@@ -344,6 +339,46 @@ void test9() {
   assertInt("test9-4", 23, p.val3);
 }
 
+void test10() {
+  /*
+  IntIntInt *p = calloc(1, sizeof(IntIntInt));
+  assertInt("test10-1", 8, sizeof(p));
+
+  p->val2 = 17;
+  p->val1 = 13;
+  p->val3 = 23;
+
+  assertInt("test9-2", 13, p->val1);
+  assertInt("test9-3", 17, p->val2);
+  assertInt("test9-4", 23, p->val3);
+  */
+}
+
+/*
+typedef int (*intint2int) (int, int);
+
+typedef int intint2int_2 (int, int);
+
+int add(int v1, int v2) {
+  return v1 + v2;
+}
+
+int fn1(intint2int f) {
+  return f(7, 11);
+}
+
+int fn2(intint2int_2 *f) {
+  return f(3, 5);
+}
+
+void test11() {
+  intint2int f1 = add;
+  assertInt("test11-1", 18, fn1(f1));
+
+  intint2int_2 *f2 = add;
+  assertInt("test11-1", 8, fn2(f2));
+}
+*/
 int main() {
 
   test1();
@@ -355,6 +390,8 @@ int main() {
   test7();
   test8();
   test9();
+  //test10();
+  //test11();
 
   return 0;
 }

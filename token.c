@@ -60,6 +60,27 @@ char to_escape_char(char v) {
   }
 }
 
+char *skip_brackets(char *p) {
+  // skip (*)
+  while (isspace(*p)) ++p;
+
+  if (*p != '(') {
+    return p;
+  }
+  ++p;
+
+  int brackets = 1;
+  while (brackets > 0) {
+    if (*p == ')') {
+      --brackets;
+    } else if (*p == '(') {
+      ++brackets;
+    }
+    ++p;
+  }
+  return p;
+}
+
 Token *tokenize(char *p) {
   Token head;
   head.next = NULL;
@@ -102,11 +123,18 @@ Token *tokenize(char *p) {
       p += 13;
       continue;
     }
+    // skip __attribute__ (*)
+    if (memcmp(p, "__attribute__", 13) == 0) {
+      p += 13;
+      p = skip_brackets(p);
+      continue;
+    }
     // skip __restrict
     if (memcmp(p, "__restrict", 10) == 0) {
       p += 10;
       continue;
     }
+
     // skip const
     if (memcmp(p, "const", 5) == 0) {
       cur = new_token(TK_CONST, cur, p);
