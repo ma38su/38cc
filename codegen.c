@@ -73,6 +73,7 @@ char* get_args_register(int size, int index) {
     return reg64s[index];
   } else {
     error("illegal arg size: %d", size);
+    return NULL;
   }
 }
 

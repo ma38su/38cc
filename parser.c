@@ -467,57 +467,41 @@ Node *consume_union() {
 Node *consume_member() {
   Node *node;
 
-  node = consume_enum();
-  if (node) {
+  if (node = consume_enum()) {
     Token *ident = consume_ident();
-    expect(";");
-    return node;
-  }
-
-  node = consume_union();
-  if (node) {
+  } else if (node = consume_union()) {
     Token *ident = consume_ident();
-    expect(";");
-
     if (ident) {
       node->ident = substring(ident->str, ident->len);
       node->len = ident->len;
     }
     node->type = new_type("union", 5, 8); // TODO
-    return node;
-  }
-
-  node = consume_struct();
-  if (node) {
+  } else if (node = consume_struct()) {
     while (consume("*")) {
       node->type = new_ptr_type(node->type);
     }
-
     Token *ident = consume_ident();
-    expect(";");
-
     if (ident) {
       node->ident = substring(ident->str, ident->len);
       node->len = ident->len;
     }
-    return node;
+  } else {
+    Type *type = consume_type();
+    Token *member = consume_ident();
+
+    node = new_node(ND_LVAR);
+    node->ident = member->str;
+    node->len = member->len;
+    node->type = type;
   }
 
-  Type *type = consume_type();
-  Token *member = consume_ident();
-
-  if (consume("[")) {
+  while (consume("[")) {
     int array_len = reduce_node(equality());
     expect("]");
 
-    type = new_array_type(type, array_len);
+    node->type = new_array_type(node->type, array_len);
   }
   expect(";");
-
-  node = new_node(ND_LVAR);
-  node->ident = member->str;
-  node->len = member->len;
-  node->type = type;
 
   return node;
 }
