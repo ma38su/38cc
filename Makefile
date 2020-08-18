@@ -7,13 +7,13 @@ OBJS=main.o token.o parser.o codegen.o reader.o debug.o vector.o
 FILE = test
 
 38cc: $(OBJS)
-	$(CC) -g -o 38cc $(OBJS) $(LDFLAGS)
+	$(CC) -o 38cc $(OBJS) $(LDFLAGS)
 
 $(OBJS): 38cc.h $(SRCS)
 
 test: 38cc test.c
-	ulimit -c unlimited
 	cpp test.c -o .test.c
+	ulimit -c unlimited
 	./38cc .test.c > test.s
 	$(CC) test.s -o test
 	./test
@@ -23,7 +23,7 @@ test-s: test.s
 	./test
 
 test-gcc: test.c
-	gcc -o test_gcc test.c
+	$(CC) -o test_gcc test.c
 	./test_gcc
 
 test-debug: 38cc test.c
@@ -36,6 +36,10 @@ test-debug: 38cc test.c
 	cat test.s
 	$(CC) test.s -o test
 	./test
+
+test-gcc-debug: 38cc test.c
+	$(CC) -S -masm=intel test.c -o test_gcc.s
+	cat test_gcc.s
 
 shtest: 38cc test.c
 	./_test.sh
