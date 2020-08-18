@@ -338,41 +338,30 @@ void test7() {
 //struct User User;
 
 void test8() {
-  LongLongLong p1;
-  IntIntInt p2;
-
-  assertInt("test8-1", 24, sizeof(p1));
-  assertInt("test8-2", 12, sizeof(p2));
-
-  p1.val2 = 17;
-  p1.val1 = 13;
-  p1.val3 = 23;
-
-  assertInt("test8-3", 13, p1.val1);
-  assertInt("test8-4", 17, p1.val2);
-  assertInt("test8-5", 23, p1.val3);
-
-  p2.val2 = 17;
-  p2.val1 = 13;
-  p2.val3 = 23;
-
-  assertInt("test8-6", 13, p2.val1);
-  assertInt("test8-7", 17, p2.val2);
-  assertInt("test8-8", 23, p2.val3);
-}
-
-void test9() {
   LongLongLong p;
 
-  assertInt("test8-2", 24, sizeof(p));
+  assertInt("test8-1", 24, sizeof(p));
 
   p.val2 = 17;
   p.val1 = 13;
   p.val3 = 23;
 
-  assertInt("test8-1", 13, p.val1);
-  assertInt("test8-2", 17, p.val2);
-  assertInt("test8-3", 23, p.val3);
+  assertInt("test8-2", 13, p.val1);
+  assertInt("test8-3", 17, p.val2);
+  assertInt("test8-4", 23, p.val3);
+}
+
+void test9() {
+  IntIntInt p;
+  assertInt("test9-1", 12, sizeof(p));
+
+  p.val2 = 17;
+  p.val1 = 13;
+  //p.val3 = 23;
+
+  assertInt("test9-2", 13, p.val1);
+  assertInt("test9-3", 17, p.val2);
+  assertInt("test9-4", 23, p.val3);
 }
 
 int main() {
@@ -385,6 +374,7 @@ int main() {
   test6();
   test7();
   test8();
+  test9();
 
   return 0;
 }

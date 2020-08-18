@@ -69,11 +69,10 @@ char* get_args_register(int size, int index) {
     return reg16s[index];
   } else if (size == 4) {
     return reg32s[index];
-  } else {
-    if (size != 8) {
-      error("illegal arg size: %d", size);
-    }
+  } else if (size == 8) {
     return reg64s[index];
+  } else {
+    error("illegal arg size: %d", size);
   }
 }
 

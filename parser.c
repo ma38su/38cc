@@ -207,7 +207,6 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
   } else if (kind == ND_ASSIGN || kind == ND_ASSIGN_POST) {
     node->type = lhs->type;
   } else {
-
     if (!lhs->type) {
       error("lhs no type: %d -> %d", node->kind, lhs->kind);
     }
@@ -406,6 +405,7 @@ Member *to_member(Node *node) {
   member->name = node->ident;
   member->len = node->len;
   member->type = node->type;
+
   return member;
 }
 
