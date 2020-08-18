@@ -1130,6 +1130,11 @@ Node *global() {
 
     Node *node_struct = consume_struct();
     if (node_struct) {
+      while (consume("*")) {
+        // TODO
+        //node->type = new_ptr_type(node->type);
+      }
+
       Token *ident = consume_ident();
       if (!ident) error_at(token->str, "Illegal typedef struct");
 
