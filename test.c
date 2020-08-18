@@ -1,27 +1,7 @@
 #include <stdio.h>
+#include <string.h>
 
 static int debug = 0;
-
-//#include <string.h>
-int strcmp(char* m1, char* m2) {
-  char* tmp_1 = m1;
-  char* tmp_2 = m2;
-
-  int i = 0;
-
-  while (1) {
-    if (m1[i] < m2[i]) {
-      return 1;
-    } else if (m1[i] > m2[i]) {
-      return -1;
-    }
-
-    if (m1[i] == '\0') {
-      return 0;
-    }
-    ++i;
-  }
-}
 
 void assert(char* name, int ret) {
   if (ret) {
