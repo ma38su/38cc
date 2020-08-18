@@ -902,7 +902,7 @@ Node *unary() {
 
       node = new_node(ND_LVAR);
       node->offset = new_offset;
-      node->type = new_ptr_type(member->type);
+      node->type = member->type;
 
       continue;
     }

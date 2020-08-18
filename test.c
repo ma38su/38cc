@@ -357,7 +357,7 @@ void test9() {
 
   p.val2 = 17;
   p.val1 = 13;
-  //p.val3 = 23;
+  p.val3 = 23;
 
   assertInt("test9-2", 13, p.val1);
   assertInt("test9-3", 17, p.val2);
