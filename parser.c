@@ -14,7 +14,6 @@ GVar *find_or_gen_gstr(Token *tok);
 Type *find_type(Token *tok);
 Type *find_or_gen_struct_type(Token *tok);
 Type *find_struct_type(Token *tok);
-Function *find_function(Token *tok);
 Member *find_member(Vector *members, Token *tok);
 
 Enum *find_enum(Token *tok);
@@ -76,6 +75,13 @@ Type *new_array_type(Type* type, int len) {
   return ary_type;
 }
 
+Type *new_fn_type(Type* ret_type) {
+  Type *fn_type = new_type("(*)()", 5, 0);
+  fn_type->kind = TY_FUNCTION;
+  fn_type->to = ret_type;
+  return fn_type;
+}
+
 int is_pre_type(Token* tok) {
   return (tok->len == 4 && memcmp(tok->str, "auto", 4) == 0)
       || (tok->len == 6 && memcmp(tok->str, "static", 6) == 0)
@@ -86,12 +92,23 @@ int is_pre_type(Token* tok) {
       || (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
 }
 
-Function *new_function(char* name, int len, Type* ret_type) {
-  Function *func = calloc(1, sizeof(Function));
-  func->name = name;
-  func->len = len;
-  func->ret_type = ret_type;
-  return func;
+LVar *new_lvar(Token *tok, Type *type) {
+  LVar *lvar = calloc(1, sizeof(LVar));
+  lvar->name = tok->str;
+  lvar->len = tok->len; // strlen
+  lvar->type = type;
+  return lvar;
+}
+
+GVar *new_gvar(Token *tok, Type *type) {
+}
+
+GVar *new_function(Token *tok, Type* ret_type) {
+  GVar *var = calloc(1, sizeof(GVar));
+  var->name = substring(tok->str, tok->len);
+  var->len = tok->len; // strlen
+  var->type = new_fn_type(ret_type);
+  return var;
 }
 
 void init_types() {
@@ -617,12 +634,7 @@ LVar *consume_lvar_define() {
     new_size = type->size;
   }
 
-  LVar *lvar;
-  lvar = calloc(1, sizeof(LVar));
-  lvar->name = tok->str;
-  lvar->len = tok->len; // strlen
-  lvar->type = type;
-
+  LVar *lvar = new_lvar(tok, type);
   if (locals) {
     lvar->offset = locals->offset + new_size;
   } else {
@@ -632,6 +644,7 @@ LVar *consume_lvar_define() {
   locals = lvar;
   return lvar;
 }
+
 
 int consume_void_args() {
   if (consume(")")) {
@@ -803,22 +816,33 @@ Node *primary() {
     return new_node_num(expect_number());
   }
 
+  // function call
   if (consume("(")) {
-    node = new_node(ND_CALL);
-    node->list = consume_args();
+    GVar *gvar = find_gvar(tok);
+    if (gvar) {
+      node = new_node(ND_CALL);
 
+      node->type = gvar->type->to;
+      node->val = gvar->extn;
+    } else {
+      LVar *lvar = find_lvar(tok);
+      if (lvar) {
+        node = new_node(ND_CALL);
+        node->type = lvar->type->to;
+        node->val = 0;
+      }
+    }
+
+    if (!node) {
+      error_at(tok->str, "function(%s): not found", substring(tok->str, tok->len));
+    }
+
+    node->list = consume_args();
     node->ident = substring(tok->str, tok->len);
     node->len = tok->len;
 
-    Function *func = find_function(tok);
-    if (!func) {
-      error_at(tok->str, "function(%s): not found", substring(tok->str, tok->len));
-    }
-    node->type = func->ret_type;
-    node->val = func->extn;
-
     if (!node->type) {
-      error(tok->str, "function(%s): not found return type", substring(tok->str, tok->len));
+      error_at(tok->str, "function(%s): not found return type", substring(tok->str, tok->len));
     }
     return node;
   }
@@ -853,6 +877,28 @@ Node *primary() {
   }
 
   return node;
+}
+
+Member *get_member(Type *type, Token *ident) {
+  Type *ty = type;
+  while (ty->kind == TY_TYPEDEF) {
+    ty = ty->to;
+  }
+  if (!ty) error_at(token->str, "no type");
+
+  Vector *members = ty->members;
+  if (!members)
+    error_at(token->str, "no members: %s",
+        substring(ty->name, ty->len));
+
+  Member *member = find_member(members, ident);
+  if (!member) {
+    Member *tmp = vec_get(members, 1);
+    error_at(token->str, "no member %s-%s",
+        substring(ident->str, ident->len),
+        substring(tmp->name, tmp->len));
+  }
+  return member;
 }
 
 Node *unary() {
@@ -912,26 +958,9 @@ Node *unary() {
     }
 
     if (consume(".")) {
-
-      Type *ty = node->type;
-      while (ty->kind == TY_TYPEDEF) {
-        ty = ty->to;
-      }
-      if (!ty) error_at(token->str, "no type");
-
-      Vector *members = ty->members;
-      if (!members)
-        error_at(token->str, "no members: %s", substring(ty->name, ty->len));
-
       Token *ident = consume_ident();
       if (!ident) error_at(token->str, "no ident");
-
-      Member *member = find_member(members, ident);
-      if (!member) {
-        Member *tmp = vec_get(members, 1);
-        error_at(token->str, "no member %s-%s", substring(ident->str, ident->len), substring(tmp->name, tmp->len));
-      }
-
+      Member *member = get_member(node->type, ident);
       int new_offset = node->offset - member->offset;
 
       node = new_node(ND_LVAR);
@@ -942,8 +971,15 @@ Node *unary() {
     }
 
     if (consume("->")) {
-      node = new_node_deref(node);
-      Token *member = consume_ident();
+      Token *ident = consume_ident();
+      if (!ident) error_at(token->str, "no ident");
+      Member *member = get_member(node->type->to, ident);
+
+      int new_offset = node->offset - member->offset;
+
+      Node *addr = new_node_lr(ND_SUB, node, new_node_num(member->offset));
+      addr->type = new_ptr_type(member->type);
+      node = new_node_deref(addr);
       continue;
     }
 
@@ -1292,8 +1328,13 @@ Node *global() {
   }
   if (consume("(")) {
     // before parse function statement for recursive call
-    Function *func = new_function(tok->str, tok->len, type);
-    vec_add(functions, func);
+    GVar *func = new_function(tok, type);
+    func->extn = is_extern;
+    
+    func->next = globals;
+    globals = func;
+    
+    fprintf(stderr, "fn: %s\n", substring(tok->str, tok->len));
 
     Node *block = NULL;
     Vector *args;
@@ -1308,14 +1349,12 @@ Node *global() {
         // skip unsupported tokens
         token = token->next;
       }
-      func->extn = 1;
     } else {
       args = expect_defined_args();
       block = block_stmt();
       if (!block) {
         error_at(token->str, "illegal defined block");
       }
-      func->extn = 0;
     }
 
     Node *node;
@@ -1325,7 +1364,7 @@ Node *global() {
     node->len = tok->len;
     node->lhs = block;
     node->val = sizeof_args(args) + sizeof_lvars();
-    node->type = func->ret_type;
+    node->type = func->type->to;
 
     // local変数を戻す(サイズ計算後)
     locals = tmp_locals;
@@ -1446,16 +1485,6 @@ Type *find_or_gen_struct_type(Token *tok) {
 
   vec_add(types, type);
   return type;
-}
-
-Function *find_function(Token *tok) {
-  for (int i = 0; i < functions->size; ++i) {
-    Function *func = vec_get(functions, i);
-    if (func->len == tok->len && memcmp(tok->str, func->name, func->len) == 0) {
-      return func;
-    }
-  }
-  return NULL;
 }
 
 LVar *find_lvar(Token *tok) {

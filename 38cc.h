@@ -74,6 +74,7 @@ struct Type {
     TY_PRM,
     TY_PTR,
     TY_ARRAY,
+    TY_FUNCTION,
     TY_STRUCT,
     TY_TYPEDEF,
   } kind;
@@ -82,7 +83,10 @@ struct Type {
   int len;  // length of string
   int size; // size of type
 
-  Type *to; // ptr or array. *char = * -> char
+  // ptr or array. *char = * -> char,
+  // fp: return type
+  Type *to;
+
   Vector *members;
 };
 
@@ -115,6 +119,8 @@ struct LVar {
   char *name;
   int len;
   int offset;
+
+  int level; // scope level
 };
 
 struct GVar {

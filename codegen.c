@@ -100,13 +100,13 @@ void gen_function_call(Node *node) {
     printf("  # set args %d to call %s\n",
         node->list->size, node->ident);
 
+    printf("  # push %d args\n", node->list->size);
     for (int i = 0; i < node->list->size; ++i) {
-      printf("  # push arg%d to stack\n", i);
       gen((Node *) vec_get(node->list, i));
     }
+    printf("  # set %d args\n", node->list->size);
     for (int i = node->list->size - 1; i >= 0; --i) {
       char *r = get_args_register(8, i);
-      printf("  # set arg%d to %s\n", i, r);
       printf("  pop %s\n", r);
     }
   }
@@ -114,6 +114,7 @@ void gen_function_call(Node *node) {
   if (padding) {
     printf("  sub rsp, 8\n");
   }
+
   // reset for return val
   printf("  mov rax, 0\n");
   if (node->val) {

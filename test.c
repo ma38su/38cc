@@ -63,6 +63,7 @@ char c;
 char s1[] = "Hello";
 char *s2 = "World";
 
+/*
 // 四則演算
 void test1() {
   assertInt("test1-1", 5, 2 + 3);
@@ -339,48 +340,61 @@ void test9() {
   assertInt("test9-4", 23, p.val3);
 }
 
+void testIntIntInt(IntIntInt *p) {
+  assertInt("test10-5", 13, p->val1);
+  assertInt("test10-6", 17, p->val2);
+  assertInt("test10-7", 23, p->val3);
+}
+
 void test10() {
-  /*
   IntIntInt *p = calloc(1, sizeof(IntIntInt));
   assertInt("test10-1", 8, sizeof(p));
+  assertInt("test10-2", 12, sizeof(*p));
 
   p->val2 = 17;
   p->val1 = 13;
   p->val3 = 23;
 
-  assertInt("test9-2", 13, p->val1);
-  assertInt("test9-3", 17, p->val2);
-  assertInt("test9-4", 23, p->val3);
-  */
+  assertInt("test10-2", 13, p->val1);
+  assertInt("test10-3", 17, p->val2);
+  assertInt("test10-4", 23, p->val3);
+
+  testIntIntInt(p);
 }
-
-/*
-typedef int (*intint2int) (int, int);
-
-typedef int intint2int_2 (int, int);
+*/
 
 int add(int v1, int v2) {
   return v1 + v2;
 }
 
+typedef int (*intint2int) (int, int);
+
 int fn1(intint2int f) {
   return f(7, 11);
 }
 
+/*
+typedef int intint2int_2 (int, int);
+
+
 int fn2(intint2int_2 *f) {
   return f(3, 5);
 }
+*/
 
 void test11() {
   intint2int f1 = add;
   assertInt("test11-1", 18, fn1(f1));
 
+  /*
   intint2int_2 *f2 = add;
   assertInt("test11-1", 8, fn2(f2));
+  */
 }
-*/
+
 int main() {
 
+  /*
   test1();
   test2();
   test3();
@@ -390,8 +404,9 @@ int main() {
   test7();
   test8();
   test9();
-  //test10();
-  //test11();
+  test10();
+  */
+  test11();
 
   return 0;
 }
