@@ -666,38 +666,8 @@ Vector *expect_defined_args() {
 
   Vector *args = calloc(1, sizeof(Vector));
   for (;;) {
-    LVar *lvar = consume_lvar_define();
-    if (!lvar) {
-      error_at(token->str, "illegal arg");
-    }
-
-    Node *node = new_node(ND_LVAR);
-    node->ident = substring(lvar->name, lvar->len);
-    node->len = lvar->len;
-
-    node->offset = lvar->offset;
-    node->type = lvar->type;
-
-    vec_add(args, node);
-    if (consume(")")) {
-      break;
-    }
-    expect(",");
-  }
-  return args;
-}
-
-Vector *expect_defined_extern_args() {
-  if (consume_void_args()) {
-    return NULL;
-  }
-
-  Vector *args = calloc(1, sizeof(Vector));
-  for (;;) {
     if (consume_kind(TK_VA)) {
-      if (consume(")")) {
-        break;
-      }
+      if (consume(")")) break;
       expect(",");
       continue;
     }
@@ -705,7 +675,7 @@ Vector *expect_defined_extern_args() {
     Type *type = consume_type();
     if (!type) {
       error_at(token->str,
-          "illegal extern arg type (size: %d)", args->size);
+          "illegal arg type (size: %d)", args->size);
     }
 
     // skip const
@@ -733,6 +703,9 @@ Vector *expect_defined_extern_args() {
       type->kind = TY_PTR;
     }
 
+    Node *node = new_node(ND_LVAR);
+    node->type = type;
+
     if (tok) {
       LVar *lvar = new_lvar(tok, type);
       if (locals) {
@@ -742,13 +715,11 @@ Vector *expect_defined_extern_args() {
       }
       lvar->next = locals;
       locals = lvar;
-    }
 
-    Node *node = new_node(ND_LVAR);
-    node->type = type;
-    if (tok) {
-      node->ident = tok->str;
+      node->ident = substring(tok->str, tok->len);
       node->len = tok->len;
+      node->offset = lvar->offset;
+
     } else {
       node->ident = "";
       node->len = 0;
@@ -1272,7 +1243,7 @@ Node *global() {
     Token *ident;
     if (ident = consume_ident()) {
       if (consume("(")) {
-        expect_defined_extern_args();
+        expect_defined_args();
       } else {
         //fprintf(stderr, "typedef: %s\n", substring(ident->str, ident->len));
 
@@ -1283,7 +1254,7 @@ Node *global() {
       }
     } else if (ident = consume_fp()) {
       if (consume("(")) {
-        expect_defined_extern_args();
+        expect_defined_args();
       }
 
       //fprintf(stderr, "typedef(*fp): %s\n", substring(ident->str, ident->len));
@@ -1359,7 +1330,7 @@ Node *global() {
     locals = NULL;
 
     if (is_extern) {
-      args = expect_defined_extern_args();
+      args = expect_defined_args();
 
       while (!consume(";")) {
         // skip unsupported tokens
@@ -1368,9 +1339,9 @@ Node *global() {
     } else {
       args = expect_defined_args();
       block = block_stmt();
-      if (!block) {
-        error_at(token->str, "illegal defined block");
-      }
+      //if (!block) {
+      //  error_at(token->str, "illegal defined block");
+      //}
     }
 
     Node *node;
