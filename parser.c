@@ -733,6 +733,17 @@ Vector *expect_defined_extern_args() {
       type->kind = TY_PTR;
     }
 
+    if (tok) {
+      LVar *lvar = new_lvar(tok, type);
+      if (locals) {
+        lvar->offset = locals->offset + type->size;
+      } else {
+        lvar->offset = type->size;
+      }
+      lvar->next = locals;
+      locals = lvar;
+    }
+
     Node *node = new_node(ND_LVAR);
     node->type = type;
     if (tok) {
