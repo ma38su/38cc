@@ -1179,6 +1179,73 @@ int reduce_node(Node* node) {
   return node->val;
 }
 
+Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
+  GVar *gvar = find_gvar(tok);
+  if (gvar) {
+    if (gvar->extn && !is_extern) {
+      error_at(tok->str, "duplicated defined gvar");
+    }
+    gvar->extn = 0;
+  } else {
+    gvar = calloc(1, sizeof(GVar));
+    gvar->extn = is_extern;
+  }
+
+  gvar->name = substring(tok->str, tok->len);
+  gvar->len = tok->len;
+
+  if (consume("[")) {
+    if (token->kind == TK_NUM) {
+      // gvar[n]
+      int array_len = expect_number();
+      expect("]");
+      type = new_array_type(type, array_len);
+    } else {
+      // gvar[]
+      type = new_array_type(type, type->size);
+      expect("]");
+    }
+  }
+
+  gvar->type = type;
+  gvar->val = tok->val;
+
+  gvar->next = globals;
+  globals = gvar;
+
+  Node *node = new_node(ND_GVAR);
+  node->ident = substring(tok->str, tok->len);
+  node->len = tok->len;
+  node->type = gvar->type;
+  if (consume("=")) {
+    if (type_is_array(type) && type->to == char_type) {
+      if (token->kind != TK_STR) {
+        error("expected string literal");
+      }
+      gvar->str = substring(token->str, token->len);
+      token = token->next;
+    } else if (type_is_ptr(type) && type->to == char_type) {
+      Node* subnode = equality();
+      if (subnode->kind != ND_GVAR) {
+        error("expected gvar (string literal)");
+      }
+      gvar->str = subnode->ident;
+    } else {
+      gvar->val = reduce_node(equality());
+    }
+    gvar->init = 1;
+  } else {
+    if (node->type != ptr_char_type) {
+      gvar->val = 0;
+    } else {
+      printf("# not initialize gvar str\n");
+    }
+    gvar->init = 0;
+  }
+  expect(";");
+  return node;
+}
+
 Node *global() {
 
   if (consume_kind(TK_TYPEDEF)) {
@@ -1352,71 +1419,7 @@ Node *global() {
     return node;
 
   } else {
-
-    GVar *gvar = find_gvar(tok);
-    if (gvar) {
-      if (gvar->extn && !is_extern) {
-        error_at(tok->str, "duplicated defined gvar");
-      }
-      gvar->extn = 0;
-    } else {
-      gvar = calloc(1, sizeof(GVar));
-      gvar->extn = is_extern;
-    }
-
-    gvar->name = substring(tok->str, tok->len);
-    gvar->len = tok->len;
-
-    if (consume("[")) {
-      if (token->kind == TK_NUM) {
-        // gvar[n]
-        int array_len = expect_number();
-        expect("]");
-        type = new_array_type(type, array_len);
-      } else {
-        // gvar[]
-        type = new_array_type(type, type->size);
-        expect("]");
-      }
-    }
-
-    gvar->type = type;
-    gvar->val = tok->val;
-
-    gvar->next = globals;
-    globals = gvar;
-
-    Node *node = new_node(ND_GVAR);
-    node->ident = substring(tok->str, tok->len);
-    node->len = tok->len;
-    node->type = gvar->type;
-    if (consume("=")) {
-      if (type_is_array(type) && type->to == char_type) {
-        if (token->kind != TK_STR) {
-          error("expected string literal");
-        }
-        gvar->str = substring(token->str, token->len);
-        token = token->next;
-      } else if (type_is_ptr(type) && type->to == char_type) {
-        Node* subnode = equality();
-        if (subnode->kind != ND_GVAR) {
-          error("expected gvar (string literal)");
-        }
-        gvar->str = subnode->ident;
-      } else {
-        gvar->val = reduce_node(equality());
-      }
-      gvar->init = 1;
-    } else {
-      if (node->type != ptr_char_type) {
-        gvar->val = 0;
-      } else {
-        printf("# not initialize gvar str\n");
-      }
-      gvar->init = 0;
-    }
-    expect(";");
-    return node;
+    return new_gvar_node(tok, type, is_extern);
   }
 }
 

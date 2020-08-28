@@ -4,25 +4,8 @@
 
 static int debug = 0;
 
-void assert(char* name, int ret) {
-  if (ret) {
-    if (debug) {
-      printf("%s: OK\n", name);
-    }
-  } else {
-    printf("%s: NG\n", name);
-  }
-}
-
-void assertInt(char *name, int expect, int actual) {
-  if (actual == expect) {
-    if (debug) {
-      printf("%s: OK, expect: %d, actual: %d\n", name, expect, actual);
-    }
-  } else {
-    printf("%s: NG, expect: %d, actual: %d\n", name, expect, actual);
-  }
-}
+void assert(char* name, int ret);
+void assertInt(char *, int, int);
 
 void assertChar(char *name, char expect, char actual) {
   if (actual == expect) {
@@ -405,3 +388,22 @@ int main() {
   return 0;
 }
 
+void assert(char* name, int ret) {
+  if (ret) {
+    if (debug) {
+      printf("%s: OK\n", name);
+    }
+  } else {
+    printf("%s: NG\n", name);
+  }
+}
+
+void assertInt(char *name, int expect, int actual) {
+  if (actual == expect) {
+    if (debug) {
+      printf("%s: OK, expect: %d, actual: %d\n", name, expect, actual);
+    }
+  } else {
+    printf("%s: NG, expect: %d, actual: %d\n", name, expect, actual);
+  }
+}
