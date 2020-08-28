@@ -708,8 +708,23 @@ Vector *expect_defined_extern_args() {
           "illegal extern arg type (size: %d)", args->size);
     }
 
+    // skip const
+    consume_kind(TK_CONST);
+    consume("*");
+
     Token *tok;
-    if (tok = consume_fp()) {
+    // some arg var names are ommited.
+    if (tok = consume_ident()) {
+      if (consume("[")) {
+        if (consume("]")) {
+          type = new_ptr_type(type);
+        } else {
+          int array_len = expect_number();
+          expect("]");
+          type = new_array_type(type, array_len);
+        }
+      }
+    } else if (tok = consume_fp()) {
       expect("(");
       while (!consume(")")) {
         token = token->next;
@@ -718,25 +733,15 @@ Vector *expect_defined_extern_args() {
       type->kind = TY_PTR;
     }
 
-    // skip const
-    consume_kind(TK_CONST);
-    consume("*");
-
-    // some arg var names are ommited.
-    if (tok = consume_ident() && consume("[")) {
-      if (consume("]")) {
-        type = new_ptr_type(type);
-      } else {
-        int array_len = expect_number();
-        expect("]");
-        type = new_array_type(type, array_len);
-      }
-    }
-
     Node *node = new_node(ND_LVAR);
     node->type = type;
-    node->ident = "";
-    node->len = 0;
+    if (tok) {
+      node->ident = tok->str;
+      node->len = tok->len;
+    } else {
+      node->ident = "";
+      node->len = 0;
+    }
 
     vec_add(args, node);
 
