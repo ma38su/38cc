@@ -63,7 +63,6 @@ char c;
 char s1[] = "Hello";
 char *s2 = "World";
 
-/*
 // 四則演算
 void test1() {
   assertInt("test1-1", 5, 2 + 3);
@@ -361,40 +360,34 @@ void test10() {
 
   testIntIntInt(p);
 }
-*/
 
 int add(int v1, int v2) {
   return v1 + v2;
 }
 
 typedef int (*intint2int) (int, int);
+typedef int intint2int_2 (int, int);
 
+/*
 int fn1(intint2int f) {
   return f(7, 11);
 }
 
-/*
-typedef int intint2int_2 (int, int);
-
-
 int fn2(intint2int_2 *f) {
   return f(3, 5);
 }
-*/
 
 void test11() {
   intint2int f1 = add;
   assertInt("test11-1", 18, fn1(f1));
 
-  /*
   intint2int_2 *f2 = add;
   assertInt("test11-1", 8, fn2(f2));
-  */
 }
+*/
 
 int main() {
 
-  /*
   test1();
   test2();
   test3();
@@ -405,8 +398,9 @@ int main() {
   test8();
   test9();
   test10();
-  */
+  /*
   test11();
+  */
 
   return 0;
 }
