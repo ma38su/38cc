@@ -1329,19 +1329,13 @@ Node *global() {
     LVar *tmp_locals = locals;
     locals = NULL;
 
-    if (is_extern) {
-      args = expect_defined_args();
-
+    args = expect_defined_args();
+    block = block_stmt();
+    if (!block) {
       while (!consume(";")) {
         // skip unsupported tokens
         token = token->next;
       }
-    } else {
-      args = expect_defined_args();
-      block = block_stmt();
-      //if (!block) {
-      //  error_at(token->str, "illegal defined block");
-      //}
     }
 
     Node *node;
