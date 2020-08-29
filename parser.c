@@ -23,6 +23,7 @@ Node *stmt();
 Node *expr();
 Node *equality();
 Node *mul();
+Node *shift();
 Node *unary();
 
 int reduce_node(Node* node);
@@ -906,6 +907,13 @@ Node *unary() {
     return primary();
   }
 
+  if (consume("!")) {
+    Node *node = new_node(ND_NOT);
+    node->lhs = primary();
+    node->type = int_type;
+    return node;
+  }
+
   if (consume("*")) {
     return new_node_deref(unary());
   }
@@ -1003,17 +1011,30 @@ Node *add() {
   }
 }
 
-Node *relational() {
+Node *shift() {
   Node *node = add();
   for (;;) {
+    if (consume("<<")) {
+      node = new_node_lr(ND_SHL, node, add());
+    } else if (consume(">>")) {
+      node = new_node_lr(ND_SAR, node, add());
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *relational() {
+  Node *node = shift();
+  for (;;) {
     if (consume("<")) {
-      node = new_node_lr(ND_LT, node, add());
+      node = new_node_lr(ND_LT, node, shift());
     } else if (consume("<=")) {
-      node = new_node_lr(ND_LE, node, add());
+      node = new_node_lr(ND_LE, node, shift());
     } else if (consume(">=")) {
-      node = new_node_lr(ND_LE, add(), node);
+      node = new_node_lr(ND_LE, shift(), node);
     } else if (consume(">")) {
-      node = new_node_lr(ND_LT, add(), node);
+      node = new_node_lr(ND_LT, shift(), node);
     } else {
       return node;
     }
@@ -1045,6 +1066,10 @@ Node *assign() {
     node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_DIV, node, assign()));
   } else if (consume("%=")) {
     node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_MOD, node, assign()));
+  } else if (consume("<<=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SHL, node, assign()));
+  } else if (consume(">>=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SAR, node, assign()));
   } else if (consume("=")) {
     node = new_node_lr(ND_ASSIGN, node, assign());
   }
@@ -1182,10 +1207,12 @@ int reduce_node(Node* node) {
 Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
   GVar *gvar = find_gvar(tok);
   if (gvar) {
-    if (gvar->extn && !is_extern) {
-      error_at(tok->str, "duplicated defined gvar");
+    if (!is_extern) {
+      if (!gvar->extn) {
+        error_at(tok->str, "duplicated defined gvar");
+      }
+      gvar->extn = 0;
     }
-    gvar->extn = 0;
   } else {
     gvar = calloc(1, sizeof(GVar));
     gvar->extn = is_extern;
@@ -1417,7 +1444,6 @@ Node *global() {
     // local変数を戻す(サイズ計算後)
     locals = tmp_locals;
     return node;
-
   } else {
     return new_gvar_node(tok, type, is_extern);
   }

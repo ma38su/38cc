@@ -2,7 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-static int debug = 0;
+//static int debug = 0;
+//extern int debug;
+int debug = 0;
 
 void assert(char* name, int ret);
 void assertInt(char *, int, int);
@@ -344,6 +346,34 @@ void test10() {
   testIntIntInt(p);
 }
 
+void test11() {
+  int v1 = 2;
+  int v2 = 3;
+  int v3 = 28;
+  int v4 = -14;
+
+  assertInt("test11-1", 16, v1 << v2);
+  assertInt("test11-2", 12, v2 << v1);
+
+  assertInt("test11-3", 14, v3 >> 1);
+  assertInt("test11-4", 1, v2 >> 1);
+  assertInt("test11-5", 0, v2 >> v1);
+  assertInt("test11-6", 0, v2 >> v3);
+
+  assertInt("test11-7", -28, v4 << 1);
+  assertInt("test11-8", -7, v4 >> 1);
+
+  v1 <<= 1;
+  assertInt("test11-9", 4, v1);
+  v2 <<= v1;
+  assertInt("test11-10", (1 << 4) * 3, v2);
+
+  v3 >>= 2;
+  assertInt("test11-11", 7, v3);
+  v4 >>= 2;
+  assertInt("test11-13", -3 - 1, v4);
+}
+
 int add(int v1, int v2) {
   return v1 + v2;
 }
@@ -381,9 +411,7 @@ int main() {
   test8();
   test9();
   test10();
-  /*
   test11();
-  */
 
   return 0;
 }

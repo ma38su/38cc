@@ -491,7 +491,7 @@ bool gen(Node *node) {
   bool lhs_is_ptr = type_is_ptr(node->lhs->type) || type_is_array(node->lhs->type);
   bool rhs_is_ptr = type_is_ptr(node->rhs->type) || type_is_array(node->rhs->type);
 
-  printf("  # lhs\n");
+  printf("  # LHS\n");
   gen(node->lhs);
   if (!lhs_is_ptr && rhs_is_ptr) {
     // for pointer calculation
@@ -500,7 +500,7 @@ bool gen(Node *node) {
     printf("  push rax\n");
   }
 
-  printf("  # rhs\n");
+  printf("  # RHS\n");
   gen(node->rhs);
   if (lhs_is_ptr && !rhs_is_ptr) {
     // for pointer calculation
@@ -509,43 +509,59 @@ bool gen(Node *node) {
     printf("  push rax\n");
   }
 
+  if (node->kind == ND_SHL) {
+    printf("  # SHL (<<)\n");
+    printf("  pop rcx\n");
+    printf("  pop rax\n");
+    printf("  shl rax, cl\n");
+    printf("  push rax\n");
+    return true;
+  } else if (node->kind == ND_SAR) {
+    printf("  # SAL (>>)\n");
+    printf("  pop rcx\n");
+    printf("  pop rax\n");
+    printf("  sar rax, cl\n");
+    printf("  push rax\n");
+    return true;
+  }  
+
   printf("  pop rdi\n");
   printf("  pop rax\n");
   if (node->kind == ND_ADD) {
-    printf("  # add(+)\n");
+    printf("  # ADD (+)\n");
     printf("  add rax, rdi\n");
   } else if (node->kind == ND_SUB) {
-    printf("  # sub(-)\n");
+    printf("  # SUB (-)\n");
     printf("  sub rax, rdi\n");
   } else if (node->kind == ND_MUL) {
-    printf("  # mul(*)\n");
+    printf("  # MUL (*)\n");
     printf("  imul rax, rdi\n");
   } else if (node->kind == ND_DIV) {
-    printf("  # div(/)\n");
+    printf("  # DIV (/)\n");
     printf("  cqo\n");
     printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
   } else if (node->kind == ND_MOD) {
-    printf("  # mod(%%)\n");
+    printf("  # MOD (%%)\n");
     printf("  cqo\n");
     printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
     printf("  mov rax, rdx\n");
   } else if (node->kind == ND_EQ) {
-    printf("  # eq(==)\n");
+    printf("  # EQ (==)\n");
     printf("  cmp rax, rdi\n");
     printf("  sete al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_NE) {
-    printf("  # ne(!=)\n");
+    printf("  # NE (!=)\n");
     printf("  cmp rax, rdi\n");
     printf("  setne al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_LE) {
-    printf("  # le(>=)\n");
+    printf("  # LE (>=)\n");
     printf("  cmp rax, rdi\n");
     printf("  setle al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
   } else if (node->kind == ND_LT) {
-    printf("  # lt(>)\n");
+    printf("  # LT (>)\n");
     printf("  cmp rax, rdi\n");
     printf("  setl al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");

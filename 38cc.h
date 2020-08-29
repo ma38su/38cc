@@ -27,14 +27,17 @@ typedef enum {
   ND_MUL,         // 19 *
   ND_DIV,         // 20 /
   ND_MOD,         // 21 %
-  ND_ASSIGN,      // 22 =
-  ND_ASSIGN_POST, // 23 for i++ and i--
-  ND_RETURN,      // 24 return
-  ND_ENUM,        // 25
-  ND_STRUCT,      // 26 struct
-  ND_UNION,       // 27 union
-  ND_FUNCTION,    // 28
-  ND_CALL,        // 29
+  ND_SHL,         // 22 >>
+  ND_SAR,         // 23 <<
+  ND_NOT,         // 24 !
+  ND_ASSIGN,      // 25 =
+  ND_ASSIGN_POST, // 26 for i++ and i--
+  ND_RETURN,      // 27 return
+  ND_ENUM,        // 28
+  ND_STRUCT,      // 29 struct
+  ND_UNION,       // 30 union
+  ND_FUNCTION,    // 31
+  ND_CALL,        // 32
 } NodeKind;
 
 typedef enum {
