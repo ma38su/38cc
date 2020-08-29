@@ -4,6 +4,7 @@
 #include "38cc.h"
 
 int label_id = 0;
+int current_lid = -1;
 
 void gen_gvars();
 void gen_gvars_uninit();
@@ -152,7 +153,9 @@ bool gen_while(Node *node) {
   if (node->kind != ND_WHILE) {
     error("not while");
   }
-  int lid = label_id++;
+
+  int prev_lid = current_lid;
+  int lid = current_lid = label_id++;
   printf(".Lbegin%03d:\n", lid);
   gen(node->lhs);
   printf("  pop rax # while\n");
@@ -161,12 +164,13 @@ bool gen_while(Node *node) {
   gen(node->rhs);
   printf("  jmp .Lbegin%03d\n", lid);
   printf(".Lend%03d:\n", lid);
+  current_lid = prev_lid;
   return false;
 }
 
 bool gen_for(Node *node) {
   if (node->kind != ND_FOR) {
-    error("not while");
+    error("not for");
   }
   if (node->lhs) {
     gen(node->lhs);
@@ -324,7 +328,7 @@ void gen_defined_function(Node *node) {
 
 void gen_defined(Node *node) {
   if (!node) {
-    error("node is none. by gen_defined");
+    error("node is none by gen_defined");
   }
 
   if (node->kind == ND_FUNCTION) {
@@ -396,7 +400,7 @@ int type_is_struct_ref(Type* type) {
 
 bool gen(Node *node) {
   if (!node) {
-    error("node is none. by gen");
+    error("node is none by gen");
   }
   if (node->kind == ND_NONE) {
     if (node->lhs) {
@@ -418,6 +422,16 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_RETURN) {
     return gen_return(node);
+  }
+  if (node->kind == ND_CONTINUE) {
+    printf("  # CONTINUE\n");
+    printf("  jmp .Lbegin%03d\n", current_lid);
+    return false;
+  }
+  if (node->kind == ND_BREAK) {
+    printf("  # BREAK\n");
+    printf("  jmp .Lend%03d\n", current_lid);
+    return false;
   }
 
   if (node->kind == ND_NUM) {

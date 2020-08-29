@@ -81,6 +81,11 @@ char *skip_brackets(char *p) {
   return p;
 }
 
+int starts_with(char *p, int pl, char *string) {
+  int l = strlen(string);
+  return pl == l && memcmp(p, string, l) == 0;
+}
+
 Token *tokenize(char *p) {
   Token head;
   head.next = NULL;
@@ -232,35 +237,38 @@ Token *tokenize(char *p) {
 
     int l = lvar_len(p);
     if (l > 0) {
-      if (l == 6 && memcmp(p, "static", l) == 0) {
+      if (starts_with(p, l, "static")) {
         p += l;
         continue;
       }
 
-      // skip const
-      if (l == 5 && memcmp(p, "const", l) == 0) {
+      if (starts_with(p, l, "continue")) {
+        cur = new_token(TK_CONTINUE, cur, p);
+      } else if (starts_with(p, l, "break")) {
+        cur = new_token(TK_BREAK, cur, p);
+      } else if (starts_with(p, l, "const")) {
         cur = new_token(TK_CONST, cur, p);
-      } else if (l == 4 && memcmp(p, "enum", l) == 0) {
+      } else if (starts_with(p, l, "enum")) {
         cur = new_token(TK_ENUM, cur, p);
-      } else if (l == 6 && memcmp(p, "struct", l) == 0) {
+      } else if (starts_with(p, l, "struct")) {
         cur = new_token(TK_STRUCT, cur, p);
-      } else if (l == 5 && memcmp(p, "union", l) == 0) {
+      } else if (starts_with(p, l, "union")) {
         cur = new_token(TK_UNION, cur, p);
-      } else if (l == 6 && memcmp(p, "extern", l) == 0) {
+      } else if (starts_with(p, l, "extern")) {
         cur = new_token(TK_EXTERN, cur, p);
-      } else if (l == 6 && memcmp(p, "sizeof", l) == 0) {
+      } else if (starts_with(p, l, "sizeof")) {
         cur = new_token(TK_SIZEOF, cur, p);
-      } else if (l == 6 && memcmp(p, "return", l) == 0) {
+      } else if (starts_with(p, l, "return")) {
         cur = new_token(TK_RETURN, cur, p);
-      } else if (l == 7 && memcmp(p, "typedef", l) == 0) {
+      } else if (starts_with(p, l, "typedef")) {
         cur = new_token(TK_TYPEDEF, cur, p);
-      } else if (l == 2 && memcmp(p, "if", l) == 0) {
+      } else if (starts_with(p, l, "if")) {
         cur = new_token(TK_IF, cur, p);
-      } else if (l == 4 && memcmp(p, "else", l) == 0) {
+      } else if (starts_with(p, l, "else")) {
         cur = new_token(TK_ELSE, cur, p);
-      } else if (l == 5 && memcmp(p, "while", l) == 0) {
+      } else if (starts_with(p, l, "while")) {
         cur = new_token(TK_WHILE, cur, p);
-      } else if (l == 3 && memcmp(p, "for", l) == 0) {
+      } else if (starts_with(p, l, "for")) {
         cur = new_token(TK_FOR, cur, p);
       } else {
         cur = new_token(TK_IDENT, cur, p);
@@ -276,4 +284,3 @@ Token *tokenize(char *p) {
 
   return head.next;
 }
-

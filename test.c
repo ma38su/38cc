@@ -374,6 +374,27 @@ void test11() {
   assertInt("test11-13", -3 - 1, v4);
 }
 
+void test12() {
+  int i = 0;
+  for (;;) {
+    if (i++ < 9) {
+      continue;
+    }
+    break;
+  }
+  assertInt("test12-1", 10, i);
+
+  while (1) {
+    if (i < 10) {
+      break;
+    }
+    if (i++ < 19) continue;
+    break;
+  }
+  assertInt("test12-2", 20, i);
+}
+
+
 int add(int v1, int v2) {
   return v1 + v2;
 }
@@ -412,6 +433,7 @@ int main() {
   test9();
   test10();
   test11();
+  test12();
 
   return 0;
 }

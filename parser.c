@@ -931,7 +931,7 @@ Node *unary() {
 
   node = primary();
 
-  while (1) {
+  for (;;) {
     // post ++ or --
     if (consume("++")) {
       node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_node_num(1)));
@@ -1084,6 +1084,7 @@ Node *stmt() {
     node = new_node(ND_BLOCK);
     Vector *stmt_list = calloc(1, sizeof(Vector));
     do {
+      if (!token) error("stmt: no more token");
       Node *sub = stmt();
       vec_add(stmt_list, sub);
     } while (!consume("}"));
@@ -1123,7 +1124,9 @@ Node *stmt() {
     Node *node_while = new_node(ND_WHILE);
     node->rhs = node_while;
 
-    if (!consume(";")) {
+    if (consume(";")) {
+      node_while->lhs = new_node_num(1);
+    } else {
       node_while->lhs = expr();
       expect(";");
     }
@@ -1140,6 +1143,12 @@ Node *stmt() {
   } else if (consume_kind(TK_RETURN)) {
     node = new_node(ND_RETURN);
     node->lhs = expr();
+    expect(";");
+  } else if (consume_kind(TK_CONTINUE)) {
+    node = new_node(ND_CONTINUE);
+    expect(";");
+  } else if (consume_kind(TK_BREAK)) {
+    node = new_node(ND_BREAK);
     expect(";");
   } else {
     LVar *lvar = consume_lvar_define();
@@ -1165,6 +1174,7 @@ Node *block_stmt() {
   node->list = calloc(1, sizeof(Vector));
 
   while (!consume("}")) {
+    if (!token) error("block_stmt: no more token");
     vec_add(node->list, stmt());
   }
   return node;
@@ -1374,7 +1384,7 @@ Node *global() {
       // 変数宣言
       Type *t = node->type;
       while (consume("*")) {
-         t = new_ptr_type(t);
+        t = new_ptr_type(t);
       }
       Token *ident = consume_ident();
       // TODO
@@ -1414,8 +1424,6 @@ Node *global() {
     
     func->next = globals;
     globals = func;
-    
-    fprintf(stderr, "fn: %s\n", substring(tok->str, tok->len));
 
     Node *block = NULL;
     Vector *args;
@@ -1427,6 +1435,7 @@ Node *global() {
     block = block_stmt();
     if (!block) {
       while (!consume(";")) {
+        if (!token->next) error_at(token->str, "no more token");
         // skip unsupported tokens
         token = token->next;
       }

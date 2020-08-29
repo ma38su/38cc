@@ -33,11 +33,13 @@ typedef enum {
   ND_ASSIGN,      // 25 =
   ND_ASSIGN_POST, // 26 for i++ and i--
   ND_RETURN,      // 27 return
-  ND_ENUM,        // 28
-  ND_STRUCT,      // 29 struct
-  ND_UNION,       // 30 union
-  ND_FUNCTION,    // 31
-  ND_CALL,        // 32
+  ND_CONTINUE,    // 28 continue
+  ND_BREAK,       // 29 break
+  ND_ENUM,        // 30 enum
+  ND_STRUCT,      // 31 struct
+  ND_UNION,       // 32 union
+  ND_FUNCTION,    // 33
+  ND_CALL,        // 34
 } NodeKind;
 
 typedef enum {
@@ -59,6 +61,8 @@ typedef enum {
   TK_ELSE,      // else
   TK_FOR,       // for
   TK_WHILE,     // while
+  TK_CONTINUE,  // continue
+  TK_BREAK,     // break
   TK_EOF,       // End of File
 } TokenKind;
 
