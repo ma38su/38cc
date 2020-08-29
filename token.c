@@ -118,29 +118,40 @@ Token *tokenize(char *p) {
       p++;
       continue;
     }
-    // skip __extension__
-    if (memcmp(p, "__extension__", 13) == 0) {
-      p += 13;
-      continue;
-    }
-    // skip __attribute__ (*)
-    if (memcmp(p, "__attribute__", 13) == 0) {
-      p += 13;
-      p = skip_brackets(p);
-      continue;
-    }
-    // skip __restrict
-    if (memcmp(p, "__restrict", 10) == 0) {
-      p += 10;
-      continue;
-    }
 
-    // skip const
-    if (memcmp(p, "const", 5) == 0) {
-      cur = new_token(TK_CONST, cur, p);
-      cur->len = 5;
-      p += 5;
-      continue;
+    if (memcmp(p, "__", 2) == 0) {
+      // skip __extension__
+      if (memcmp(p, "__extension__", 13) == 0) {
+        p += 13;
+        continue;
+      }
+      // skip __attribute__ (*)
+      if (memcmp(p, "__attribute__", 13) == 0) {
+        p += 13;
+        p = skip_brackets(p);
+        continue;
+      }
+      // skip __restrict
+      if (memcmp(p, "__restrict", 10) == 0) {
+        p += 10;
+        continue;
+      }
+      if (memcmp(p, "__inline", 8) == 0) {
+        p += 8;
+        continue;
+      }
+      if (memcmp(p, "__restrict", 10) == 0) {
+        p += 10;
+        continue;
+      }
+      if (memcmp(p, "__builtin_bswap32", 17) == 0) {
+        p += 17;
+        continue;
+      }
+      if (memcmp(p, "__builtin_bswap64", 17) == 0) {
+        p += 17;
+        continue;
+      }
     }
 
     // character literal
@@ -178,36 +189,7 @@ Token *tokenize(char *p) {
       p++;
       continue;
     }
-    if (memcmp(p, "enum", 4) == 0) {
-      cur = new_token(TK_ENUM, cur, p);
-      cur->len = 4;
-      p += 4;
-      continue;
-    }
-    if (memcmp(p, "struct", 6) == 0) {
-      cur = new_token(TK_STRUCT, cur, p);
-      cur->len = 6;
-      p += 6;
-      continue;
-    }
-    if (memcmp(p, "union", 5) == 0) {
-      cur = new_token(TK_UNION, cur, p);
-      cur->len = 5;
-      p += 5;
-      continue;
-    }
-    if (memcmp(p, "extern", 6) == 0) {
-      cur = new_token(TK_EXTERN, cur, p);
-      cur->len = 6;
-      p += 6;
-      continue;
-    }
-    if (memcmp(p, "typedef", 7) == 0) {
-      cur = new_token(TK_TYPEDEF, cur, p);
-      cur->len = 7;
-      p += 7;
-      continue;
-    }
+
     if (memcmp(p, "...", 3) == 0) {
       cur = new_token(TK_VA, cur, p);
       cur->len = 3;
@@ -248,31 +230,30 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (memcmp(p, "__inline", 8) == 0) {
-      p += 8;
-      continue;
-    }
-    if (memcmp(p, "__restrict", 10) == 0) {
-      p += 10;
-      continue;
-    }
-    if (memcmp(p, "__builtin_bswap32", 17) == 0
-        || memcmp(p, "__builtin_bswap64", 17) == 0) {
-      p += 17;
-      continue;
-    }
-
-    if (memcmp(p, "static", 6) == 0) {
-      p += 6;
-      continue;
-    }
-
     int l = lvar_len(p);
     if (l > 0) {
-      if (l == 6 && memcmp(p, "sizeof", l) == 0) {
+      if (l == 6 && memcmp(p, "static", l) == 0) {
+        p += l;
+        continue;
+      }
+
+      // skip const
+      if (l == 5 && memcmp(p, "const", l) == 0) {
+        cur = new_token(TK_CONST, cur, p);
+      } else if (l == 4 && memcmp(p, "enum", l) == 0) {
+        cur = new_token(TK_ENUM, cur, p);
+      } else if (l == 6 && memcmp(p, "struct", l) == 0) {
+        cur = new_token(TK_STRUCT, cur, p);
+      } else if (l == 5 && memcmp(p, "union", l) == 0) {
+        cur = new_token(TK_UNION, cur, p);
+      } else if (l == 6 && memcmp(p, "extern", l) == 0) {
+        cur = new_token(TK_EXTERN, cur, p);
+      } else if (l == 6 && memcmp(p, "sizeof", l) == 0) {
         cur = new_token(TK_SIZEOF, cur, p);
       } else if (l == 6 && memcmp(p, "return", l) == 0) {
         cur = new_token(TK_RETURN, cur, p);
+      } else if (l == 7 && memcmp(p, "typedef", l) == 0) {
+        cur = new_token(TK_TYPEDEF, cur, p);
       } else if (l == 2 && memcmp(p, "if", l) == 0) {
         cur = new_token(TK_IF, cur, p);
       } else if (l == 4 && memcmp(p, "else", l) == 0) {
