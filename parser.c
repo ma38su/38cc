@@ -982,6 +982,7 @@ Node *unary() {
   }
 }
 
+// L <- R
 Node *mul() {
   Node *node = unary();
   for (;;) {
@@ -998,6 +999,7 @@ Node *mul() {
   return node;
 }
 
+// L -> R
 Node *add() {
   Node *node = mul();
   for (;;) {
@@ -1011,6 +1013,7 @@ Node *add() {
   }
 }
 
+// L -> R
 Node *shift() {
   Node *node = add();
   for (;;) {
@@ -1024,6 +1027,7 @@ Node *shift() {
   }
 }
 
+// L -> R
 Node *relational() {
   Node *node = shift();
   for (;;) {
@@ -1041,6 +1045,7 @@ Node *relational() {
   }
 }
 
+// L -> R
 Node *equality() {
   Node *node = relational();
   for (;;) {
@@ -1054,8 +1059,52 @@ Node *equality() {
   }
 }
 
-Node *assign() {
+Node *bitand() {
   Node *node = equality();
+  for (;;) {
+    char *ident = token->str;
+    if (consume("&")) {
+      node = new_node_lr(ND_BITAND, node, equality());
+      node->ident = ident;
+      node->len = 1;
+    } else {
+      return node;
+    }
+  }
+}
+
+// L -> R
+Node *bitxor() {
+  Node *node = bitand();
+  for (;;) {
+    char *ident = token->str;
+    if (consume("^")) {
+      node = new_node_lr(ND_BITXOR, node, bitand());
+      node->ident = ident;
+      node->len = 1;
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *bitor() {
+  Node *node = bitxor();
+  for (;;) {
+    char *ident = token->str;
+    if (consume("|")) {
+      node = new_node_lr(ND_BITOR, node, bitxor());
+      node->ident = ident;
+      node->len = 1;
+    } else {
+      return node;
+    }
+  }
+}
+
+// L <- R
+Node *assign() {
+  Node *node = bitor();
   if (consume("+=")) {
     node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, assign()));
   } else if (consume("-=")) {
@@ -1070,6 +1119,12 @@ Node *assign() {
     node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SHL, node, assign()));
   } else if (consume(">>=")) {
     node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SAR, node, assign()));
+  } else if (consume("&=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_BITAND, node, assign()));
+  } else if (consume("^=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_BITXOR, node, assign()));
+  } else if (consume("|=")) {
+    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_BITOR, node, assign()));
   } else if (consume("=")) {
     node = new_node_lr(ND_ASSIGN, node, assign());
   }

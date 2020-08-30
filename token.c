@@ -213,6 +213,7 @@ Token *tokenize(char *p) {
         || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
         || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
         || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
+        || memcmp(p, "^=", 2) == 0 || memcmp(p, "~=", 2) == 0
         || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0
         || memcmp(p, "&&", 2) == 0 || memcmp(p, "||", 2) == 0
         || memcmp(p, ">>", 2) == 0 || memcmp(p, "<<", 2) == 0
@@ -223,7 +224,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("=,.(){}[]<>+-*/%^;&", *p)) {
+    if (strchr("=,.(){}[]<>+-*/%^;&^|~!", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       cur->len = 1;
       continue;

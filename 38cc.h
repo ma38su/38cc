@@ -40,6 +40,10 @@ typedef enum {
   ND_UNION,       // 32 union
   ND_FUNCTION,    // 33
   ND_CALL,        // 34
+  ND_BITAND,      // 35 &
+  ND_BITXOR,      // 36 ^
+  ND_BITOR,       // 37 |
+  ND_BITNOT,      // 38 ~
 } NodeKind;
 
 typedef enum {

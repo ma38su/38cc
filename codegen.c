@@ -579,8 +579,18 @@ bool gen(Node *node) {
     printf("  cmp rax, rdi\n");
     printf("  setl al\n");  // al: under 8bit of rax
     printf("  movzb rax, al\n");
+  } else if (node->kind == ND_BITAND) {
+    printf("  and rax, rdi\n");
+  } else if (node->kind == ND_BITXOR) {
+    printf("  xor rax, rdi\n");
+  } else if (node->kind == ND_BITOR) {
+    printf("  or rax, rdi\n");
   } else {
-    error("failed to calc");
+    if (node->ident) {
+      error_at(node->ident, "Unsupported operator");
+    } else {
+      error("Not calculatable: %d", node->kind);
+    }
   }
   printf("  push rax\n");
   return true;

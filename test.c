@@ -394,6 +394,31 @@ void test12() {
   assertInt("test12-2", 20, i);
 }
 
+void test13() {
+  int v1 = 3;
+  int v2 = 6;
+  int v3;
+
+  assertInt("test13-1", 2, v1 & v2);
+  assertInt("test13-2", 7, v1 | v2);
+  assertInt("test13-3", 5, v1 ^ v2);
+
+  assertInt("test13-4", 2, v2 & v1);
+  assertInt("test13-5", 7, v2 | v1);
+  assertInt("test13-6", 5, v2 ^ v1);
+
+  v3 = v1;
+  v3 &= v2;
+  assertInt("test13-7", 2, v3);
+
+  v3 = v1;
+  v3 |= v2;
+  assertInt("test13-8", 7, v3);
+
+  v3 = v1;
+  v3 ^= v2;
+  assertInt("test13-9", 5, v3);
+}
 
 int add(int v1, int v2) {
   return v1 + v2;
@@ -434,6 +459,8 @@ int main() {
   test10();
   test11();
   test12();
+
+  test13();
 
   return 0;
 }
