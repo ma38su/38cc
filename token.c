@@ -188,7 +188,11 @@ Token *tokenize(char *p) {
       cur = new_token(TK_STR, cur, p);
 
       char* p0 = p;
-      p = next_ptr(p, '"');
+      do {
+        if (!*p) error("EOF");
+        p = next_ptr(p, '"');
+      } while (*(p - 1) == '\\');
+
       cur->len = p - p0;
 
       p++;
