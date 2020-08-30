@@ -502,6 +502,43 @@ bool gen(Node *node) {
     return true;
   }
 
+  if (node->kind == ND_AND) {
+    int lid = label_id++;
+    printf("  # AND (&&)\n");
+    gen(node->lhs);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je  .Lelse%03d\n", lid);
+    gen(node->rhs);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je  .Lelse%03d\n", lid);
+    printf("  push 1\n");
+    printf("  jmp .Lend%03d\n", lid);
+    printf(".Lelse%03d:\n", lid);
+    printf("  push 0\n");
+    printf(".Lend%03d:\n", lid);
+    return true;
+  }
+  if (node->kind == ND_OR) {
+    int lid = label_id++;
+    printf("  # OR (||)\n");
+    gen(node->lhs);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  jne .Lelse%03d\n", lid);
+    gen(node->rhs);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  jne .Lelse%03d\n", lid);
+    printf("  push 0\n");
+    printf("  jmp .Lend%03d\n", lid);
+    printf(".Lelse%03d:\n", lid);
+    printf("  push 1\n");
+    printf(".Lend%03d:\n", lid);
+    return true;
+  }
+
   bool lhs_is_ptr = type_is_ptr(node->lhs->type) || type_is_array(node->lhs->type);
   bool rhs_is_ptr = type_is_ptr(node->rhs->type) || type_is_array(node->rhs->type);
 

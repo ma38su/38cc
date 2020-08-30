@@ -17,11 +17,11 @@ typedef enum {
   ND_LT,          // 9 <
   ND_LE,          // 10 <=
   ND_BLOCK,       // 11 {}
-  ND_IF,          // 12 return
-  ND_ELSE,        // 13 return
-  ND_WHILE,       // 14 return
+  ND_IF,          // 12 if
+  ND_ELSE,        // 13 else
+  ND_WHILE,       // 14 while
   ND_NONE,        // 15 return
-  ND_FOR,         // 16 return
+  ND_FOR,         // 16 for
   ND_ADD,         // 17 +
   ND_SUB,         // 18 -
   ND_MUL,         // 19 *
@@ -44,6 +44,14 @@ typedef enum {
   ND_BITXOR,      // 36 ^
   ND_BITOR,       // 37 |
   ND_BITNOT,      // 38 ~
+  ND_AND,         // 39 &&
+  ND_OR,          // 40 ||
+  ND_CAST,        // 41 
+  ND_TERNARY,     // 42 ?:
+  ND_SWITCH,      // 43 switch
+  ND_DO,          // 44 do
+  ND_LABEL,       // 45
+
 } NodeKind;
 
 typedef enum {

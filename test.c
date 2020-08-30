@@ -420,6 +420,27 @@ void test13() {
   assertInt("test13-9", 5, v3);
 }
 
+void test14() {
+  int i = 0;
+  int j = 0;
+
+  if (i && ++j) {
+    i = 1;
+  }
+  assertInt("test13-1", i, 0);
+  assertInt("test13-2", j, 0);
+
+  int k = ++j || ++i;
+  assertInt("test13-3", 0, i);
+  assertInt("test13-4", 1, j);
+  assertInt("test13-5", 1, k);
+
+  k = i && ++j;
+  assertInt("test13-6", 0, i);
+  assertInt("test13-7", 1, j);
+  assertInt("test13-8", 0, k);
+}
+
 int add(int v1, int v2) {
   return v1 + v2;
 }
@@ -459,8 +480,8 @@ int main() {
   test10();
   test11();
   test12();
-
   test13();
+  test14();
 
   return 0;
 }

@@ -35,15 +35,15 @@ self-vector: 38cc vector.c
 	cpp vector.c -o .vector.c
 	./38cc .vector.c > vector.s
 
-test: 38cc test.c
-	cpp test.c -o .test.c
-	ulimit -c unlimited
-	./38cc .test.c > test.s
-	$(CC) test.s -o test
-	./test
 
-test-s: test.s
-	$(CC) test.s -o test
+.test.c: 38cc test.c
+	cpp test.c -o .test.c
+
+.test.s: 38cc .test.c
+	./38cc .test.c > .test.s
+
+test: 38cc .test.s
+	$(CC) .test.s -o test
 	./test
 
 test-gcc: test.c

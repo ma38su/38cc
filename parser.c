@@ -1102,9 +1102,43 @@ Node *bitor() {
   }
 }
 
+Node *and() {
+  Node *node = bitor();
+  for (;;) {
+    char *ident = token->str;
+    if (consume("&&")) {
+      node = new_node_lr(ND_AND, node, bitor());
+      node->ident = ident;
+      node->len = 2;
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *or() {
+  Node *node = and();
+  for (;;) {
+    if (consume("||")) {
+      node = new_node_lr(ND_OR, node, and());
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *ternay() {
+  Node *node = or();
+  //char *ident = token->str;
+  if (consume("?")) {
+    error("unsupported operator");
+  }
+  return node;
+}
+
 // L <- R
 Node *assign() {
-  Node *node = bitor();
+  Node *node = ternay();
   if (consume("+=")) {
     node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, assign()));
   } else if (consume("-=")) {
@@ -1134,9 +1168,27 @@ Node *assign() {
 Node *expr() { return assign(); }
 
 Node *stmt() {
-  Node *node;
+
+  if (consume_kind(TK_RETURN)) {
+    Node *node = new_node(ND_RETURN);
+    node->lhs = expr();
+    expect(";");
+    return node;
+  }
+  
+  if (consume_kind(TK_CONTINUE)) {
+    Node *node = new_node(ND_CONTINUE);
+    expect(";");
+    return node;
+  }
+  if (consume_kind(TK_BREAK)) {
+    Node *node = new_node(ND_BREAK);
+    expect(";");
+    return node;
+  }
+
   if (consume("{")) {
-    node = new_node(ND_BLOCK);
+    Node *node = new_node(ND_BLOCK);
     Vector *stmt_list = calloc(1, sizeof(Vector));
     do {
       if (!token) error("stmt: no more token");
@@ -1144,8 +1196,11 @@ Node *stmt() {
       vec_add(stmt_list, sub);
     } while (!consume("}"));
     node->list = stmt_list;
-  } else if (consume_kind(TK_IF)) {
-    node = new_node(ND_IF);
+    return node;
+  }
+  
+  if (consume_kind(TK_IF)) {
+    Node *node = new_node(ND_IF);
 
     expect("(");
     node->lhs = expr();
@@ -1161,14 +1216,20 @@ Node *stmt() {
       sub->lhs = tmp;
       sub->rhs = stmt();
     }
-  } else if (consume_kind(TK_WHILE)) {
-    node = new_node(ND_WHILE);
+    return node;
+  }
+
+  if (consume_kind(TK_WHILE)) {
+    Node *node = new_node(ND_WHILE);
     expect("(");
     node->lhs = expr();
     expect(")");
     node->rhs = stmt();
-  } else if (consume_kind(TK_FOR)) {
-    node = new_node(ND_FOR);
+    return node;
+  }
+  
+  if (consume_kind(TK_FOR)) {
+    Node *node = new_node(ND_FOR);
     expect("(");
 
     if (!consume(";")) {
@@ -1178,7 +1239,6 @@ Node *stmt() {
 
     Node *node_while = new_node(ND_WHILE);
     node->rhs = node_while;
-
     if (consume(";")) {
       node_while->lhs = new_node_num(1);
     } else {
@@ -1192,33 +1252,25 @@ Node *stmt() {
       sub->rhs = expr();
       expect(")");
       sub->lhs = stmt();
-
       node_while->rhs = sub;
     }
-  } else if (consume_kind(TK_RETURN)) {
-    node = new_node(ND_RETURN);
-    node->lhs = expr();
-    expect(";");
-  } else if (consume_kind(TK_CONTINUE)) {
-    node = new_node(ND_CONTINUE);
-    expect(";");
-  } else if (consume_kind(TK_BREAK)) {
-    node = new_node(ND_BREAK);
-    expect(";");
-  } else {
-    LVar *lvar = consume_lvar_define();
-    if (lvar) {
-      node = new_node(ND_LVAR);
-      node->offset = lvar->offset;
-      node->type = lvar->type;
-      if (consume("=")) {
-        node = new_node_lr(ND_ASSIGN, node, assign());
-      }
-    } else {
-      node = expr();
+    return node;
+  }
+  
+  LVar *lvar = consume_lvar_define();
+  if (lvar) {
+    Node *node = new_node(ND_LVAR);
+    node->offset = lvar->offset;
+    node->type = lvar->type;
+    if (consume("=")) {
+      node = new_node_lr(ND_ASSIGN, node, assign());
     }
     expect(";");
+    return node;
   }
+
+  Node *node = expr();
+  expect(";");
   return node;
 }
 
