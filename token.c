@@ -183,16 +183,15 @@ Token *tokenize(char *p) {
 
     // string literal
     if (*p == '"') {
-      p++;
-
-      cur = new_token(TK_STR, cur, p);
-
-      char* p0 = p;
-      do {
+      char* p0 = ++p;
+      while (*p) {
         if (!*p) error("EOF");
         p = next_ptr(p, '"');
-      } while (*(p - 1) == '\\');
+        if (*(p - 1) != '\\') break;
+        p++;
+      }
 
+      cur = new_token(TK_STR, cur, p0);
       cur->len = p - p0;
 
       p++;

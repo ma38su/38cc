@@ -28,6 +28,7 @@ Node *equality();
 Node *mul();
 Node *shift();
 Node *unary();
+Node *ternay();
 
 int reduce_node(Node* node);
 
@@ -396,8 +397,11 @@ Node *consume_enum() {
     evar->name = substring(tok->str, tok->len);
     evar->len = tok->len;
 
-    evar->val = enum_id++;
-
+    if (consume("=")) {
+      evar->val = reduce_node(expr());
+    } else {
+      evar->val = enum_id++;
+    }
     vec_add(enums, evar);
 
     if (!consume(",")) {
@@ -1310,26 +1314,77 @@ int sizeof_args(Vector *args) {
   return size;
 }
 
+// pre calculation
 int reduce_node(Node* node) {
+  if (node->kind == ND_NUM) {
+    return node->val;
+  }
+  if (node->kind == ND_TERNARY) {
+    return reduce_node(node->cnd) ? reduce_node(node->thn) : reduce_node(node->els);
+  }
+
+  int lhs_val = reduce_node(node->lhs);
+
+  if (node->kind == ND_NOT) {
+    return !lhs_val;
+  }
+  if (node->kind == ND_BITNOT) {
+    return ~lhs_val;
+  }
+  if (node->kind == ND_AND) {
+    return lhs_val && reduce_node(node->rhs);
+  }
+  if (node->kind == ND_OR) {
+    return lhs_val || reduce_node(node->rhs);
+  }
+
+  int rhs_val = reduce_node(node->rhs);
+
+  if (node->kind == ND_EQ) {
+    return lhs_val == rhs_val;
+  }
+  if (node->kind == ND_NE) {
+    return lhs_val != rhs_val;
+  }
+  if (node->kind == ND_LT) {
+    return lhs_val < rhs_val;
+  }
+  if (node->kind == ND_LE) {
+    return lhs_val <= rhs_val;
+  }
   if (node->kind == ND_ADD) {
-    return reduce_node(node->lhs) + reduce_node(node->rhs);
+    return lhs_val + rhs_val;
   }
   if (node->kind == ND_SUB) {
-    return reduce_node(node->lhs) - reduce_node(node->rhs);
+    return lhs_val - rhs_val;
   }
   if (node->kind == ND_MUL) {
-    return reduce_node(node->lhs) * reduce_node(node->rhs);
+    return lhs_val * rhs_val;
   }
   if (node->kind == ND_DIV) {
-    return reduce_node(node->lhs) / reduce_node(node->rhs);
+    return lhs_val / rhs_val;
   }
   if (node->kind == ND_MOD) {
-    return reduce_node(node->lhs) % reduce_node(node->rhs);
+    return lhs_val % rhs_val;
   }
-  if (node->kind != ND_NUM) {
-    error_at(token->str, "not supported %d", node->kind);
+
+  if (node->kind == ND_BITAND) {
+    return lhs_val & rhs_val;
   }
-  return node->val;
+  if (node->kind == ND_BITOR) {
+    return lhs_val | rhs_val;
+  }
+  if (node->kind == ND_BITXOR) {
+    return lhs_val ^ rhs_val;
+  }
+  if (node->kind == ND_SHL) {
+    return lhs_val << rhs_val;
+  }
+  if (node->kind == ND_SAR) {
+    return lhs_val >> rhs_val;
+  }
+
+  error_at(token->str, "not supported %d", node->kind);
 }
 
 Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
@@ -1503,7 +1558,8 @@ Node *global() {
         t = new_ptr_type(t);
       }
       Token *ident = consume_ident();
-      // TODO
+      if (!ident) return NULL;
+      return new_gvar_node(ident, t, is_extern);
     }
     expect(";");
     return NULL;
@@ -1511,6 +1567,7 @@ Node *global() {
   if (node = consume_enum()) {
     if (is_extern) {
       Token *ident = consume_ident();
+      // TODO
     }
     expect(";");
     return NULL;
@@ -1518,6 +1575,7 @@ Node *global() {
   if (node = consume_union()) {
     if (is_extern) {
       Token *ident = consume_ident();
+      // TODO
     }
     expect(";");
     return NULL;
