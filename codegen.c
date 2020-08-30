@@ -179,23 +179,22 @@ bool gen_for(Node *node) {
 }
 
 bool gen_if(Node *node) {
-  if (node->kind != ND_IF) {
-    error("not if");
-  }
-  gen(node->lhs);
+  if (node->kind != ND_IF) error("not if");
+
+  gen(node->cnd);
   printf("  pop rax # if\n");
   printf("  cmp rax, 0\n");
   int lid = label_id++;
-  if (node->rhs->kind != ND_ELSE) {
+  if (!node->els) {
     printf("  je  .Lend%03d\n", lid);
-    gen(node->rhs);
+    gen(node->thn);
     printf(".Lend%03d:\n", lid);
   } else {
     printf("  je  .Lelse%03d\n", lid);
-    gen(node->rhs->lhs);
+    gen(node->thn);
     printf("  jmp .Lend%03d\n", lid);
     printf(".Lelse%03d:\n", lid);
-    gen(node->rhs->rhs);
+    gen(node->els);
     printf(".Lend%03d:\n", lid);
   }
   return false;

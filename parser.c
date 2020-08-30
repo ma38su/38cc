@@ -1203,18 +1203,11 @@ Node *stmt() {
     Node *node = new_node(ND_IF);
 
     expect("(");
-    node->lhs = expr();
+    node->cnd = expr();
     expect(")");
-
-    Node *tmp = stmt();
-    if (!consume_kind(TK_ELSE)) {
-      node->rhs = tmp;
-    } else {
-      Node *sub = new_node(ND_ELSE);
-      node->rhs = sub;
-
-      sub->lhs = tmp;
-      sub->rhs = stmt();
+    node->thn = stmt();
+    if (consume_kind(TK_ELSE)) {
+      node->els = stmt();
     }
     return node;
   }

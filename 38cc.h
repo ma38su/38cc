@@ -18,39 +18,38 @@ typedef enum {
   ND_LE,          // 10 <=
   ND_BLOCK,       // 11 {}
   ND_IF,          // 12 if
-  ND_ELSE,        // 13 else
-  ND_WHILE,       // 14 while
-  ND_NONE,        // 15 return
-  ND_FOR,         // 16 for
-  ND_ADD,         // 17 +
-  ND_SUB,         // 18 -
-  ND_MUL,         // 19 *
-  ND_DIV,         // 20 /
-  ND_MOD,         // 21 %
-  ND_SHL,         // 22 >>
-  ND_SAR,         // 23 <<
-  ND_NOT,         // 24 !
-  ND_ASSIGN,      // 25 =
-  ND_ASSIGN_POST, // 26 for i++ and i--
-  ND_RETURN,      // 27 return
-  ND_CONTINUE,    // 28 continue
-  ND_BREAK,       // 29 break
-  ND_ENUM,        // 30 enum
-  ND_STRUCT,      // 31 struct
-  ND_UNION,       // 32 union
-  ND_FUNCTION,    // 33
-  ND_CALL,        // 34
-  ND_BITAND,      // 35 &
-  ND_BITXOR,      // 36 ^
-  ND_BITOR,       // 37 |
-  ND_BITNOT,      // 38 ~
-  ND_AND,         // 39 &&
-  ND_OR,          // 40 ||
-  ND_CAST,        // 41 
-  ND_TERNARY,     // 42 ?:
-  ND_SWITCH,      // 43 switch
-  ND_DO,          // 44 do
-  ND_LABEL,       // 45
+  ND_WHILE,       // 13 while
+  ND_NONE,        // 14 return
+  ND_FOR,         // 15 for
+  ND_ADD,         // 16 +
+  ND_SUB,         // 17 -
+  ND_MUL,         // 18 *
+  ND_DIV,         // 19 /
+  ND_MOD,         // 20 %
+  ND_SHL,         // 21 >>
+  ND_SAR,         // 22 <<
+  ND_NOT,         // 23 !
+  ND_ASSIGN,      // 24 =
+  ND_ASSIGN_POST, // 25 for i++ and i--
+  ND_RETURN,      // 26 return
+  ND_CONTINUE,    // 27 continue
+  ND_BREAK,       // 28 break
+  ND_ENUM,        // 29 enum
+  ND_STRUCT,      // 30 struct
+  ND_UNION,       // 31 union
+  ND_FUNCTION,    // 32
+  ND_CALL,        // 33
+  ND_BITAND,      // 34 &
+  ND_BITXOR,      // 35 ^
+  ND_BITOR,       // 36 |
+  ND_BITNOT,      // 37 ~
+  ND_AND,         // 38 &&
+  ND_OR,          // 39 ||
+  ND_CAST,        // 40 
+  ND_TERNARY,     // 41 ?:
+  ND_SWITCH,      // 42 switch
+  ND_DO,          // 43 do
+  ND_LABEL,       // 44
 
 } NodeKind;
 
@@ -122,6 +121,11 @@ struct Node {
 
   Node *lhs;    // left-hand side
   Node *rhs;    // right-hand side
+
+  // if, ?:
+  Node *cnd;    // condition
+  Node *thn;    // then
+  Node *els;    // else
 
   char *ident;
   int len;
