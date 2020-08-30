@@ -31,6 +31,10 @@ self-codegen: 38cc codegen.c
 	cpp codegen.c -o .codegen.c
 	./38cc .codegen.c > .codegen.s
 
+self-debug: 38cc debug.c
+	cpp debug.c -o .debug.c
+	./38cc .debug.c > .debug.s
+
 self-vector: 38cc vector.c
 	cpp vector.c -o .vector.c
 	./38cc .vector.c > .vector.s
