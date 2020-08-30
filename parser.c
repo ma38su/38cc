@@ -18,8 +18,11 @@ Member *find_member(Vector *members, Token *tok);
 
 Enum *find_enum(Token *tok);
 
+int gvar_has_circular();
+
 Node *new_node(NodeKind kind);
 Node *stmt();
+Node *stmt_or_block();
 Node *expr();
 Node *equality();
 Node *mul();
@@ -99,9 +102,6 @@ LVar *new_lvar(Token *tok, Type *type) {
   lvar->len = tok->len; // strlen
   lvar->type = type;
   return lvar;
-}
-
-GVar *new_gvar(Token *tok, Type *type) {
 }
 
 GVar *new_function(Token *tok, Type* ret_type) {
@@ -313,7 +313,7 @@ Type *consume_type() {
   } else {
     if (token->kind != TK_IDENT) return NULL;
 
-    char *p0 = token;
+    Token *p0 = token;
     while (1) {
       Type *type1 = find_type(token);
       if (is_pre_type(token)) {
@@ -753,7 +753,7 @@ Node *consume_sizeof() {
   return new_node_num(sizeof_node(node));
 }
 
-Type *typeof(Node* node) {
+Type *get_type(Node *node) {
   if (node->kind == ND_NUM
       || node->kind == ND_ADDR
       || node->kind == ND_DEREF
@@ -761,11 +761,11 @@ Type *typeof(Node* node) {
       || node->kind == ND_LVAR) {
     return node->type;
   }
-  return typeof(node->lhs);
+  return get_type(node->lhs);
 }
 
 int sizeof_node(Node* node) {
-  Type *type = typeof(node);
+  Type *type = get_type(node);
   return type->size;
 }
 
@@ -809,7 +809,6 @@ Node *primary() {
     GVar *gvar = find_gvar(tok);
     if (gvar) {
       node = new_node(ND_CALL);
-
       node->type = gvar->type->to;
       node->val = gvar->extn;
     } else {
@@ -977,7 +976,6 @@ Node *unary() {
       node = new_node_deref(addr);
       continue;
     }
-
     return node;
   }
 }
@@ -996,7 +994,6 @@ Node *mul() {
       return node;
     }
   }
-  return node;
 }
 
 // L -> R
@@ -1102,7 +1099,7 @@ Node *bitor() {
   }
 }
 
-Node *and() {
+Node *lgand() {
   Node *node = bitor();
   for (;;) {
     char *ident = token->str;
@@ -1116,11 +1113,11 @@ Node *and() {
   }
 }
 
-Node *or() {
-  Node *node = and();
+Node *lgor() {
+  Node *node = lgand();
   for (;;) {
     if (consume("||")) {
-      node = new_node_lr(ND_OR, node, and());
+      node = new_node_lr(ND_OR, node, lgand());
     } else {
       return node;
     }
@@ -1128,7 +1125,7 @@ Node *or() {
 }
 
 Node *ternay() {
-  Node *node = or();
+  Node *node = lgor();
   if (consume("?")) {
     Node *ternary = new_node(ND_TERNARY);
     ternary->cnd = node;
@@ -1170,11 +1167,7 @@ Node *assign() {
 }
 
 Node *expr(void) {
-  Node *node = assign();
-  if (consume("?")) {
-
-  }
-  return node;
+  return assign();
 }
 
 Node *declaration(void) {
@@ -1190,8 +1183,26 @@ Node *declaration(void) {
   return node;
 }
 
-Node *stmt(void) {
+Node *block_stmt() {
+  if (!consume("{")) return NULL;
 
+  Node *node = new_node(ND_BLOCK);
+  node->list = calloc(1, sizeof(Vector));
+
+  while (!consume("}")) {
+    if (at_eof()) error("block_stmt: EOF");
+    vec_add(node->list, stmt_or_block());
+  }
+  return node;
+}
+
+Node *stmt_or_block() {
+  Node *node = block_stmt();
+  if (node) return node;
+  return stmt();
+}
+
+Node *stmt() {
   if (consume_kind(TK_RETURN)) {
     Node *node = new_node(ND_RETURN);
     node->lhs = expr();
@@ -1214,8 +1225,8 @@ Node *stmt(void) {
     Node *node = new_node(ND_BLOCK);
     Vector *stmt_list = calloc(1, sizeof(Vector));
     do {
-      if (!token) error("stmt: no more token");
-      Node *sub = stmt();
+      if (at_eof()) error("stmt: no more token");
+      Node *sub = stmt(0);
       vec_add(stmt_list, sub);
     } while (!consume("}"));
     node->list = stmt_list;
@@ -1224,13 +1235,12 @@ Node *stmt(void) {
   
   if (consume_kind(TK_IF)) {
     Node *node = new_node(ND_IF);
-
     expect("(");
     node->cnd = expr();
     expect(")");
-    node->thn = stmt();
+    node->thn = stmt_or_block();
     if (consume_kind(TK_ELSE)) {
-      node->els = stmt();
+      node->els = stmt_or_block();
     }
     return node;
   }
@@ -1277,27 +1287,14 @@ Node *stmt(void) {
     }
     return node;
   }
-  
+
+
   Node *node;
-  if (node = declaration()) {
-  } else {
+  node = declaration();
+  if (!node) {
     node = expr();
   }
   expect(";");
-  return node;
-
-}
-
-Node *block_stmt(void) {
-  if (!consume("{")) return NULL;
-
-  Node *node = new_node(ND_BLOCK);
-  node->list = calloc(1, sizeof(Vector));
-
-  while (!consume("}")) {
-    if (!token) error("block_stmt: no more token");
-    vec_add(node->list, stmt());
-  }
   return node;
 }
 
@@ -1347,6 +1344,11 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
   } else {
     gvar = calloc(1, sizeof(GVar));
     gvar->extn = is_extern;
+    gvar->next = globals;
+    globals = gvar;
+    if (gvar_has_circular()) {
+      error("gvar has circular 2");
+    }
   }
 
   gvar->name = substring(tok->str, tok->len);
@@ -1367,9 +1369,6 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
 
   gvar->type = type;
   gvar->val = tok->val;
-
-  gvar->next = globals;
-  globals = gvar;
 
   Node *node = new_node(ND_GVAR);
   node->ident = substring(tok->str, tok->len);
@@ -1470,8 +1469,6 @@ Node *global() {
       if (consume("(")) {
         expect_defined_args();
       } else {
-        //fprintf(stderr, "typedef: %s\n", substring(ident->str, ident->len));
-
         Type *def_type = new_type(ident->str, ident->len, type->size);
         def_type->kind = TY_TYPEDEF;
         def_type->to = type;
@@ -1481,8 +1478,6 @@ Node *global() {
       if (consume("(")) {
         expect_defined_args();
       }
-
-      //fprintf(stderr, "typedef(*fp): %s\n", substring(ident->str, ident->len));
 
       Type *def_type = new_type(ident->str, ident->len, type->size);
       def_type->kind = TY_TYPEDEF;
@@ -1538,6 +1533,7 @@ Node *global() {
   if (!tok) {
     error_at(token->str, "illegal defined function ident");
   }
+
   if (consume("(")) {
     // before parse function statement for recursive call
     GVar *func = new_function(tok, type);
@@ -1545,6 +1541,7 @@ Node *global() {
     
     func->next = globals;
     globals = func;
+    if (gvar_has_circular()) error("gvar circuit3");
 
     Node *block = NULL;
     Vector *args;
@@ -1579,12 +1576,12 @@ Node *global() {
   }
 }
 
-
 void program() {
   init_types();
 
   int i = 0;
   while (!at_eof()) {
+    //fprintf(stderr, "[%d] %s\n", i, line(token->str));
     Node* n = global();
     if (n) {
       code[i++] = n;
@@ -1646,7 +1643,38 @@ Member *find_member(Vector *members, Token *tok) {
   return NULL;
 }
 
+void dump_gvar_circular() {
+  Vector *vec = new_vector();
+  GVar *var = globals;
+  while (var) {
+    fprintf(stderr, "gvar: %s\n", var->name);
+    if (vec_contains(vec, var)) {
+      return;
+    }
+    vec_add(vec, var);
+    var = var->next;
+  }
+}
+
+int gvar_has_circular() {
+  Vector *vec = new_vector();
+  GVar *var = globals;
+  int i = 0;
+  while (var) {
+    i++;
+    if (vec_contains(vec, var)) {
+      fprintf(stderr, "gvar: %d\n", i);
+      dump_gvar_circular();
+      return 1;
+    }
+    vec_add(vec, var);
+    var = var->next;
+  }
+  return 0;
+}
+
 GVar *find_gvar(Token *tok) {
+  if (gvar_has_circular()) error("gvar has circuit");
   for (GVar *var = globals; var; var = var->next) {
     if (tok->len == var->len && memcmp(tok->str, var->name, var->len) == 0) {
       return var;
@@ -1703,6 +1731,7 @@ GVar *find_or_gen_gstr(Token *tok) {
 
   gvar->next = globals;
   globals = gvar;
+  if (gvar_has_circular()) error("gvar circlar1");
 
   return gvar;
 }

@@ -79,3 +79,11 @@ void error(char *fmt, ...) {
 
   exit(1);
 }
+
+char *line(char *p0) {
+  char *p = p0;
+  while (*p != '\n') {
+    p++;
+  }
+  return substring(p0, (p - p0));
+}

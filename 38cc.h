@@ -200,6 +200,7 @@ int type_is_ptr(Type *type);
 int sizeof_node(Node* node);
 
 char *substring(char *str, int len);
+char *line(char *p0);
 
 char *read_file(char *path);
 

@@ -19,5 +19,3 @@ int main(int argc, char **argv) {
   codegen();
   return 0;
 }
-
-

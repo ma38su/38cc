@@ -282,7 +282,7 @@ Token *tokenize(char *p) {
       cur->len = l;
       continue;
     }
-
+    
     error_at(p, "unexpected token");
   }
   new_token(TK_EOF, cur, p);
