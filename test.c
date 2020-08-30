@@ -442,10 +442,19 @@ void test14() {
 }
 
 void test15() {
+  assertInt("test15-5", 4, sizeof(!10));
+  assertInt("test15-5", 4, sizeof(!0));
+  assertInt("test15-5", 1, !0);
+  assertInt("test15-5", 0, !10);
+}
+
+void test16() {
   int a = 0 ? 1 : 2;
   assertInt("test15-1", 2, a);
   assertInt("test15-2", 2, 1 ? 2 : 3);
-}
+  assertInt("test15-3", 1, !0 ? 1 : 2);
+  assertInt("test15-4", 3, !1 ? 2 : 3);
+} 
 
 int add(int v1, int v2) {
   return v1 + v2;
@@ -489,6 +498,7 @@ int main() {
   test13();
   test14();
   test15();
+  test16();
 
   return 0;
 }

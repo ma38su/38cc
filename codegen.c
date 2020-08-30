@@ -553,6 +553,17 @@ bool gen(Node *node) {
     return true;
   }
 
+  if (node->kind == ND_NOT) {
+    printf("  # NOT (!)\n");
+    gen(node->lhs);
+    printf("  pop rax\n");    
+    printf("  cmp rax, 0\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    printf("  push rax\n");
+    return true;
+  }
+
   if (!node->lhs || !node->rhs) {
     if (node->ident) {
       error_at(node->ident, "unsupported node");

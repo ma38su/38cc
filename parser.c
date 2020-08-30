@@ -1169,7 +1169,7 @@ Node *assign() {
   return node;
 }
 
-Node *expr() {
+Node *expr(void) {
   Node *node = assign();
   if (consume("?")) {
 
@@ -1177,7 +1177,20 @@ Node *expr() {
   return node;
 }
 
-Node *stmt() {
+Node *declaration(void) {
+  LVar *lvar = consume_lvar_define();
+  if (!lvar) return NULL;
+
+  Node *node = new_node(ND_LVAR);
+  node->offset = lvar->offset;
+  node->type = lvar->type;
+  if (consume("=")) {
+    node = new_node_lr(ND_ASSIGN, node, assign());
+  }
+  return node;
+}
+
+Node *stmt(void) {
 
   if (consume_kind(TK_RETURN)) {
     Node *node = new_node(ND_RETURN);
@@ -1236,7 +1249,12 @@ Node *stmt() {
     expect("(");
 
     if (!consume(";")) {
-      node->lhs = expr();
+      Node *d = declaration();
+      if (d) {
+        node->lhs = d;
+      } else {
+        node->lhs = expr();
+      }
       expect(";");
     }
 
@@ -1260,24 +1278,17 @@ Node *stmt() {
     return node;
   }
   
-  LVar *lvar = consume_lvar_define();
-  if (lvar) {
-    Node *node = new_node(ND_LVAR);
-    node->offset = lvar->offset;
-    node->type = lvar->type;
-    if (consume("=")) {
-      node = new_node_lr(ND_ASSIGN, node, assign());
-    }
-    expect(";");
-    return node;
+  Node *node;
+  if (node = declaration()) {
+  } else {
+    node = expr();
   }
-
-  Node *node = expr();
   expect(";");
   return node;
+
 }
 
-Node *block_stmt() {
+Node *block_stmt(void) {
   if (!consume("{")) return NULL;
 
   Node *node = new_node(ND_BLOCK);
