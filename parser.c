@@ -1129,9 +1129,13 @@ Node *or() {
 
 Node *ternay() {
   Node *node = or();
-  //char *ident = token->str;
   if (consume("?")) {
-    error("unsupported operator");
+    Node *ternary = new_node(ND_TERNARY);
+    ternary->cnd = node;
+    ternary->thn = expr();
+    expect(":");
+    ternary->els = ternay();
+    node = ternary;
   }
   return node;
 }
@@ -1165,7 +1169,13 @@ Node *assign() {
   return node;
 }
 
-Node *expr() { return assign(); }
+Node *expr() {
+  Node *node = assign();
+  if (consume("?")) {
+
+  }
+  return node;
+}
 
 Node *stmt() {
 

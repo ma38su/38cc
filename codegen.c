@@ -501,6 +501,21 @@ bool gen(Node *node) {
     return true;
   }
 
+  if (node->kind == ND_TERNARY) {
+    int lid = label_id++;
+    printf("  # TERNAY (?:)\n");
+    gen(node->cnd);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je  .Lelse%03d\n", lid);
+    gen(node->thn);
+    printf("  jmp .Lend%03d\n", lid);
+    printf(".Lelse%03d:\n", lid);
+    gen(node->els);
+    printf(".Lend%03d:\n", lid);
+    return true;
+  }
+
   if (node->kind == ND_AND) {
     int lid = label_id++;
     printf("  # AND (&&)\n");

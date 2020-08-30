@@ -441,6 +441,12 @@ void test14() {
   assertInt("test13-8", 0, k);
 }
 
+void test15() {
+  int a = 0 ? 1 : 2;
+  assertInt("test15-1", 2, a);
+  assertInt("test15-2", 2, 1 ? 2 : 3);
+}
+
 int add(int v1, int v2) {
   return v1 + v2;
 }
@@ -482,6 +488,7 @@ int main() {
   test12();
   test13();
   test14();
+  test15();
 
   return 0;
 }
