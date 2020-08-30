@@ -538,6 +538,14 @@ bool gen(Node *node) {
     return true;
   }
 
+  if (!node->lhs || !node->rhs) {
+    if (node->ident) {
+      error_at(node->ident, "unsupported node");
+    } else {
+      error("unsupported node: %d", node->kind);
+    }
+  }
+
   bool lhs_is_ptr = type_is_ptr(node->lhs->type) || type_is_array(node->lhs->type);
   bool rhs_is_ptr = type_is_ptr(node->rhs->type) || type_is_array(node->rhs->type);
 
