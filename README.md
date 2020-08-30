@@ -13,6 +13,7 @@ make
 
 Run make to build and test:
 ```
+mkdir tmp
 make shtest
 ```
 or

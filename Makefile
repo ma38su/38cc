@@ -13,27 +13,27 @@ $(OBJS): 38cc.h $(SRCS)
 
 self-main: 38cc main.c
 	cpp main.c -o .main.c
-	./38cc .main.c > main.s
+	./38cc .main.c > .main.s
 
 self-reader: 38cc reader.c
 	cpp reader.c -o .reader.c
-	./38cc .reader.c > reader.s
+	./38cc .reader.c > .reader.s
 
 self-token: 38cc token.c
 	cpp token.c -o .token.c
-	./38cc .token.c > token.s
+	./38cc .token.c > .token.s
 
 self-parser: 38cc parser.c
 	cpp parser.c -o .parser.c
-	./38cc .parser.c > parser.s
+	./38cc .parser.c > .parser.s
 
 self-codegen: 38cc codegen.c
 	cpp codegen.c -o .codegen.c
-	./38cc .codegen.c > codegen.s
+	./38cc .codegen.c > .codegen.s
 
 self-vector: 38cc vector.c
 	cpp vector.c -o .vector.c
-	./38cc .vector.c > vector.s
+	./38cc .vector.c > .vector.s
 
 
 .test.c: 38cc test.c
@@ -50,17 +50,6 @@ test-gcc: test.c
 	$(CC) -o test_gcc test.c
 	./test_gcc
 
-test-debug: 38cc test.c
-	ulimit -c unlimited
-	cpp test.c -o .test.c
-	./38cc .test.c > test.s
-	#cat .test.c
-	#$(CC) -S -masm=intel .test.c -o gcc_test.s
-	#cat gcc_test.s
-	cat test.s
-	$(CC) test.s -o test
-	./test
-
 test-gcc-debug: 38cc test.c
 	$(CC) -S -masm=intel test.c -o test_gcc.s
 	cat test_gcc.s
@@ -72,27 +61,7 @@ maptest:
 	gcc map_test.c map.c -o map_test
 	./map_test
 
-selfhost: 38cc vector.c
-	cat vector.c | cpp > .vector.c
-	./38cc .vector.c > vector.s
-	cat vector.s
-
-debug: 38cc
-	./_debug.sh
-
-asm:
-	./38cc tmp/tmp.s > tmp/38cc.s
-	gcc -o tmp/38cc_exe tmp/38cc.s
-	./tmp/38cc_exe
-
 clean:
 	rm -f 38cc *.s *.o *~ tmp/* .*.c
 
-gcc:
-	gcc -S -masm=intel ${FILE}.c -o ${FILE}.s
-	cat ${FILE}.s
-	gcc ${FILE}.s -o ${FILE}
-	./${FILE}
-
 .PHONY: test clean
-
