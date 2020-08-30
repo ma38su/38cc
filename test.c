@@ -456,6 +456,25 @@ void test16() {
   assertInt("test15-4", 3, !1 ? 2 : 3);
 } 
 
+typedef struct Nest {
+  enum {
+    A = 1,
+    B = 3,
+  } type;
+  char *name;
+} Nest;
+
+void test17() {
+  Nest *nest = calloc(1, sizeof(Nest));
+  nest->type = B;
+  nest->name = "test17";
+
+  assertInt("test17-1", 16, sizeof(Nest));
+  assertInt("test17-2", B, nest->type);
+  assertInt("test17-3", 3, nest->type);
+  assertStr("test17-4", "test17", nest->name);
+}
+
 int add(int v1, int v2) {
   return v1 + v2;
 }
@@ -499,6 +518,7 @@ int main() {
   test14();
   test15();
   test16();
+  test17();
 
   return 0;
 }

@@ -45,6 +45,7 @@ Vector *enums;
 Vector *types;  // Type*
 Vector *functions;
 
+Type *bool_type;
 Type *char_type;
 Type *short_type;
 Type *int_type;
@@ -118,6 +119,9 @@ void init_types() {
   types = calloc(1, sizeof(Vector));
   functions = calloc(1, sizeof(Vector));
 
+  bool_type = new_type("_Bool", 5, 1);
+  bool_type->kind = TY_PRM;
+
   char_type = new_type("char", 4, 1);
   char_type->kind = TY_PRM;
 
@@ -145,9 +149,10 @@ void init_types() {
   ptr_char_type = new_ptr_type(char_type);
 
   vec_add(types, void_type);
-  vec_add(types, int_type);
-  vec_add(types, short_type);
+  vec_add(types, bool_type);
   vec_add(types, char_type);
+  vec_add(types, short_type);
+  vec_add(types, int_type);
   vec_add(types, long_type);
   vec_add(types, float_type);
   vec_add(types, double_type);
@@ -522,10 +527,15 @@ Node *consume_member() {
 
   if (node = consume_enum()) {
     Token *ident = consume_ident();
+    if (ident) {
+      node->ident = ident->str;
+      node->len = ident->len;
+    }
+    node->type = int_type;
   } else if (node = consume_union()) {
     Token *ident = consume_ident();
     if (ident) {
-      node->ident = substring(ident->str, ident->len);
+      node->ident = ident->str;
       node->len = ident->len;
     }
     node->type = new_type("union", 5, 8); // TODO
@@ -535,7 +545,7 @@ Node *consume_member() {
     }
     Token *ident = consume_ident();
     if (ident) {
-      node->ident = substring(ident->str, ident->len);
+      node->ident = ident->str;
       node->len = ident->len;
     }
   } else {
@@ -885,9 +895,7 @@ Member *get_member(Type *type, Token *ident) {
   Member *member = find_member(members, ident);
   if (!member) {
     Member *tmp = vec_get(members, 1);
-    error_at(token->str, "no member %s-%s",
-        substring(ident->str, ident->len),
-        substring(tmp->name, tmp->len));
+    error_at(ident->str, "no members (type: %s)", substring(ty->name, ty->len));
   }
   return member;
 }
@@ -1385,6 +1393,7 @@ int reduce_node(Node* node) {
   }
 
   error_at(token->str, "not supported %d", node->kind);
+  return -1;
 }
 
 Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
