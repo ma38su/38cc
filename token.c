@@ -3,9 +3,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-// for debug
-#include <stdio.h>
-
 #include "38cc.h"
 
 Token *new_token(TokenKind kind, Token *cur, char *str) {
@@ -185,7 +182,6 @@ Token *tokenize(char *p) {
     if (*p == '"') {
       char* p0 = ++p;
       while (*p) {
-        if (!*p) error("EOF");
         p = next_ptr(p, '"');
         if (*(p - 1) != '\\') break;
         p++;
