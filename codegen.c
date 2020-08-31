@@ -97,7 +97,6 @@ void gen_function_call(Node *node) {
   }
 
   if (node->list) {
-
     printf("  # set args %d to call %s\n",
         node->list->size, node->ident);
 
@@ -111,10 +110,11 @@ void gen_function_call(Node *node) {
       printf("  pop %s\n", r);
     }
   }
-  int padding = 0;
-  if (padding) {
-    printf("  sub rsp, 8\n");
-  }
+
+  int lid = label_id++;
+  printf("  mov rax, rsp\n");
+  printf("  and rax, 15\n");
+  printf("  jnz .L.call.%d\n", lid);
 
   // reset for return val
   printf("  mov rax, 0\n");
@@ -123,10 +123,23 @@ void gen_function_call(Node *node) {
   } else {
     printf("  call %s\n", node->ident);
   }
+  printf("  jmp .L.end.%d\n", lid);
 
-  if (padding) {
-    printf("  add rsp, 8\n");
+  printf(".L.call.%d:\n", lid);
+  printf("  # align rsb to 16 byte boundary\n");
+  printf("  sub rsp, 8\n");
+
+  // reset for return val
+  printf("  mov rax, 0\n");
+  if (node->val) {
+    printf("  call %s@PLT\n", node->ident);
+  } else {
+    printf("  call %s\n", node->ident);
   }
+  printf("  # turn back rsb\n");
+  printf("  add rsp, 8\n");
+
+  printf(".L.end.%d:\n", lid);
 
   // after called, return value is stored rax
   printf("  push rax\n");
