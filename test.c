@@ -531,6 +531,16 @@ void test11() {
 }
 */
 
+int v20 = 3;
+void test20() {
+  v20 = 5;
+  assertInt("test20", 5, v20);
+}
+
+void test21() {
+  assertInt("test21", 5, v20);
+}
+
 int main() {
 
   test1();
@@ -552,6 +562,8 @@ int main() {
   test17();
   test18();
   test19();
+  test20();
+  test21();
 
   return 0;
 }
