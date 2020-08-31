@@ -126,8 +126,7 @@ void gen_function_call(Node *node) {
   printf("  jmp .L.end.%d\n", lid);
 
   printf(".L.call.%d:\n", lid);
-  printf("  # align rsb to 16 byte boundary\n");
-  printf("  sub rsp, 8\n");
+  printf("  sub rsp, 8  # align rsb to 16 byte boundary\n");
 
   // reset for return val
   printf("  mov rax, 0\n");
@@ -136,8 +135,7 @@ void gen_function_call(Node *node) {
   } else {
     printf("  call %s\n", node->ident);
   }
-  printf("  # turn back rsb\n");
-  printf("  add rsp, 8\n");
+  printf("  add rsp, 8  # turn back rsb\n");
 
   printf(".L.end.%d:\n", lid);
 
@@ -169,14 +167,14 @@ bool gen_while(Node *node) {
 
   int prev_lid = current_lid;
   int lid = current_lid = label_id++;
-  printf(".Lbegin%03d:\n", lid);
+  printf(".L.begin.%d:\n", lid);
   gen(node->lhs);
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
-  printf("  je  .Lend%03d\n", lid);
+  printf("  je  .L.end.%d\n", lid);
   gen(node->rhs);
-  printf("  jmp .Lbegin%03d\n", lid);
-  printf(".Lend%03d:\n", lid);
+  printf("  jmp .L.begin.%d\n", lid);
+  printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
   return false;
 }
@@ -188,14 +186,14 @@ bool gen_do_while(Node *node) {
 
   int prev_lid = current_lid;
   int lid = current_lid = label_id++;
-  printf(".Lbegin%03d:\n", lid);
+  printf(".L.begin.%d: # do while\n", lid);
   gen(node->thn);
   gen(node->cnd);
-  printf("  pop rax # while\n");
+  printf("  pop rax\n");
   printf("  cmp rax, 0\n");
-  printf("  je  .Lend%03d\n", lid);
-  printf("  jmp .Lbegin%03d\n", lid);
-  printf(".Lend%03d:\n", lid);
+  printf("  je  .L.end.%d\n", lid);
+  printf("  jmp .L.begin.%d\n", lid);
+  printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
   return false;
 }
@@ -218,16 +216,16 @@ bool gen_if(Node *node) {
   printf("  cmp rax, 0\n");
   int lid = label_id++;
   if (!node->els) {
-    printf("  je  .Lend%03d\n", lid);
+    printf("  je  .L.end.%d\n", lid);
     gen(node->thn);
-    printf(".Lend%03d:\n", lid);
+    printf(".L.end.%d:\n", lid);
   } else {
-    printf("  je  .Lelse%03d\n", lid);
+    printf("  je  .L.else.%d\n", lid);
     gen(node->thn);
-    printf("  jmp .Lend%03d\n", lid);
-    printf(".Lelse%03d:\n", lid);
+    printf("  jmp .L.end.%d\n", lid);
+    printf(".L.else.%d:\n", lid);
     gen(node->els);
-    printf(".Lend%03d:\n", lid);
+    printf(".L.end.%d:\n", lid);
   }
   return false;
 }
@@ -462,12 +460,12 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_CONTINUE) {
     printf("  # CONTINUE\n");
-    printf("  jmp .Lbegin%03d\n", current_lid);
+    printf("  jmp .L.begin.%d\n", current_lid);
     return false;
   }
   if (node->kind == ND_BREAK) {
     printf("  # BREAK\n");
-    printf("  jmp .Lend%03d\n", current_lid);
+    printf("  jmp .L.end.%d\n", current_lid);
     return false;
   }
 
@@ -545,12 +543,12 @@ bool gen(Node *node) {
     gen(node->cnd);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("  je  .Lelse%03d\n", lid);
+    printf("  je  .L.false.%d\n", lid);
     gen(node->thn);
-    printf("  jmp .Lend%03d\n", lid);
-    printf(".Lelse%03d:\n", lid);
+    printf("  jmp .L.end.%d\n", lid);
+    printf(".L.false.%d:\n", lid);
     gen(node->els);
-    printf(".Lend%03d:\n", lid);
+    printf(".L.end.%d:\n", lid);
     return true;
   }
 
@@ -560,16 +558,16 @@ bool gen(Node *node) {
     gen(node->lhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("  je  .Lelse%03d\n", lid);
+    printf("  je  .L.false.%d\n", lid);
     gen(node->rhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("  je  .Lelse%03d\n", lid);
+    printf("  je  .L.false.%d\n", lid);
     printf("  push 1\n");
-    printf("  jmp .Lend%03d\n", lid);
-    printf(".Lelse%03d:\n", lid);
+    printf("  jmp .L.end.%d\n", lid);
+    printf(".L.false.%d:\n", lid);
     printf("  push 0\n");
-    printf(".Lend%03d:\n", lid);
+    printf(".L.end.%d:\n", lid);
     return true;
   }
   if (node->kind == ND_OR) {
@@ -578,16 +576,16 @@ bool gen(Node *node) {
     gen(node->lhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("  jne .Lelse%03d\n", lid);
+    printf("  jne .L.true.%d\n", lid);
     gen(node->rhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("  jne .Lelse%03d\n", lid);
+    printf("  jne .L.true.%d\n", lid);
     printf("  push 0\n");
-    printf("  jmp .Lend%03d\n", lid);
-    printf(".Lelse%03d:\n", lid);
+    printf("  jmp .L.end.%d\n", lid);
+    printf(".L.true.%d:\n", lid);
     printf("  push 1\n");
-    printf(".Lend%03d:\n", lid);
+    printf(".L.end.%d:\n", lid);
     return true;
   }
   if (node->kind == ND_NOT) {

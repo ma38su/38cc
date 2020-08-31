@@ -111,7 +111,25 @@ GVar *new_function(Token *tok, Type* ret_type) {
   var->name = substring(tok->str, tok->len);
   var->len = tok->len; // strlen
   var->type = new_fn_type(ret_type);
+
+  var->next = globals;
+  globals = var;
+  if (gvar_has_circular()) error("gvar circuit");
   return var;
+}
+
+void add_gvar_function(char *name, Type *ret_type) {
+  Token *tok = calloc(1, sizeof(Token));
+  tok->str = name;
+  tok->len = strlen(name);
+  GVar *func = new_function(tok, ret_type);
+  func->extn = 1;
+}
+
+void init_builtin() {
+  add_gvar_function("__builtin_va_start", void_type);
+  add_gvar_function("__builtin_bswap64", long_type); // unsigned long
+  add_gvar_function("__builtin_bswap32", int_type); // unsigned long
 }
 
 void init_types() {
@@ -316,10 +334,10 @@ Token *consume_ident() {
 
 Type *consume_type() {
   // skip const
-  consume_kind(TK_CONST);
+  consume("const");
 
   Type *type;
-  if (consume_kind(TK_STRUCT)) {
+  if (consume("struct")) {
     if (token->kind != TK_IDENT) return NULL;
 
     type = find_struct_type(token);
@@ -390,7 +408,7 @@ Node *consume_str() {
 }
 
 Node *consume_enum() {
-  if (!consume_kind(TK_ENUM)) {
+  if (!consume("enum")) {
     return NULL;
   }
 
@@ -477,7 +495,7 @@ Member *to_member(Node *node) {
 }
 
 Node *consume_struct() {
-  if (!consume_kind(TK_STRUCT)) {
+  if (!consume("struct")) {
     return NULL;
   }
 
@@ -513,7 +531,7 @@ Node *consume_struct() {
 }
 
 Node *consume_union() {
-  if (!consume_kind(TK_UNION)) {
+  if (!consume("union")) {
     return NULL;
   }
 
@@ -603,7 +621,7 @@ Vector *consume_args() {
   if (!consume(")")) {
     args = new_vector();
     for (;;) {
-      if (consume_kind(TK_VA)) {
+      if (consume("...")) {
         expect(")");
         break;
       }
@@ -690,7 +708,7 @@ Vector *expect_defined_args() {
 
   Vector *args = new_vector();
   for (;;) {
-    if (consume_kind(TK_VA)) {
+    if (consume("...")) {
       if (consume(")")) break;
       expect(",");
       continue;
@@ -703,7 +721,7 @@ Vector *expect_defined_args() {
     }
 
     // skip const
-    consume_kind(TK_CONST);
+    consume("const");
     consume("*");
 
     Token *tok;
@@ -760,7 +778,7 @@ Vector *expect_defined_args() {
 }
 
 Node *consume_sizeof() {
-  if (!consume_kind(TK_SIZEOF)) {
+  if (!consume("sizeof")) {
     return NULL;
   }
 
@@ -1232,7 +1250,7 @@ Node *stmt() {
     locals = tmp_locals;
     return node;
   }
-  if (consume_kind(TK_RETURN)) {
+  if (consume("return")) {
     node = new_node(ND_RETURN);
     if (consume(";")) return node;
     node->lhs = expr();
@@ -1240,24 +1258,24 @@ Node *stmt() {
     return node;
   }
   
-  if (consume_kind(TK_CONTINUE)) {
+  if (consume("continue")) {
     node = new_node(ND_CONTINUE);
     expect(";");
     return node;
   }
-  if (consume_kind(TK_BREAK)) {
+  if (consume("break")) {
     node = new_node(ND_BREAK);
     expect(";");
     return node;
   }
 
-  if (consume_kind(TK_IF)) {
+  if (consume("if")) {
     node = new_node(ND_IF);
     expect("(");
     node->cnd = expr();
     expect(")");
     node->thn = stmt();
-    if (consume_kind(TK_ELSE)) {
+    if (consume("else")) {
       node->els = stmt();
     }
 
@@ -1270,7 +1288,7 @@ Node *stmt() {
   if (consume("do")) {
     node = new_node(ND_DO);
     node->thn = block_stmt();
-    consume_kind(TK_WHILE);
+    expect("while");
     expect("(");
     node->cnd = expr();
     expect(")");
@@ -1281,7 +1299,7 @@ Node *stmt() {
 
     return node;
   }
-  if (consume_kind(TK_WHILE)) {
+  if (consume("while")) {
     node = new_node(ND_WHILE);
     expect("(");
     node->lhs = expr();
@@ -1294,7 +1312,7 @@ Node *stmt() {
     return node;
   }
   
-  if (consume_kind(TK_FOR)) {
+  if (consume("for")) {
     node = new_node(ND_FOR);
     expect("(");
 
@@ -1512,7 +1530,7 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
 
 Node *global() {
 
-  if (consume_kind(TK_TYPEDEF)) {
+  if (consume("typedef")) {
     Node *node;
     if (node = consume_struct()) {
       while (consume("*")) {
@@ -1597,7 +1615,7 @@ Node *global() {
   }
 
   int is_extern = 0;
-  if (consume_kind(TK_EXTERN)) {
+  if (consume("extern")) {
     is_extern = 1;
   }
 
@@ -1637,7 +1655,7 @@ Node *global() {
   if (!type) error_at(token->str, "type is not found");
 
   // skip const
-  consume_kind(TK_CONST);
+  consume("const");
 
   Token *tok = consume_ident();
   if (!tok) {
@@ -1649,10 +1667,6 @@ Node *global() {
     GVar *func = new_function(tok, type);
     func->extn = is_extern;
     
-    func->next = globals;
-    globals = func;
-    if (gvar_has_circular()) error("gvar circuit3");
-
     Node *block = NULL;
     Vector *args;
 
@@ -1687,6 +1701,7 @@ Node *global() {
 
 void program() {
   init_types();
+  init_builtin();
 
   int i = 0;
   while (!at_eof()) {

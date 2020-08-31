@@ -58,22 +58,7 @@ typedef enum {
   TK_NUM,       // integer number
   TK_CHAR,      // 1 character literal
   TK_STR,       // 1 string literal
-  TK_ENUM,      // enum
-  TK_STRUCT,    // struct
-  TK_UNION,     // union
-  TK_CONST,     // const
-  TK_VA,        // ...
-  TK_EXTERN,
-  TK_TYPEDEF,
-  TK_SIZEOF,    // sizeof
   TK_IDENT,     // identity
-  TK_RETURN,    // return
-  TK_IF,        // if
-  TK_ELSE,      // else
-  TK_FOR,       // for
-  TK_WHILE,     // while
-  TK_CONTINUE,  // continue
-  TK_BREAK,     // break
   TK_EOF,       // End of File
 } TokenKind;
 

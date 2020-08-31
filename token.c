@@ -121,41 +121,6 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (memcmp(p, "__", 2) == 0) {
-      // skip __extension__
-      if (memcmp(p, "__extension__", 13) == 0) {
-        p += 13;
-        continue;
-      }
-      // skip __attribute__ (*)
-      if (memcmp(p, "__attribute__", 13) == 0) {
-        p += 13;
-        p = skip_brackets(p);
-        continue;
-      }
-      // skip __restrict
-      if (memcmp(p, "__restrict", 10) == 0) {
-        p += 10;
-        continue;
-      }
-      if (memcmp(p, "__inline", 8) == 0) {
-        p += 8;
-        continue;
-      }
-      if (memcmp(p, "__restrict", 10) == 0) {
-        p += 10;
-        continue;
-      }
-      if (memcmp(p, "__builtin_bswap32", 17) == 0) {
-        p += 17;
-        continue;
-      }
-      if (memcmp(p, "__builtin_bswap64", 17) == 0) {
-        p += 17;
-        continue;
-      }
-    }
-
     // character literal
     if (*p == '\'') {
       p++;
@@ -194,13 +159,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (memcmp(p, "...", 3) == 0) {
-      cur = new_token(TK_VA, cur, p);
-      cur->len = 3;
-      p += 3;
-      continue;
-    }
-    if (memcmp(p, ">>=", 3) == 0 || memcmp(p, "<<=", 3) == 0) {
+    if (memcmp(p, ">>=", 3) == 0 || memcmp(p, "<<=", 3) == 0 || memcmp(p, "...", 3) == 0) {
       cur = new_token(TK_RESERVED, cur, p);
       cur->len = 3;
       p += 3;
@@ -235,43 +194,40 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    // skip __attribute__ (*)
+    if (memcmp(p, "__attribute__", 13) == 0) {
+      p += 13;
+      p = skip_brackets(p);
+      continue;
+    }
+
     int l = lvar_len(p);
     if (l > 0) {
+      // skip
       if (starts_with(p, l, "static")) {
         p += l;
         continue;
       }
+      if (memcmp(p, "__", 2) == 0) {
+        if (starts_with(p, l, "__extension__")
+            || starts_with(p, l, "__restrict")
+            || starts_with(p, l, "__inline")
+            || starts_with(p, l, "__builtin_bswap32")
+            || starts_with(p, l, "__builtin_bswap64")) {
+          p += l;
+          continue;
+        }
+      }
 
-      if (starts_with(p, l, "do")) {
+      if (starts_with(p, l, "do") || starts_with(p, l, "while")
+          || starts_with(p, l, "continue") || starts_with(p, l, "break")
+          || starts_with(p, l, "for") || starts_with(p, l, "return")
+          || starts_with(p, l, "if") || starts_with(p, l, "else")
+          || starts_with(p, l, "struct") || starts_with(p, l, "enum")
+          || starts_with(p, l, "union")
+          || starts_with(p, l, "typedef") || starts_with(p, l, "const")
+          || starts_with(p, l, "extern") || starts_with(p, l, "sizeof")) {
         cur = new_token(TK_RESERVED, cur, p);
-      } else if (starts_with(p, l, "continue")) {
-        cur = new_token(TK_CONTINUE, cur, p);
-      } else if (starts_with(p, l, "break")) {
-        cur = new_token(TK_BREAK, cur, p);
-      } else if (starts_with(p, l, "const")) {
-        cur = new_token(TK_CONST, cur, p);
-      } else if (starts_with(p, l, "enum")) {
-        cur = new_token(TK_ENUM, cur, p);
-      } else if (starts_with(p, l, "struct")) {
-        cur = new_token(TK_STRUCT, cur, p);
-      } else if (starts_with(p, l, "union")) {
-        cur = new_token(TK_UNION, cur, p);
-      } else if (starts_with(p, l, "extern")) {
-        cur = new_token(TK_EXTERN, cur, p);
-      } else if (starts_with(p, l, "sizeof")) {
-        cur = new_token(TK_SIZEOF, cur, p);
-      } else if (starts_with(p, l, "return")) {
-        cur = new_token(TK_RETURN, cur, p);
-      } else if (starts_with(p, l, "typedef")) {
-        cur = new_token(TK_TYPEDEF, cur, p);
-      } else if (starts_with(p, l, "if")) {
-        cur = new_token(TK_IF, cur, p);
-      } else if (starts_with(p, l, "else")) {
-        cur = new_token(TK_ELSE, cur, p);
-      } else if (starts_with(p, l, "while")) {
-        cur = new_token(TK_WHILE, cur, p);
-      } else if (starts_with(p, l, "for")) {
-        cur = new_token(TK_FOR, cur, p);
       } else {
         cur = new_token(TK_IDENT, cur, p);
       }

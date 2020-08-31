@@ -1,7 +1,7 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "vector.h"
-
 
 Vector *new_vector() {
   Vector* vector = calloc(1, sizeof(Vector));
@@ -28,9 +28,8 @@ void _ensure_array(Vector *vector) {
 }
 
 void vec_add(Vector *vector, void *value) {
-  if (vector->size >= vector->_len) {
+  if (vector->size >= vector->_len)
     _ensure_array(vector);
-  }
   vector->_array[vector->size++] = value;
 }
 
