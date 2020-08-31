@@ -1270,6 +1270,9 @@ Node *stmt() {
     Node *node = new_node(ND_FOR);
     expect("(");
 
+    // scope in
+    LVar *tmp_locals = locals;
+
     if (!consume(";")) {
       Node *d = declaration();
       if (d) {
@@ -1297,6 +1300,10 @@ Node *stmt() {
       sub->lhs = stmt();
       node_while->rhs = sub;
     }
+
+    // scope out
+    locals = tmp_locals;
+
     return node;
   }
 
@@ -1407,6 +1414,7 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
     }
   } else {
     gvar = calloc(1, sizeof(GVar));
+    gvar->type = type;
     gvar->extn = is_extern;
     gvar->next = globals;
     globals = gvar;
@@ -1439,7 +1447,19 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
   node->len = tok->len;
   node->type = gvar->type;
   if (consume("=")) {
-    if (type_is_array(type) && type->to == char_type) {
+
+    if (consume("{")) {
+      Vector *vec = new_vector();
+      do {
+        Node *e = expr();
+        vec_add(vec, e);
+        if (consume("}")) break;
+        expect(",");
+      } while (1);
+
+      // TODO array initializer
+
+    } else if (type_is_array(type) && type->to == char_type) {
       if (token->kind != TK_STR) {
         error("expected string literal");
       }
