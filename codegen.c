@@ -54,7 +54,6 @@ void codegen() {
   //printf("  .section  .rodata\n");
   gen_gvars();
 
-  printf("  .global main\n");
   for (int i = 0; code[i]; ++i) {
     gen_defined(code[i]);
   }
@@ -79,11 +78,6 @@ char* get_args_register(int size, int index) {
 }
 
 void gen_addr(Node* node) {
-  /*
-  if (node->kind != ND_LVAR) {
-    error("not lvar: %d", node->kind);
-  }
-  */
 
   printf("  # &%s\n", node->ident);
   printf("  mov rax, rbp\n");
@@ -249,13 +243,24 @@ bool gen_return(Node *node) {
 
 void gen_gvars_uninit() {
   for (GVar *var = globals; var; var = var->next) {
-    if (var->init || var->extn) {
+    if (var->init || var->extn || var->type->kind == TY_FUNCTION) {
       continue;
     }
     printf("  .comm   %s,%d,%d\n", var->name, var->type->size, var->type->size);
   }
 }
 void gen_gvars() {
+  int data_count = 0;
+  for (GVar *var = globals; var; var = var->next) {
+    if (!var->init || var->extn) {
+      continue;
+    }
+    data_count++;
+  }
+  if (data_count > 0) {
+    printf("  .data\n");
+  }
+
   for (GVar *var = globals; var; var = var->next) {
     if (!var->init || var->extn) {
       continue;
@@ -321,6 +326,8 @@ void gen_defined_function(Node *node) {
     return;
   }
   // function label
+  printf("  .global %s\n", node->ident);
+  //printf("  .type %s, @function\n", node->ident);
   printf("%s:\n", node->ident);
 
   printf("  # prologue by %s function\n", node->ident);
@@ -491,30 +498,50 @@ bool gen(Node *node) {
       gen(node->lhs);
     }
 
-    gen_lval(node->lhs);
-
-    gen(node->rhs);
-
-    printf("  # assign\n");
-    printf("  pop rdi\n");
-    printf("  pop rax\n");
-
     int size = node->type->size;
-    if (size == 1) {
-      printf("  mov [rax], dil\n");
-    } else if (size == 2) {
-      printf("  mov [rax], di\n");
-    } else if (size == 4) {
-      printf("  mov [rax], edi\n");
-    } else if (size == 8) {
-      printf("  mov [rax], rdi\n");
-    } else {
-      char *type_name = substring(node->type->name, node->type->len);
-      error("illegal assign defref: sizeof(%s) = %d", type_name, size);
-    }
+    if (node->lhs->kind == ND_GVAR) {
 
-    if (node->kind != ND_ASSIGN_POST) {
-      printf("  push rdi\n");
+      gen(node->rhs);
+      char *name = substring(node->lhs->ident, node->lhs->len);
+      printf("  pop rax\n");
+
+      Node *lhs = node->lhs;
+      if (lhs->type == char_type) {
+        printf("  movsx byte ptr %s[rip], rax\n", name);
+      } else if (lhs->type == short_type) {
+        printf("  movsx word ptr %s[rip], rax\n", name);
+      } else if (lhs->type == int_type) {
+        printf("  mov dword ptr %s[rip], eax\n", name);
+      } else if (lhs->type == long_type) {
+        printf("  mov %s[rip], rax\n", name);
+      } else {
+        printf("  # not support gvar %s, type: %s\n", name, lhs->type->name);
+      }
+      printf("  push rax\n");
+    } else {
+      gen_lval(node->lhs);
+      gen(node->rhs);
+
+      printf("  # assign\n");
+      printf("  pop rdi\n");
+      printf("  pop rax\n");
+
+      if (size == 1) {
+        printf("  mov [rax], dil\n");
+      } else if (size == 2) {
+        printf("  mov [rax], di\n");
+      } else if (size == 4) {
+        printf("  mov [rax], edi\n");
+      } else if (size == 8) {
+        printf("  mov [rax], rdi\n");
+      } else {
+        char *type_name = substring(node->type->name, node->type->len);
+        error("illegal assign defref: sizeof(%s) = %d", type_name, size);
+      }
+
+      if (node->kind != ND_ASSIGN_POST) {
+        printf("  push rdi\n");
+      }
     }
     return true;
   }
