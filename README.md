@@ -13,12 +13,12 @@ make
 
 Run make to build and test:
 ```
-mkdir tmp
-make shtest
+make test
 ```
 or
 ```
-make test
+mkdir tmp
+make shtest
 ```
 
 Run 38cc to compile:
@@ -29,7 +29,7 @@ gcc tmp.s -o tmp
 ```
 
 
-Note: It doesn't include preprocessor. It requires proprocessor 'cpp' to compile a following code that includes stdio.h.
+Note: It doesn't include preprocessor. It requires preprocessor 'cpp' to compile a following code that includes stdio.h.
 
 ```
 #include <stdio.h>
