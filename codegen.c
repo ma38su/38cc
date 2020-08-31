@@ -137,7 +137,7 @@ void gen_block(Node *node) {
     error("not block");
   }
 
-  printf("  # block begin\n\n");
+  printf("  # block begin\n");
   for (int i = 0; i < node->list->size; ++i) {
     Node *n = (Node *) vec_get(node->list, i);
     if (gen(n)) {
@@ -204,8 +204,11 @@ bool gen_return(Node *node) {
   if (node->kind != ND_RETURN) {
     error("not return");
   }
-  gen(node->lhs);
-  printf("  pop rax\n");
+  if (node->lhs) {
+    // set return value to rax
+    gen(node->lhs);
+    printf("  pop rax\n");
+  }
   printf("  # epilogue by return\n");
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
@@ -399,7 +402,7 @@ int type_is_struct_ref(Type* type) {
 
 bool gen(Node *node) {
   if (!node) {
-    error("node is none by gen");
+    error("node is NULL");
   }
   if (node->kind == ND_NONE) {
     if (node->lhs) {

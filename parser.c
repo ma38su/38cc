@@ -115,10 +115,10 @@ GVar *new_function(Token *tok, Type* ret_type) {
 }
 
 void init_types() {
-  enums = calloc(1, sizeof(Vector));
-  types = calloc(1, sizeof(Vector));
-  functions = calloc(1, sizeof(Vector));
-
+  enums = new_vector();
+  types = new_vector();
+  functions = new_vector();
+  
   bool_type = new_type("_Bool", 5, 1);
   bool_type->kind = TY_PRM;
 
@@ -679,7 +679,7 @@ Vector *expect_defined_args() {
     return NULL;
   }
 
-  Vector *args = calloc(1, sizeof(Vector));
+  Vector *args = new_vector();
   for (;;) {
     if (consume_kind(TK_VA)) {
       if (consume(")")) break;
@@ -920,7 +920,7 @@ Node *unary() {
 
   if (consume("!")) {
     Node *node = new_node(ND_NOT);
-    node->lhs = primary();
+    node->lhs = unary();
     node->type = int_type;
     return node;
   }
@@ -1199,79 +1199,76 @@ Node *block_stmt() {
   if (!consume("{")) return NULL;
 
   Node *node = new_node(ND_BLOCK);
-  node->list = calloc(1, sizeof(Vector));
-
+  Vector *stmt_list = new_vector();
   while (!consume("}")) {
-    if (at_eof()) error("block_stmt: EOF");
-    vec_add(node->list, stmt_or_block());
+    if (at_eof()) error("block_stmt: no more token");
+    vec_add(stmt_list, stmt());
   }
+  node->list = stmt_list;
   return node;
 }
 
-Node *stmt_or_block() {
-  Node *node = block_stmt();
-  if (node) return node;
-  return stmt();
-}
-
 Node *stmt() {
+  // scope in
+  LVar *tmp_locals = locals;
+
+  Node *node = block_stmt();
+  if (node) {
+    // scope out
+    locals = tmp_locals;
+    return node;
+  }
   if (consume_kind(TK_RETURN)) {
-    Node *node = new_node(ND_RETURN);
+    node = new_node(ND_RETURN);
+    if (consume(";")) return node;
     node->lhs = expr();
     expect(";");
     return node;
   }
   
   if (consume_kind(TK_CONTINUE)) {
-    Node *node = new_node(ND_CONTINUE);
+    node = new_node(ND_CONTINUE);
     expect(";");
     return node;
   }
   if (consume_kind(TK_BREAK)) {
-    Node *node = new_node(ND_BREAK);
+    node = new_node(ND_BREAK);
     expect(";");
     return node;
   }
 
-  if (consume("{")) {
-    Node *node = new_node(ND_BLOCK);
-    Vector *stmt_list = calloc(1, sizeof(Vector));
-    do {
-      if (at_eof()) error("stmt: no more token");
-      Node *sub = stmt(0);
-      vec_add(stmt_list, sub);
-    } while (!consume("}"));
-    node->list = stmt_list;
-    return node;
-  }
-  
   if (consume_kind(TK_IF)) {
-    Node *node = new_node(ND_IF);
+    node = new_node(ND_IF);
     expect("(");
     node->cnd = expr();
     expect(")");
-    node->thn = stmt_or_block();
+    node->thn = stmt();
     if (consume_kind(TK_ELSE)) {
-      node->els = stmt_or_block();
+      node->els = stmt();
     }
+
+    // scope out
+    locals = tmp_locals;
+
     return node;
   }
 
   if (consume_kind(TK_WHILE)) {
-    Node *node = new_node(ND_WHILE);
+    node = new_node(ND_WHILE);
     expect("(");
     node->lhs = expr();
     expect(")");
     node->rhs = stmt();
+
+    // scope out
+    locals = tmp_locals;
+
     return node;
   }
   
   if (consume_kind(TK_FOR)) {
-    Node *node = new_node(ND_FOR);
+    node = new_node(ND_FOR);
     expect("(");
-
-    // scope in
-    LVar *tmp_locals = locals;
 
     if (!consume(";")) {
       Node *d = declaration();
@@ -1307,8 +1304,6 @@ Node *stmt() {
     return node;
   }
 
-
-  Node *node;
   node = declaration();
   if (!node) {
     node = expr();
