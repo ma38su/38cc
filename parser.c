@@ -1281,7 +1281,6 @@ Node *stmt() {
 
     // scope out
     locals = tmp_locals;
-
     return node;
   }
 
@@ -1296,7 +1295,6 @@ Node *stmt() {
 
     // scope out
     locals = tmp_locals;
-
     return node;
   }
   if (consume("while")) {
@@ -1565,7 +1563,6 @@ Node *global() {
         // TODO to support type alias
         Type *enum_type = new_type(ident->str, ident->len, 4);
         enum_type->kind = TY_PRM;
-
         vec_add(types, enum_type);
       }
       expect(";");
@@ -1610,7 +1607,6 @@ Node *global() {
       vec_add(types, def_type);
     }
     expect(";");
-
     return NULL;
   }
 
@@ -1635,18 +1631,22 @@ Node *global() {
     return NULL;
   }
   if (node = consume_enum()) {
+    /*
     if (is_extern) {
-      Token *ident = consume_ident();
+      //Token *ident = consume_ident();
       // TODO
     }
+    */
     expect(";");
     return NULL;
   }
   if (node = consume_union()) {
+    /*
     if (is_extern) {
       Token *ident = consume_ident();
       // TODO
     }
+    */
     expect(";");
     return NULL;
   }
@@ -1705,14 +1705,12 @@ void program() {
 
   int i = 0;
   while (!at_eof()) {
-    //fprintf(stderr, "[%d] %s\n", i, line(token->str));
     Node* n = global();
     if (n) {
       code[i++] = n;
     }
   }
   code[i] = NULL;
-  printf("# program loaded %dsteps\n", i);
 }
 
 Type *find_type(Token *tok) {
