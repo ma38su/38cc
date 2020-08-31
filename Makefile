@@ -11,43 +11,69 @@ FILE = test
 
 $(OBJS): 38cc.h $(SRCS)
 
+self: 38cc main.s token.s parser.s codegen.s reader.s debug.s vector.s .test.c
+	$(CC) main.s token.s parser.s codegen.s reader.s debug.s vector.s -o self38cc $(LDFLAGS)
+
+	./self38cc .test.c > test.s
+	$(CC) test.s -o test
+	./test
+
+main.s: main.c
+	$(CC) -S -masm=intel main.c -o main.s
+
 self-main: 38cc main.c
 	cpp main.c -o .main.c
-	./38cc .main.c > .main.s
+	./38cc .main.c > main.s
 
+reader.s: reader.c
+	$(CC) -S -masm=intel reader.c -o reader.s
 self-reader: 38cc reader.c
 	cpp reader.c -o .reader.c
-	./38cc .reader.c > .reader.s
+	./38cc .reader.c > reader.s
+
+token.s: token.c
+	$(CC) -S -masm=intel token.c -o token.s
 
 self-token: 38cc token.c
 	cpp token.c -o .token.c
-	./38cc .token.c > .token.s
+	./38cc .token.c > token.s
+
+parser.s: parser.c
+	$(CC) -S -masm=intel parser.c -o parser.s
 
 self-parser: 38cc parser.c
 	cpp parser.c -o .parser.c
-	./38cc .parser.c > .parser.s
+	./38cc .parser.c > parser.s
+
+codegen.s: codegen.c
+	$(CC) -S -masm=intel codegen.c -o codegen.s
 
 self-codegen: 38cc codegen.c
 	cpp codegen.c -o .codegen.c
-	./38cc .codegen.c > .codegen.s
+	./38cc .codegen.c > codegen.s
+
+debug.s: debug.c
+	$(CC) -S -masm=intel debug.c -o debug.s
 
 self-debug: 38cc debug.c
 	cpp debug.c -o .debug.c
-	./38cc .debug.c > .debug.s
+	./38cc .debug.c > debug.s
+
+vector.s: vector.c
+	$(CC) -S -masm=intel vector.c -o vector.s
 
 self-vector: 38cc vector.c
 	cpp vector.c -o .vector.c
-	./38cc .vector.c > .vector.s
-
+	./38cc .vector.c > vector.s
 
 .test.c: 38cc test.c
 	cpp test.c -o .test.c
 
-.test.s: 38cc .test.c
-	./38cc .test.c > .test.s
+test.s: 38cc .test.c
+	./38cc .test.c > test.s
 
-test: 38cc .test.s
-	$(CC) .test.s -o test
+test: 38cc test.s
+	$(CC) test.s -o test
 	./test
 
 test-gcc: test.c
@@ -66,6 +92,6 @@ maptest:
 	./map_test
 
 clean:
-	rm -f 38cc *.s *.o *~ tmp/* .*.c
+	rm -f 38cc *.s .*.s *.o *~ tmp/* .*.c
 
 .PHONY: test clean
