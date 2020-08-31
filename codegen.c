@@ -168,6 +168,25 @@ bool gen_while(Node *node) {
   return false;
 }
 
+bool gen_do_while(Node *node) {
+  if (node->kind != ND_DO) {
+    error("not do while");
+  }
+
+  int prev_lid = current_lid;
+  int lid = current_lid = label_id++;
+  printf(".Lbegin%03d:\n", lid);
+  gen(node->thn);
+  gen(node->cnd);
+  printf("  pop rax # while\n");
+  printf("  cmp rax, 0\n");
+  printf("  je  .Lend%03d\n", lid);
+  printf("  jmp .Lbegin%03d\n", lid);
+  printf(".Lend%03d:\n", lid);
+  current_lid = prev_lid;
+  return false;
+}
+
 bool gen_for(Node *node) {
   if (node->kind != ND_FOR) {
     error("not for");
@@ -422,6 +441,9 @@ bool gen(Node *node) {
   if (node->kind == ND_WHILE) {
     return gen_while(node);
   }
+  if (node->kind == ND_DO) {
+    return gen_do_while(node);
+  }
   if (node->kind == ND_RETURN) {
     return gen_return(node);
   }
@@ -555,14 +577,21 @@ bool gen(Node *node) {
     printf(".Lend%03d:\n", lid);
     return true;
   }
-
   if (node->kind == ND_NOT) {
     printf("  # NOT (!)\n");
     gen(node->lhs);
-    printf("  pop rax\n");    
+    printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  sete al\n");
     printf("  movzb rax, al\n");
+    printf("  push rax\n");
+    return true;
+  }
+  if (node->kind == ND_BITNOT) {
+    printf("  # BITNOT (~)\n");
+    gen(node->lhs);
+    printf("  pop rax\n");
+    printf("  not rax\n");
     printf("  push rax\n");
     return true;
   }

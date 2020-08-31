@@ -85,10 +85,12 @@ int test_func(int a, int b) {
 
 int sum() {
   int sum = 0;
-  int i;
-  for (i = 0; i < 10; ++i) {
+  for (int i = 0; i < 5; ++i) {
     sum = sum + i;
-  } 
+  }
+  for (int i = 5; i < 10; ++i) {
+    sum += i;
+  }
   return sum;
 }
 
@@ -475,6 +477,35 @@ void test17() {
   assertStr("test17-4", "test17", nest->name);
 }
 
+void test18() {
+  int i = 0;
+  int a = 0;
+  while (i) {
+    a = 10;
+  }
+
+  int j = 0;
+  int b = 0;
+  do {
+    b = 10;
+  } while (j);
+
+  assertInt("test18-1", 0, a);
+  assertInt("test18-2", 10, b);
+}
+
+void test19() {
+  for (int i = 0; i < 10; i++) {
+    assertInt("test19-1", -1, i + ~i);
+  }
+  for (int i = 0; i < 10; i++) {
+    assertInt("test19-2", -1, i | ~i);
+  }
+  for (int i = 0; i < 10; i++) {
+    assertInt("test19-3", 0, i & ~i);
+  }
+}
+
 int add(int v1, int v2) {
   return v1 + v2;
 }
@@ -519,6 +550,8 @@ int main() {
   test15();
   test16();
   test17();
+  test18();
+  test19();
 
   return 0;
 }

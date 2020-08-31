@@ -288,6 +288,15 @@ void expect(char *op) {
   }
 }
 
+bool expect_kind(TokenKind kind) {
+  if (token->kind != kind) {
+    error_at(token->str, "token is '%s' kind: %d. expect kind: %d",
+        substring(token->str, token->len), token->kind, kind);
+  }
+  token = token->next;
+  return true;
+}
+
 bool consume_kind(TokenKind kind) {
   if (token->kind != kind) {
     return false;
@@ -917,7 +926,12 @@ Node *unary() {
   if (consume("+")) {
     return primary();
   }
-
+  if (consume("~")) {
+    Node *node = new_node(ND_BITNOT);
+    node->lhs = unary();
+    node->type = int_type;
+    return node;
+  }
   if (consume("!")) {
     Node *node = new_node(ND_NOT);
     node->lhs = unary();
@@ -1253,6 +1267,20 @@ Node *stmt() {
     return node;
   }
 
+  if (consume("do")) {
+    node = new_node(ND_DO);
+    node->thn = block_stmt();
+    consume_kind(TK_WHILE);
+    expect("(");
+    node->cnd = expr();
+    expect(")");
+    expect(";");
+
+    // scope out
+    locals = tmp_locals;
+
+    return node;
+  }
   if (consume_kind(TK_WHILE)) {
     node = new_node(ND_WHILE);
     expect("(");
@@ -1641,7 +1669,6 @@ Node *global() {
       }
     }
 
-    Node *node;
     node = new_node(ND_FUNCTION);
     node->list = args;
     node->ident = substring(tok->str, tok->len);

@@ -242,7 +242,9 @@ Token *tokenize(char *p) {
         continue;
       }
 
-      if (starts_with(p, l, "continue")) {
+      if (starts_with(p, l, "do")) {
+        cur = new_token(TK_RESERVED, cur, p);
+      } else if (starts_with(p, l, "continue")) {
         cur = new_token(TK_CONTINUE, cur, p);
       } else if (starts_with(p, l, "break")) {
         cur = new_token(TK_BREAK, cur, p);
