@@ -61,16 +61,16 @@ void test1() {
 // test for increment operator and decrement operator
 void test2() {
   int i = 0;
-  assertInt("test6-1", 0, i);
-  assertInt("test6-2", 1, ++i);
-  assertInt("test6-3", 1, i);
-  assertInt("test6-4", 0, --i);
-  assertInt("test6-5", 0, i);
+  assertInt("test2-1", 0, i);
+  assertInt("test2-2", 1, ++i);
+  assertInt("test2-3", 1, i);
+  assertInt("test2-4", 0, --i);
+  assertInt("test2-5", 0, i);
 
-  assertInt("test6-6", 0, i++);
-  assertInt("test6-7", 1, i);
-  assertInt("test6-8", 1, i--);
-  assertInt("test6-9", 0, i);
+  assertInt("test2-6", 0, i++);
+  assertInt("test2-7", 1, i);
+  assertInt("test2-8", 1, i--);
+  assertInt("test2-9", 0, i);
 }
 
 
@@ -141,21 +141,21 @@ void test4() {
 void test5() {
 
   char *msg = "Hello, World\n";
-  assertChar("test2-1", 'a', 'a');
-  assertChar("test2-2", 'b', 'b');
-  assertChar("test2-3", 'H', *msg);
-  assertChar("test2-4", 'e', *(msg+1));
-  assertChar("test2-5", ' ', *(msg+6));
-  assertChar("test2-6", 'W', *(msg+7));
-  assertChar("test2-7", 'd', *(msg+11));
-  assertChar("test2-8", '\n', *(msg+12));
-  assertChar("test2-9", '\0', *(msg+13));
+  assertChar("test5-1", 'a', 'a');
+  assertChar("test5-2", 'b', 'b');
+  assertChar("test5-3", 'H', *msg);
+  assertChar("test5-4", 'e', *(msg+1));
+  assertChar("test5-5", ' ', *(msg+6));
+  assertChar("test5-6", 'W', *(msg+7));
+  assertChar("test5-7", 'd', *(msg+11));
+  assertChar("test5-8", '\n', *(msg+12));
+  assertChar("test5-9", '\0', *(msg+13));
 
-  assertChar("test2-10", 'H', *(msg++));
-  assertChar("test2-11", 'l', *(++msg));
-  assertChar("test2-12", 'e', *(--msg));
-  assertChar("test2-13", 'e', *(msg--));
-  assertChar("test2-14", 'H', *msg);
+  assertChar("test5-10", 'H', *(msg++));
+  assertChar("test5-11", 'l', *(++msg));
+  assertChar("test5-12", 'e', *(--msg));
+  assertChar("test5-13", 'e', *(msg--));
+  assertChar("test5-14", 'H', *msg);
 }
 
 void test6() {
