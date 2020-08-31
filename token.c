@@ -211,12 +211,17 @@ Token *tokenize(char *p) {
       if (memcmp(p, "__", 2) == 0) {
         if (starts_with(p, l, "__extension__")
             || starts_with(p, l, "__restrict")
-            || starts_with(p, l, "__inline")
-            || starts_with(p, l, "__builtin_bswap32")
-            || starts_with(p, l, "__builtin_bswap64")) {
+            || starts_with(p, l, "__inline")) {
           p += l;
           continue;
         }
+      }
+
+      // skip builtin
+      if (starts_with(p, l, "__builtin_bswap32")
+          || starts_with(p, l, "__builtin_bswap64")) {
+        p += l;
+        continue;
       }
 
       if (starts_with(p, l, "do") || starts_with(p, l, "while")
