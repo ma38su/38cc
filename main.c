@@ -11,8 +11,10 @@ int main(int argc, char **argv) {
   }
 
   filename = argv[1];
-  user_input = read_file(filename);
+  printf("  .file \"%s\"\n", filename);
 
+  user_input = read_file(filename);
+  
   token = tokenize(user_input);
 
   program();
