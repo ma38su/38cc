@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 //static int debug = 0;
 //extern int debug;
@@ -546,11 +547,25 @@ typedef int *PINT;
 void test22() {
   int v1 = 3;
   int *p1 = &v1;
-  assertInt("test22", 3, *p1);
+  assertInt("test22-1", 3, *p1);
 
-  int v2 = 3;
+  int v2 = 7;
   PINT p2 = &v2;
-  assertInt("test22", 3, *p2);
+  assertInt("test22-2", 7, *p2);
+}
+
+void test23() {
+  int a = 1000;
+  char v1 = (char) a;
+  assertInt("test23-1", -24, v1);
+
+  int b = 2;
+  bool v2 = (bool) b;
+  assertInt("test23-2", 1, v2);
+
+  int c = -1;
+  bool v3 = (bool) c;
+  assertInt("test23-3", 1, v3);
 }
 
 int main() {
@@ -577,6 +592,7 @@ int main() {
   test20();
   test21();
   test22();
+  test23();
 
   return 0;
 }

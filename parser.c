@@ -712,6 +712,7 @@ Vector *expect_defined_args() {
       continue;
     }
 
+    //consume("const");
     Type *type = consume_type();
     if (!type) {
       error_at(token->str,
@@ -815,17 +816,10 @@ Node *primary() {
 
   if (consume("(")) {
     Type *type = consume_type();
-    if (type) {
-      expect(")");
+    if (type) error_at(token->str, "illegal cast");
 
-      // error_at(token->str, "TODO cast (not supported)");
-
-      node = expr();
-
-    } else {
-      node = expr();
-      expect(")");
-    }
+    node = expr();
+    expect(")");
     return node;
   }
 
@@ -1023,16 +1017,41 @@ Node *unary() {
   }
 }
 
+Node *consume_cast() {
+  Token *tmp = token;
+  if (!consume("(")) return NULL;
+
+  Type *type = consume_type();
+  if (!type) {
+    token = tmp; // rollback
+    return NULL;
+  } 
+  expect(")");
+
+  Node *node = new_node(ND_CAST);
+  node->type = type;
+  return node;
+}
+
+Node *cast() {
+  Node *node = consume_cast();
+  if (node) {
+    node->lhs = unary();
+    return node;
+  }
+  return unary();
+}
+
 // L <- R
 Node *mul() {
-  Node *node = unary();
+  Node *node = cast();
   for (;;) {
     if (consume("*")) {
-      node = new_node_lr(ND_MUL, node, unary());
+      node = new_node_lr(ND_MUL, node, cast());
     } else if (consume("/")) {
-      node = new_node_lr(ND_DIV, node, unary());
+      node = new_node_lr(ND_DIV, node, cast());
     } else if (consume("%")) {
-      node = new_node_lr(ND_MOD, node, unary());
+      node = new_node_lr(ND_MOD, node, cast());
     } else {
       return node;
     }
@@ -1378,12 +1397,41 @@ int reduce_node(Node* node) {
 
   int lhs_val = reduce_node(node->lhs);
 
+  if (node->kind == ND_CAST) {
+    if (node->type == bool_type) {
+      return lhs_val ? 1 : 0;
+    }
+    if (node->type == char_type) {
+      return (char) lhs_val;
+    }
+    if (node->type == short_type) {
+      return (char) lhs_val;
+    }
+    if (node->type == int_type) {
+      return (int) lhs_val;
+    }
+    if (node->type == float_type || node->type == double_type) {
+      error("unsupported float/double cast");
+    }
+    // TODO cast operation, ex. float, double
+    return lhs_val;
+  }
+
   if (node->kind == ND_NOT) {
     return !lhs_val;
   }
   if (node->kind == ND_BITNOT) {
     return ~lhs_val;
   }
+
+  if (!node->rhs) {
+    if (node->ident) {
+      error("no rhs: %s", node->ident);
+    } else {
+      error("no rhs");
+    }
+  }
+
   if (node->kind == ND_AND) {
     return lhs_val && reduce_node(node->rhs);
   }
@@ -1392,7 +1440,6 @@ int reduce_node(Node* node) {
   }
 
   int rhs_val = reduce_node(node->rhs);
-
   if (node->kind == ND_EQ) {
     return lhs_val == rhs_val;
   }
@@ -1653,6 +1700,7 @@ Node *global() {
     return NULL;
   }
 
+  //consume("const");
   Type *type = consume_type();
   if (!type) error_at(token->str, "type is not found");
 

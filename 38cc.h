@@ -173,10 +173,13 @@ extern Node *code[];
 extern LVar *locals;
 extern GVar *globals;
 
+extern Type *bool_type;
 extern Type *char_type;
 extern Type *short_type;
 extern Type *int_type;
 extern Type *long_type;
+extern Type *float_type;
+extern Type *double_type;
 
 extern Type *str_type;
 

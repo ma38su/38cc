@@ -137,6 +137,30 @@ void gen_function_call(Node *node) {
   printf("  push rax\n");
 }
 
+// cast
+void truncate(Type *type) {
+  if (type->kind == TY_TYPEDEF) {
+    truncate(type->to);
+    return;
+  }
+
+  if (type->kind != TY_PRM) return;
+  printf("  pop rax\n");
+  if (type == bool_type) {
+    printf("  cmp rax, 0\n");
+    printf("  setne al\n");
+  }
+
+  if (type->size == 1) {
+    printf("  movsx rax, al\n");
+  } else if (type->size == 2) {
+    printf("  movsx rax, ax\n");
+  } else if (type->size == 4) {
+    printf("  movsxd rax, eax\n");
+  }
+  printf("  push rax\n");
+}
+
 void gen_block(Node *node) {
   if (node->kind != ND_BLOCK) {
     error("not block");
@@ -383,7 +407,11 @@ void gen_defined(Node *node) {
 }
 
 void gen_deref(Type *type) {
-  if (type->kind == TY_STRUCT || type->kind == TY_TYPEDEF) {
+  if (type->kind == TY_TYPEDEF) {
+    gen_deref(type->to);
+    return;
+  }
+  if (type->kind == TY_STRUCT) {
     return;
   }
 
@@ -478,7 +506,11 @@ bool gen(Node *node) {
     printf("  jmp .L.end.%d\n", current_lid);
     return false;
   }
-
+  if (node->kind == ND_CAST) {
+    gen(node->lhs);
+    truncate(node->type);
+    return true;
+  }
   if (node->kind == ND_NUM) {
     gen_num(node->val);
     return true;
