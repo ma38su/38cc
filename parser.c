@@ -45,7 +45,7 @@ GVar *globals;
 
 Vector *enums;
 Vector *types;  // Type*
-Vector *functions;
+Vector *inlines;
 
 Type *bool_type;
 Type *char_type;
@@ -137,7 +137,7 @@ void init_builtin() {
 void init_types() {
   enums = new_vector();
   types = new_vector();
-  functions = new_vector();
+  inlines = new_vector();
   
   bool_type = new_type("_Bool", 5, 1);
   bool_type->kind = TY_PRM;
@@ -875,6 +875,8 @@ Node *primary() {
         node = new_node(ND_CALL);
         node->type = lvar->type->to;
         node->val = 0;
+      } else {
+        error(tok->str, "function is not found: %s", substring(tok->str, tok->len));
       }
     }
 
@@ -1688,10 +1690,7 @@ Node *global() {
     return NULL;
   }
 
-  int is_extern = 0;
-  if (consume("extern")) {
-    is_extern = 1;
-  }
+  int is_extern = consume("extern") ? 1 : 0;
 
   Node *node;
   node = consume_struct();
@@ -1719,6 +1718,10 @@ Node *global() {
     return NULL;
   }
 
+
+  consume("static");
+  int is_inline = consume("__inline") ? 1 : 0;
+
   //consume("const");
   Type *type = consume_type();
   if (!type) error_at(token->str, "type is not found");
@@ -1732,8 +1735,8 @@ Node *global() {
   if (consume("(")) {
     // before parse function statement for recursive call
     GVar *func = new_function(tok, type);
-    func->extn = is_extern;
-    
+    func->extn = 1; // declare function
+
     Node *block = NULL;
     Vector *args;
 
@@ -1760,6 +1763,12 @@ Node *global() {
 
     // local変数を戻す(サイズ計算後)
     locals = tmp_locals;
+
+    if (is_inline) {
+      vec_add(inlines, node);
+      return NULL;
+    }
+
     return node;
   } else {
     return new_gvar_node(tok, type, is_extern);

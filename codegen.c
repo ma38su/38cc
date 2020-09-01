@@ -54,6 +54,8 @@ void codegen() {
   //printf("  .section  .rodata\n");
   gen_gvars();
 
+  printf("\n");
+  printf("  .text\n");
   for (int i = 0; code[i]; ++i) {
     gen_defined(code[i]);
   }
@@ -91,17 +93,14 @@ void gen_function_call(Node *node) {
   }
 
   if (node->list) {
-    printf("  # set args %d to call %s\n",
-        node->list->size, node->ident);
-
-    printf("  # push %d args\n", node->list->size);
     for (int i = 0; i < node->list->size; ++i) {
       gen((Node *) vec_get(node->list, i));
     }
-    printf("  # set %d args\n", node->list->size);
+    printf("  # set args %d to call %s\n",
+        node->list->size, node->ident);
     for (int i = node->list->size - 1; i >= 0; --i) {
       char *r = get_args_register(8, i);
-      printf("  pop %s\n", r);
+      printf("  pop %s  # arg %d\n", r, i);
     }
   }
 
@@ -171,10 +170,8 @@ void gen_block(Node *node) {
     Node *n = (Node *) vec_get(node->list, i);
     if (gen(n)) {
       printf("  pop rax\n");
-      printf("  # end line\n\n");
     }
   }
-  printf("\n");
   printf("  # block end\n");
 }
 
@@ -257,11 +254,9 @@ bool gen_return(Node *node) {
     gen(node->lhs);
     printf("  pop rax\n");
   }
-  printf("  # epilogue by return\n");
-  printf("  mov rsp, rbp\n");
+  printf("  mov rsp, rbp  # epilogue\n");
   printf("  pop rbp\n");
-  printf("  # return rax value\n");
-  printf("  ret\n");
+  printf("  ret           # return rax value\n");
   return false;
 }
 
@@ -351,15 +346,13 @@ void gen_defined_function(Node *node) {
     // skip extern function;
     return;
   }
+
   // function label
   printf("\n");
   printf("  .global %s\n", node->ident);
-  //printf("  .type %s, @function\n", node->ident);
   printf("%s:\n", node->ident);
-
-  printf("  # prologue by %s function\n", node->ident);
   printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
+  printf("  mov rbp, rsp\n\n"); // prologue end
 
   if (node->val > 0) {
     // allocate local vars
@@ -386,10 +379,9 @@ void gen_defined_function(Node *node) {
 
   gen_block(node->lhs);
 
-  printf("  # epilogue by %s function\n", node->ident);
-  printf("  mov rsp, rbp\n");
+  printf("  mov rsp, rbp  # epilogue by %s function\n", node->ident);
   printf("  pop rbp\n");
-  printf("  ret\n");  // return rax value
+  printf("  ret           # return rax value\n");
 }
 
 void gen_defined(Node *node) {
@@ -443,8 +435,7 @@ void gen_lval(Node *node) {
 }
 
 void gen_num(int num) {
-  printf("  # num %d\n", num);
-  printf("  push %d\n", num);
+  printf("  push %d  # num %d\n", num, num);
 }
 
 int max_size(Node* lhs, Node* rhs) {

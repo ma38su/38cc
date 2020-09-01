@@ -197,7 +197,7 @@ LVar *find_var(Token *tok);
 LVar *find_lvar(Token *tok);
 Type *find_type(Token *tok);
 
-Token *tokenize(char *p);
+Token *tokenize();
 void program();
 void codegen();
 

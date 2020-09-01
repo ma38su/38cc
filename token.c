@@ -83,7 +83,44 @@ int starts_with(char *p, int pl, char *string) {
   return pl == l && memcmp(p, string, l) == 0;
 }
 
-Token *tokenize(char *p) {
+Token *read_char_literal(Token *cur, char *p) {
+  // character literal
+  if (*p != '\'') return NULL;
+
+  Token *tok = new_token(TK_CHAR, cur, ++p);
+  if (*p == '\\') {
+    tok->len = 2;
+    tok->val = to_escape_char(*(++p));
+  } else {
+    tok->len = 1;
+    tok->val = *p;
+  }
+  if (*(++p) != '\'') {
+    error_at(tok->str, "unexpected token. expected token is \"'\"");
+  }
+  return tok;
+}
+
+Token *read_str_literal(Token *cur, char *p) {
+  if (*p != '"') return NULL;
+
+  char* p0 = ++p;
+  while (*p) {
+    p = next_ptr(p, '"');
+    if (*(p - 1) != '\\') break;
+    p++;
+  }
+
+  Token *tok = new_token(TK_STR, cur, p0);
+  tok->len = p - p0;
+  p++;
+
+  return tok;
+}
+
+Token *tokenize() {
+  char *p = user_input;
+
   Token head;
   head.next = NULL;
   Token *cur = &head;
@@ -121,41 +158,18 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    // character literal
-    if (*p == '\'') {
-      p++;
-
-      cur = new_token(TK_CHAR, cur, p);
-
-      if (*p == '\\') {
-        cur->len = 4;
-        cur->val = to_escape_char(*(++p));
-      } else {
-        cur->len = 3;
-        cur->val = *p;
-      }
-      p++;
-
-      if (*p != '\'') {
-        error_at(p, "unexpected token. expected token is \"'\"");
-      }
-      p++;
+    Token *tok;
+    tok = read_char_literal(cur, p);
+    if (tok) {
+      p += tok->len + 2;
+      cur = tok;
       continue;
     }
 
-    // string literal
-    if (*p == '"') {
-      char* p0 = ++p;
-      while (*p) {
-        p = next_ptr(p, '"');
-        if (*(p - 1) != '\\') break;
-        p++;
-      }
-
-      cur = new_token(TK_STR, cur, p0);
-      cur->len = p - p0;
-
-      p++;
+    tok = read_str_literal(cur, p);
+    if (tok) {
+      p += tok->len + 2;
+      cur = tok;
       continue;
     }
 
@@ -210,8 +224,13 @@ Token *tokenize(char *p) {
       }
       if (memcmp(p, "__", 2) == 0) {
         if (starts_with(p, l, "__extension__")
-            || starts_with(p, l, "__restrict")
-            || starts_with(p, l, "__inline")) {
+            || starts_with(p, l, "__restrict")) {
+          p += l;
+          continue;
+        }
+        if (starts_with(p, l, "__inline")) {
+          cur = new_token(TK_RESERVED, cur, p);
+          cur->len = l;
           p += l;
           continue;
         }

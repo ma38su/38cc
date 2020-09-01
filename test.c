@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "vector.h"
+
 //static int debug = 0;
 //extern int debug;
 int debug = 0;
@@ -587,6 +589,29 @@ void test24() {
   assertInt("test24-1", 4, sizeof(IntUnion));
   assertInt("test24-1", 8, sizeof(union LongUnion));
   assertInt("test24-1", 8, sizeof(LongUnion));
+}
+
+void test25() {
+  Vector *v = new_vector();
+  assertInt("test24-1", 8, sizeof(v));
+
+  int v1 = 7;
+  int v2 = 11;
+
+  int *p1;
+  int *p2;
+
+  p1 = &v1;
+  p2 = &v1;
+
+  vec_add(v, p1);
+  vec_add(v, p2);
+
+  int *r0 = (int*) vec_get(v, 0);
+  assertInt("test24-2", 7, *r0);
+
+  int *r1 = (int*) vec_get(v, 1);
+  assertInt("test24-2", 11, *r1);
 }
 
 int main() {
