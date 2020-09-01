@@ -184,9 +184,10 @@ void test6() {
   assert("test5-12", MAME_A != SAKE_2);
 }
 
-typedef struct {
+struct Char {
   char val;
-} Char;
+};
+typedef struct Char Char;
 
 typedef struct {
   short val;
@@ -282,6 +283,7 @@ void test7() {
   assertInt("test7-17", 4, sizeof(*int_array_7));
   assertInt("test7-18", 4, sizeof(int_array_7[1]));
 
+  assertInt("test7-19", 1, sizeof(struct Char));
   assertInt("test7-19", 1, sizeof(Char));
   assertInt("test7-20", 2, sizeof(Short));
   assertInt("test7-21", 4, sizeof(Int));
@@ -568,6 +570,25 @@ void test23() {
   assertInt("test23-3", 1, v3);
 }
 
+typedef union {
+  char v1;
+  int v2;
+  short v3;
+} IntUnion;
+
+union LongUnion {
+  char v1;
+  int v2;
+  long v3;
+};
+typedef union LongUnion LongUnion;
+
+void test24() {
+  assertInt("test24-1", 4, sizeof(IntUnion));
+  assertInt("test24-1", 8, sizeof(union LongUnion));
+  assertInt("test24-1", 8, sizeof(LongUnion));
+}
+
 int main() {
 
   test1();
@@ -593,7 +614,7 @@ int main() {
   test21();
   test22();
   test23();
-
+  test24();
   return 0;
 }
 

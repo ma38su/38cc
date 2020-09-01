@@ -78,6 +78,7 @@ struct Type {
     TY_PTR,
     TY_ARRAY,
     TY_FUNCTION,
+    TY_UNION,
     TY_STRUCT,
     TY_TYPEDEF,
   } kind;

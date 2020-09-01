@@ -14,6 +14,9 @@ GVar *find_or_gen_gstr(Token *tok);
 Type *find_type(Token *tok);
 Type *find_or_gen_struct_type(Token *tok);
 Type *find_struct_type(Token *tok);
+Type *find_or_gen_union_type(Token *tok);
+Type *find_union_type(Token *tok);
+
 Member *find_member(Vector *members, Token *tok);
 
 Enum *find_enum(Token *tok);
@@ -41,7 +44,6 @@ LVar *locals;
 GVar *globals;
 
 Vector *enums;
-
 Vector *types;  // Type*
 Vector *functions;
 
@@ -343,6 +345,12 @@ Type *consume_type() {
     type = find_struct_type(token);
     if (!type) return NULL;
     token = token->next;
+  } else if (consume("union")) {
+    if (token->kind != TK_IDENT) return NULL;
+
+    type = find_union_type(token);
+    if (!type) return NULL;
+    token = token->next;
   } else {
     if (token->kind != TK_IDENT) return NULL;
 
@@ -493,57 +501,75 @@ Member *to_member(Node *node) {
 }
 
 Node *consume_struct() {
-  if (!consume("struct")) {
-    return NULL;
-  }
+  if (!consume("struct")) return NULL;
 
   Node *node = new_node(ND_STRUCT);
   Token *tag = consume_ident();
 
-  if (consume("{")) {
-    Vector *members = new_vector();
-    
-    while (!consume("}")) {
-      Node *mem = consume_member();
-      Member *member = to_member(mem);
-      vec_add(members, member);
-    }
-
-    int size_struct = fixed_members_offset(members);
-    if (tag) {
-      node->type = find_or_gen_struct_type(tag);
-      if (node->type->size != 0) error("override type");
-
-      node->type->size = size_struct;
-    } else {
-      node->type = new_type("_", 1, size_struct); // TODO
-      node->type->kind = TY_STRUCT;
-    }
-    node->type->members = members;
-  } else {
+  if (!consume("{")) {
     if (!tag) error_at(token->str, "illegal struct");
+
     node->type = find_or_gen_struct_type(tag);
+    return node;
   }
 
+  Vector *members = new_vector();
+  while (!consume("}")) {
+    Node *mem = consume_member();
+    Member *member = to_member(mem);
+    vec_add(members, member);
+  }
+
+  int size_struct = fixed_members_offset(members);
+  if (tag) {
+    node->type = find_or_gen_struct_type(tag);
+    if (node->type->size != 0) error("override type");
+
+    node->type->size = size_struct;
+  } else {
+    node->type = new_type("_", 1, size_struct); // TODO
+    node->type->kind = TY_STRUCT;
+  }
+  node->type->members = members;
   return node;
 }
 
 Node *consume_union() {
-  if (!consume("union")) {
-    return NULL;
-  }
+  if (!consume("union")) return NULL;
 
   Node *node = new_node(ND_UNION);
   Token *tag = consume_ident();
-  if (consume("{")) {
-    Vector *members = new_vector();
-    while (!consume("}")) {
-      Node *mem = consume_member();
-      Member *member = to_member(mem);
-      vec_add(members, member);
-    }
-    node->list = members;
+
+  if (!consume("{")) {
+    if (!tag) error_at(token->str, "illegal union");
+
+    node->type = find_or_gen_union_type(tag);
+    return node;
   }
+
+  Vector *members = new_vector();
+  while (!consume("}")) {
+    Node *mem = consume_member();
+    Member *member = to_member(mem);
+    vec_add(members, member);
+  }
+
+  int size_union = 0;
+  for (int i = 0; i < members->size; ++i) {
+    Member *m = vec_get(members, i);
+    int size = m->type->size;
+    if (size_union < size) size_union = size;
+  }
+
+  if (tag) {
+    node->type = find_or_gen_union_type(tag);
+    if (node->type->size != 0) error("override type");
+    node->type->size = size_union;
+  } else {
+    node->type = new_type("_", 1, size_union); // TODO
+    node->type->kind = TY_UNION;
+  }
+  node->type->members = members;
   return node;
 }
 
@@ -558,12 +584,13 @@ Node *consume_member() {
     }
     node->type = int_type;
   } else if (node = consume_union()) {
+    // TODO union type
+    //error_at(token->str, "TODO to support union type");
     Token *ident = consume_ident();
     if (ident) {
       node->ident = ident->str;
       node->len = ident->len;
     }
-    node->type = new_type("union", 5, 8); // TODO
   } else if (node = consume_struct()) {
     while (consume("*")) {
       node->type = new_ptr_type(node->type);
@@ -576,7 +603,6 @@ Node *consume_member() {
   } else {
     Type *type = consume_type();
     Token *member = consume_ident();
-
     node = new_node(ND_LVAR);
     node->ident = member->str;
     node->len = member->len;
@@ -586,11 +612,9 @@ Node *consume_member() {
   while (consume("[")) {
     int array_len = reduce_node(equality());
     expect("]");
-
     node->type = new_array_type(node->type, array_len);
   }
   expect(";");
-
   return node;
 }
 
@@ -797,7 +821,7 @@ Type *get_type(Node *node) {
   if (node->kind == ND_NUM
       || node->kind == ND_ADDR
       || node->kind == ND_DEREF
-      || node->kind == ND_STRUCT // TODO
+      || node->kind == ND_STRUCT
       || node->kind == ND_LVAR) {
     return node->type;
   }
@@ -1411,9 +1435,9 @@ int reduce_node(Node* node) {
       return (int) lhs_val;
     }
     if (node->type == float_type || node->type == double_type) {
+      // TODO cast operation, ex. float, double
       error("unsupported float/double cast");
     }
-    // TODO cast operation, ex. float, double
     return lhs_val;
   }
 
@@ -1579,25 +1603,41 @@ Node *global() {
     Node *node;
     if (node = consume_struct()) {
       Type *type = node->type;
-      if (!type) error_at(token->str, "No defined type");
+      if (!type || type->kind != TY_STRUCT)
+        error_at(token->str, "No defined struct type");
 
       while (consume("*")) {
         type = new_ptr_type(type);
       }
 
       Token *ident = consume_ident();
-      if (!ident) error_at(token->str, "Illegal typedef struct");
+      if (!ident || ident->kind != TK_IDENT)
+        error_at(token->str, "Illegal typedef struct");
 
-      if (ident->kind == TK_IDENT) {
-        // TODO? to support type alias
+      int size_t = type->size;
+      Type *struct_type = new_type(ident->str, ident->len, size_t);
+      struct_type->kind = TY_TYPEDEF;
+      struct_type->to = type;
+      vec_add(types, struct_type);
 
-        int size_t = type->size;
-        Type *struct_type = new_type(ident->str, ident->len, size_t);
-        struct_type->kind = TY_TYPEDEF;
-        struct_type->to = type;
+      expect(";");
+      return NULL;
+    }
+    if (node = consume_union()) {
+      Type *type = node->type;
+      if (!type || type->kind != TY_UNION)
+        error_at(token->str, "No defined union type");
 
-        vec_add(types, struct_type);
-      }
+      Token *ident = consume_ident();
+      if (!ident || ident->kind != TK_IDENT)
+        error_at(token->str, "Illegal typedef union");
+
+      int size_t = type->size;
+      Type *union_type = new_type(ident->str, ident->len, size_t);
+      union_type->kind = TY_TYPEDEF;
+      union_type->to = type;
+      vec_add(types, union_type);
+
       expect(";");
       return NULL;
     }
@@ -1607,18 +1647,9 @@ Node *global() {
         error_at(token->str, "Illegal typedef enum");
       }
       if (ident->kind == TK_IDENT) {
-        // TODO? to support type alias
         Type *enum_type = new_type(ident->str, ident->len, 4);
         enum_type->kind = TY_PRM;
         vec_add(types, enum_type);
-      }
-      expect(";");
-      return NULL;
-    }
-    if (node = consume_union()) {
-      Token *ident = consume_ident();
-      if (!ident) {
-        error_at(token->str, "Illegal typedef union");
       }
       expect(";");
       return NULL;
@@ -1663,7 +1694,8 @@ Node *global() {
   }
 
   Node *node;
-  if (node = consume_struct()) {
+  node = consume_struct();
+  if (node) {
     if (is_extern) {
       // 変数宣言
       Type *t = node->type;
@@ -1677,25 +1709,12 @@ Node *global() {
     expect(";");
     return NULL;
   }
-  if (node = consume_enum()) {
-    /*
-    if (is_extern) {
-      Token *ident = consume_ident();
-    }
-    */
-    // TODO global enum?
-    // error_at(token->str, "TODO global enum");
+
+  if (consume_enum()) {
     expect(";");
     return NULL;
   }
-  if (node = consume_union()) {
-    /*
-    if (is_extern) {
-      Token *ident = consume_ident();
-    }
-    */
-    // TODO global union
-    //error_at(token->str, "TODO global union");
+  if (consume_union()) {
     expect(";");
     return NULL;
   }
@@ -1708,9 +1727,7 @@ Node *global() {
   consume("const");
 
   Token *tok = consume_ident();
-  if (!tok) {
-    error_at(token->str, "illegal defined function ident");
-  }
+  if (!tok) error_at(token->str, "illegal defined function ident");
 
   if (consume("(")) {
     // before parse function statement for recursive call
@@ -1772,6 +1789,28 @@ Type *find_type(Token *tok) {
     }
   }
   return NULL;
+}
+
+Type *find_union_type(Token *tok) {
+  for (int i = 0; i < types->size; ++i) {
+    Type *type = vec_get(types, i);
+    if (type->kind != TY_UNION) continue;
+    if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
+      return type;
+    }
+  }
+  return NULL;
+}
+
+Type *find_or_gen_union_type(Token *tok) {
+  Type *type = find_union_type(tok);
+  if (type) return type;
+
+  type = new_type(tok->str, tok->len, 0);
+  type->kind = TY_UNION;
+
+  vec_add(types, type);
+  return type;
 }
 
 Type *find_struct_type(Token *tok) {
