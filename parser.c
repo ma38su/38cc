@@ -424,8 +424,6 @@ Node *consume_enum() {
       error_at(tok->str, "duplicated defined gvar");
     }
     evar = calloc(1, sizeof(Enum));
-    //evar->tag = substring(tag->str, tag->len);
-    
     evar->name = substring(tok->str, tok->len);
     evar->len = tok->len;
 
@@ -820,7 +818,8 @@ Node *primary() {
     if (type) {
       expect(")");
 
-      // TODO cast (not supported)
+      // error_at(token->str, "TODO cast (not supported)");
+
       node = expr();
 
     } else {
@@ -1497,6 +1496,7 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
       } while (1);
 
       // TODO array initializer
+      error_at(token->str, "TODO array initializer");
 
     } else if (type_is_array(type) && type->to == char_type) {
       if (token->kind != TK_STR) {
@@ -1531,23 +1531,23 @@ Node *global() {
   if (consume("typedef")) {
     Node *node;
     if (node = consume_struct()) {
+      Type *type = node->type;
+      if (!type) error_at(token->str, "No defined type");
+
       while (consume("*")) {
-        // TODO
-        //node->type = new_ptr_type(node->type);
+        type = new_ptr_type(type);
       }
 
       Token *ident = consume_ident();
       if (!ident) error_at(token->str, "Illegal typedef struct");
 
       if (ident->kind == TK_IDENT) {
-        // TODO to support type alias
+        // TODO? to support type alias
 
-        if (!node->type) error_at(token->str, "No defined type");
-
-        int size_t = node->type->size;
+        int size_t = type->size;
         Type *struct_type = new_type(ident->str, ident->len, size_t);
         struct_type->kind = TY_TYPEDEF;
-        struct_type->to = node->type;
+        struct_type->to = type;
 
         vec_add(types, struct_type);
       }
@@ -1560,7 +1560,7 @@ Node *global() {
         error_at(token->str, "Illegal typedef enum");
       }
       if (ident->kind == TK_IDENT) {
-        // TODO to support type alias
+        // TODO? to support type alias
         Type *enum_type = new_type(ident->str, ident->len, 4);
         enum_type->kind = TY_PRM;
         vec_add(types, enum_type);
@@ -1633,10 +1633,11 @@ Node *global() {
   if (node = consume_enum()) {
     /*
     if (is_extern) {
-      //Token *ident = consume_ident();
-      // TODO
+      Token *ident = consume_ident();
     }
     */
+    // TODO global enum?
+    // error_at(token->str, "TODO global enum");
     expect(";");
     return NULL;
   }
@@ -1644,9 +1645,10 @@ Node *global() {
     /*
     if (is_extern) {
       Token *ident = consume_ident();
-      // TODO
     }
     */
+    // TODO global union
+    //error_at(token->str, "TODO global union");
     expect(";");
     return NULL;
   }

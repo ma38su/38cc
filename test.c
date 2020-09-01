@@ -541,6 +541,18 @@ void test21() {
   assertInt("test21", 5, v20);
 }
 
+typedef int *PINT;
+
+void test22() {
+  int v1 = 3;
+  int *p1 = &v1;
+  assertInt("test22", 3, *p1);
+
+  int v2 = 3;
+  PINT p2 = &v2;
+  assertInt("test22", 3, *p2);
+}
+
 int main() {
 
   test1();
@@ -564,6 +576,7 @@ int main() {
   test19();
   test20();
   test21();
+  test22();
 
   return 0;
 }

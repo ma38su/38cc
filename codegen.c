@@ -249,6 +249,7 @@ void gen_gvars_uninit() {
     printf("  .comm   %s,%d,%d\n", var->name, var->type->size, var->type->size);
   }
 }
+
 void gen_gvars() {
   int data_count = 0;
   for (GVar *var = globals; var; var = var->next) {
@@ -257,10 +258,11 @@ void gen_gvars() {
     }
     data_count++;
   }
-  if (data_count > 0) {
-    printf("  .data\n");
+  if (data_count == 0) {
+    return;
   }
 
+  printf("  .data\n");
   for (GVar *var = globals; var; var = var->next) {
     if (!var->init || var->extn) {
       continue;
@@ -326,6 +328,7 @@ void gen_defined_function(Node *node) {
     return;
   }
   // function label
+  printf("\n");
   printf("  .global %s\n", node->ident);
   //printf("  .type %s, @function\n", node->ident);
   printf("%s:\n", node->ident);
