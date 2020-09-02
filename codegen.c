@@ -90,6 +90,35 @@ void gen_addr(Node* node) {
   }
 }
 
+bool gen_gvar(Node *node) {
+  if (node->kind != ND_GVAR) {
+    error("node is not gvar");
+  }
+
+  // for 64bit
+  if (node->type == char_type) {
+    printf("  movsx rax, byte ptr %s[rip]\n", node->ident);
+  } else if (node->type == short_type) {
+    printf("  movsx rax, word ptr %s[rip]\n", node->ident);
+  } else if (node->type == int_type) {
+    printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
+  } else if (node->type == long_type) {
+    printf("  mov rax, %s[rip]\n", node->ident);
+  } else if (type_is_array(node->type)) {
+    if (node->type->to == char_type) {
+      printf("  lea rax, %s[rip]\n", node->ident);
+    } else {
+      printf("  lea rax, %s[rip]\n", node->ident);
+    }
+  //} else if (type_is_ptr(node->type) && node->type->to == char_type) {
+  } else if (type_is_ptr(node->type)) {
+    printf("  mov rax, qword ptr %s[rip]\n", node->ident);
+  } else {
+    printf("  # not support gvar %s, type: %s\n", node->ident, node->type->name);
+  }
+  printf("  push rax\n");
+  return true;
+}
 void gen_function_call(Node *node) {
   if (node->kind != ND_CALL) error("not function call");
 
@@ -178,14 +207,11 @@ void gen_block(Node *node) {
     error("not block");
   }
 
-  printf("  # block begin\n");
   for (int i = 0; i < node->list->size; ++i) {
     Node *n = (Node *) vec_get(node->list, i);
-    if (gen(n)) {
-      printf("  pop rax\n");
-    }
+    if (!gen(n)) continue;
+    printf("  pop rax\n");
   }
-  printf("  # block end\n");
 }
 
 bool gen_while(Node *node) {
@@ -362,36 +388,6 @@ void gen_gvars() {
       printf("# unsupported type: %s: %s\n", var->name, var->type->name);
     }
   }
-}
-
-bool gen_gvar(Node *node) {
-  if (node->kind != ND_GVAR) {
-    error("node is not gvar");
-  }
-
-  // for 64bit
-  if (node->type == char_type) {
-    printf("  movsx rax, byte ptr %s[rip]\n", node->ident);
-  } else if (node->type == short_type) {
-    printf("  movsx rax, word ptr %s[rip]\n", node->ident);
-  } else if (node->type == int_type) {
-    printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
-  } else if (node->type == long_type) {
-    printf("  mov rax, %s[rip]\n", node->ident);
-  } else if (type_is_array(node->type)) {
-    if (node->type->to == char_type) {
-      printf("  lea rax, %s[rip]\n", node->ident);
-    } else {
-      printf("  mov rax, qword ptr %s[rip]\n", node->ident);
-    }
-  //} else if (type_is_ptr(node->type) && node->type->to == char_type) {
-  } else if (type_is_ptr(node->type)) {
-    printf("  mov rax, qword ptr %s[rip]\n", node->ident);
-  } else {
-    printf("  # not support gvar %s, type: %s\n", node->ident, node->type->name);
-  }
-  printf("  push rax\n");
-  return true;
 }
 
 void gen_defined_function(Node *node) {
@@ -660,9 +656,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
-    if (node->lhs->type->kind != TY_ARRAY) {
-      gen_deref(node->lhs->type->to);
-    }
+    gen_deref(node->lhs->type->to);
     return true;
   }
 

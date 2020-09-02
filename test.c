@@ -617,27 +617,27 @@ ShortIntShort *new_short_int_short() {
 
 void test26() {
   Char *c = new_char('Z');
-  assertInt("test25-1", 8, sizeof(c));
-  assertChar("test25-2", 'Z', c->val);
+  assertInt("test26-1", 8, sizeof(c));
+  assertChar("test26-2", 'Z', c->val);
 
   Token head;
   char *str = "{}";
   Token *token = new_token(TK_RESERVED, &head, str);
   token->kind = TK_RESERVED;
   token->str = str;
-  assertInt("test25-3", 8, sizeof(token));
-  assertInt("test25-4", TK_RESERVED, token->kind);
+  assertInt("test26-3", 8, sizeof(token));
+  assertInt("test26-4", TK_RESERVED, token->kind);
 
   ShortIntShort *e = new_short_int_short();
-  assertInt("test25-5", 8, sizeof(e));
+  assertInt("test26-5", 8, sizeof(e));
 
   e->val1 = 10;
   e->val2 = 131;
   e->val3 = -7;
 
-  assertInt("test25-6", 10, e->val1);
-  assertInt("test25-6", 131, e->val2);
-  assertInt("test25-6", -7, e->val3);
+  assertInt("test26-6", 10, e->val1);
+  assertInt("test26-7", 131, e->val2);
+  assertInt("test26-8", -7, e->val3);
 }
 
 char *ptr_str = "HeLlo"; // 0
@@ -654,11 +654,18 @@ void test27() {
   assertStr("test27-1", "HeLlo", ptr_str);
   assertStr("test27-2", "HelLo", ary_str);
 
-  assertStr("test27-1", "Hello", strings[0]);
-  assertStr("test27-2", "World", strings[1]);
-  assertInt("test27-3", 7, nums[0]);
-  assertInt("test27-3", 11, nums[1]);
-  assertInt("test27-3", 13, nums[2]);
+  assertStr("test27-3", "Hello", strings[0]);
+  assertStr("test27-4", "World", strings[1]);
+
+  assertInt("test27-5", 7, nums[0]);
+  assertInt("test27-6", 11, nums[1]);
+  assertInt("test27-7", 13, nums[2]);
+}
+
+void test28() {
+  int a[2];
+  a[0] = 3;
+  assertInt("test28-1", 3, a[0]);
 }
 
 int main() {
@@ -688,6 +695,8 @@ int main() {
   test24();
   test25();
   test26();
+  test27();
+  test28();
   return 0;
 }
 
