@@ -36,11 +36,11 @@ $(OBJS): 38cc.h $(SRCS)
 	cpp test.c -o .test.c
 
 self: 38cc main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s .test.c
-	$(CC) -o self38cc main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
+	$(CC) -o 38cc2 main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
 
-	./self38cc hello.c
-	./self38cc .test.c > test2.s
-	./self38cc .vector.c > vector2.s
+	./38cc2 hello.c
+	./38cc2 .test.c > test2.s
+	./38cc2 .vector.c > vector2.s
 
 	$(CC) test2.s vector2.s -o test2
 	./test2
@@ -143,6 +143,6 @@ maptest:
 	./map_test
 
 clean:
-	rm -f 38cc *.s .*.s *.o *~ tmp/* .*.c
+	rm -f 38cc 38cc2 test test2 *.s .*.s *.o *~ tmp/* .*.c
 
 .PHONY: test clean

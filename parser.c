@@ -1859,7 +1859,6 @@ Node *global() {
 void program() {
   init_types();
   init_builtin();
-  fprintf(stderr, "program 3\n");
 
   int i = 0;
   while (!at_eof()) {
