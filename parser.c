@@ -9,7 +9,7 @@
 int sizeof_type(Type *type);
 int sizeof_lvars();
 Type *consume_type();
-Node *consume_member();
+Member *consume_member();
 Var *find_gvar(Token *tok);
 Var *find_gstr_or_gen(Token *tok);
 Type *find_type(Token *tok);
@@ -292,7 +292,7 @@ Node *new_node_num(int val) {
 
 bool token_is_reserved(Token *tok, char *op) {
   return tok && tok->kind == TK_RESERVED && strlen(op) == tok->len &&
-         memcmp(op, tok->str, tok->len) == 0;
+      memcmp(op, tok->str, tok->len) == 0;
 }
 
 // for only reserved
@@ -310,23 +310,6 @@ void expect(char *op) {
     error_at(token->str, "token is '%s' not '%s'. tk-kind: %d",
         substring(token->str, token->len), op, token->kind);
   }
-}
-
-bool expect_kind(TokenKind kind) {
-  if (token->kind != kind) {
-    error_at(token->str, "token is '%s' kind: %d. expect kind: %d",
-        substring(token->str, token->len), token->kind, kind);
-  }
-  token = token->next;
-  return true;
-}
-
-bool consume_kind(TokenKind kind) {
-  if (token->kind != kind) {
-    return false;
-  }
-  token = token->next;
-  return true;
 }
 
 Token *consume_ident() {
@@ -411,91 +394,13 @@ Node *consume_char_node() {
   return node;
 }
 
-InitVal *gvar_init_val(Type *type) {
-
-  if (type->kind == TY_PTR) {
-    if (type->to == char_type) {
-      // char*
-      if (token->kind != TK_STR) {
-        error("unsupported init.");
-      }
-      Var *var = find_gstr_or_gen(token);
-      token = token->next;
-      InitVal *v = calloc(1, sizeof(InitVal));
-      v->ident = var->name;
-      v->len = var->len;
-      return v;
-    } else {
-      error("unsupported init. (1)");
-    }
+Token *consume_string() {
+  if (token->kind != TK_STR) {
+    return NULL;
   }
-  if (type->kind == TY_ARRAY) {
-    if (type->to == char_type) {
-      // char*[]
-      if (token->kind != TK_STR) {
-        error("unsupported init. (2)");
-      }
-      InitVal *v = calloc(1, sizeof(InitVal));
-      Token *tok = token;
-      token = token->next;
-      v->str = tok->str;
-      v->strlen = tok->len;
-      return v;
-    } else if (consume("{")) {
-      InitVal head;
-      head.next = NULL;
-      while (1) {
-        if (consume("}")) break;
-        InitVal *v = calloc(1, sizeof(InitVal));
-        Token *ident = consume_ident();
-        if (ident) {
-          Var *var = find_gvar(ident);
-          v->ident = var->name;
-          v->len = var->len;
-        } else {
-          v->n = expect_number();
-        }
-        if (consume(",")) continue;
-      }
-      return head.next;
-    }
-  }
-  if (token->kind == TK_STR) {
-    fprintf(stderr, "gvar init str %s\n", substring(token->str, token->len));
-
-    InitVal *v = calloc(1, sizeof(InitVal));
-
-    Token *tok = token;
-    token = token->next;
-    if (token == TK_RESERVED && *token->str == ';') {
-      v->str = tok->str;
-      v->strlen = tok->len;
-    } else {
-      Var *gv = find_gstr_or_gen(tok);
-      v->ident = gv->name;
-      v->len = gv->len;
-      if (consume(",")) {
-        v->next = gvar_init_val(type);
-      }
-    }
-    return v;
-  }
-  if (token->kind == TK_NUM) {
-    InitVal *v = calloc(1, sizeof(InitVal));
-    v->n = expect_number();
-    if (consume(",")) {
-      v->next = gvar_init_val(type);
-    }
-    return v;
-  }
-
-  if (consume("{")) {
-    fprintf(stderr, "gvar init array %s\n", substring(token->str, token->len));
-    InitVal *v = gvar_init_val(type->to);
-    expect("}");
-    return v;
-  }
-  return NULL;
+  Token *cur = token;
+  token = token->next;
+  return cur;
 }
 
 Node *consume_string_node() {
@@ -513,8 +418,7 @@ Node *consume_string_node() {
   return node;
 }
 
-Node *consume_enum() {
-
+Node *consume_enum_node() {
   if (!consume("enum")) return NULL;
 
   Node *node = new_node(ND_ENUM);
@@ -584,20 +488,6 @@ int fixed_members_offset(Vector *members) {
   return offset;
 }
 
-Member *to_member(Node *node) {
-  if (!node)
-    error_at(token->str, "no member");
-  if (!node->type)
-    error_at(token->str, "no member type");
-
-  Member *member = calloc(1, sizeof(Member));
-  member->name = node->ident;
-  member->len = node->len;
-  member->type = node->type;
-
-  return member;
-}
-
 Node *consume_struct_node() {
   if (!consume("struct")) return NULL;
 
@@ -613,8 +503,7 @@ Node *consume_struct_node() {
 
   Vector *members = new_vector();
   while (!consume("}")) {
-    Node *mem = consume_member();
-    Member *member = to_member(mem);
+    Member *member = consume_member();
     vec_add(members, member);
   }
 
@@ -634,7 +523,7 @@ Node *consume_struct_node() {
   return node;
 }
 
-Node *consume_union() {
+Node *consume_union_node() {
   if (!consume("union")) return NULL;
 
   Node *node = new_node(ND_UNION);
@@ -649,8 +538,7 @@ Node *consume_union() {
 
   Vector *members = new_vector();
   while (!consume("}")) {
-    Node *mem = consume_member();
-    Member *member = to_member(mem);
+    Member *member = consume_member();
     vec_add(members, member);
   }
 
@@ -680,17 +568,16 @@ int sizeof_type(Type *type) {
   return type->size;
 }
 
-Node *consume_member() {
+Node *consume_member_node() {
   Node *node;
-
-  if (node = consume_enum()) {
+  if (node = consume_enum_node()) {
     Token *ident = consume_ident();
     if (ident) {
       node->ident = ident->str;
       node->len = ident->len;
     }
     node->type = int_type;
-  } else if (node = consume_union()) {
+  } else if (node = consume_union_node()) {
     // TODO union type
     //error_at(token->str, "TODO to support union type");
     Token *ident = consume_ident();
@@ -723,6 +610,24 @@ Node *consume_member() {
   }
   expect(";");
   return node;
+}
+
+Member *to_member(Node *node) {
+  if (!node)
+    error_at(token->str, "no member");
+  if (!node->type)
+    error_at(token->str, "no member type");
+
+  Member *member = calloc(1, sizeof(Member));
+  member->name = node->ident;
+  member->len = node->len;
+  member->type = node->type;
+
+  return member;
+}
+
+Member *consume_member() {
+  return to_member(consume_member_node());
 }
 
 // read reserved integer number
@@ -816,7 +721,6 @@ Var *consume_lvar_define() {
   return lvar;
 }
 
-
 int consume_void_args() {
   if (consume(")")) {
     return 1;
@@ -907,7 +811,7 @@ Vector *expect_defined_args() {
   return args;
 }
 
-Node *consume_sizeof() {
+Node *consume_sizeof_node() {
   if (!consume("sizeof")) {
     return NULL;
   }
@@ -938,6 +842,94 @@ Type *get_type(Node *node) {
 
 int sizeof_node(Node* node) {
   return sizeof_type(get_type(node));
+}
+
+
+InitVal *gvar_init_val(Type *type) {
+
+  if (type->kind == TY_PTR) {
+    if (type->to == char_type) {
+      // char*
+      if (token->kind != TK_STR) {
+        error("unsupported init.");
+      }
+      Var *var = find_gstr_or_gen(token);
+      token = token->next;
+      InitVal *v = calloc(1, sizeof(InitVal));
+      v->ident = var->name;
+      v->len = var->len;
+      return v;
+    } else {
+      error("unsupported init. (1)");
+    }
+  }
+  if (type->kind == TY_ARRAY) {
+    if (type->to == char_type) {
+      // char*[]
+      if (token->kind != TK_STR) {
+        error("unsupported init. (2)");
+      }
+      InitVal *v = calloc(1, sizeof(InitVal));
+      Token *tok = token;
+      token = token->next;
+      v->str = tok->str;
+      v->strlen = tok->len;
+      return v;
+    } else if (consume("{")) {
+      InitVal head;
+      head.next = NULL;
+      while (1) {
+        if (consume("}")) break;
+        InitVal *v = calloc(1, sizeof(InitVal));
+        Token *ident = consume_ident();
+        if (ident) {
+          Var *var = find_gvar(ident);
+          v->ident = var->name;
+          v->len = var->len;
+        } else {
+          v->n = expect_number();
+        }
+        if (consume(",")) continue;
+      }
+      return head.next;
+    }
+  }
+  if (token->kind == TK_STR) {
+    fprintf(stderr, "gvar init str %s\n", substring(token->str, token->len));
+
+    InitVal *v = calloc(1, sizeof(InitVal));
+
+    Token *tok = token;
+    token = token->next;
+    if (token == TK_RESERVED && *token->str == ';') {
+      v->str = tok->str;
+      v->strlen = tok->len;
+    } else {
+      Var *gv = find_gstr_or_gen(tok);
+      v->ident = gv->name;
+      v->len = gv->len;
+      if (consume(",")) {
+        v->next = gvar_init_val(type);
+      }
+    }
+    return v;
+  }
+  if (token->kind == TK_NUM) {
+    InitVal *v = calloc(1, sizeof(InitVal));
+    v->n = expect_number();
+    if (consume(",")) {
+      v->next = gvar_init_val(type);
+    }
+    return v;
+  }
+
+  if (consume("{")) {
+    fprintf(stderr, "gvar init array %s\n", substring(token->str, token->len));
+    InitVal *v = gvar_init_val(type->to);
+    expect("}");
+    return v;
+  }
+  return NULL;
 }
 
 Node *primary() {
@@ -1092,7 +1084,7 @@ Node *unary() {
     return node;
   }
 
-  Node *node = consume_sizeof();
+  Node *node = consume_sizeof_node();
   if (node) {
     return node;
   }
@@ -1696,7 +1688,7 @@ Node *global() {
       expect(";");
       return NULL;
     }
-    if (node = consume_union()) {
+    if (node = consume_union_node()) {
       Type *type = node->type;
       if (!type || type->kind != TY_UNION)
         error_at(token->str, "No defined union type");
@@ -1714,7 +1706,7 @@ Node *global() {
       expect(";");
       return NULL;
     }
-    if (node = consume_enum()) {
+    if (node = consume_enum_node()) {
       Type *type = node->type;
       if (!type || (type != int_type && type->kind != TY_ENUM))
         error_at(token->str, "No defined enum type: %s", substring(type->name, type->len));
@@ -1794,11 +1786,11 @@ Node *global() {
     return NULL;
   }
 
-  if (consume_enum()) {
+  if (consume_enum_node()) {
     expect(";");
     return NULL;
   }
-  if (consume_union()) {
+  if (consume_union_node()) {
     expect(";");
     return NULL;
   }
