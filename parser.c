@@ -10,8 +10,8 @@ int sizeof_type(Type *type);
 int sizeof_lvars();
 Type *consume_type();
 Node *consume_member();
-GVar *find_gvar(Token *tok);
-GVar *find_gstr_or_gen(Token *tok);
+Var *find_gvar(Token *tok);
+Var *find_gstr_or_gen(Token *tok);
 Type *find_type(Token *tok);
 Type *find_struct_type_or_gen(Token *tok);
 Type *find_struct_type(Token *tok);
@@ -35,6 +35,7 @@ Node *mul();
 Node *shift();
 Node *unary();
 Node *ternay();
+int expect_number();
 
 int eval_node(Node* node);
 
@@ -43,8 +44,8 @@ Token *token;
 
 char *user_input;
 Node *code[1000];
-LVar *locals;
-GVar *globals;
+Var *locals;
+Var *globals;
 
 Vector *enums;
 Vector *types;  // Type*
@@ -103,18 +104,18 @@ int is_pre_type(Token* tok) {
       || (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
 }
 
-LVar *new_lvar(Token *tok, Type *type) {
-  LVar *lvar = calloc(1, sizeof(LVar));
+Var *new_lvar(Token *tok, Type *type) {
+  Var *lvar = calloc(1, sizeof(Var));
   lvar->name = tok->str;
   lvar->len = tok->len; // strlen
   lvar->type = type;
   return lvar;
 }
 
-GVar *new_function(Token *tok, Type* ret_type) {
-  GVar *var = calloc(1, sizeof(GVar));
+Var *new_function(Token *tok, Type* ret_type) {
+  Var *var = calloc(1, sizeof(Var));
   var->name = substring(tok->str, tok->len);
-  var->len = tok->len; // strlen
+  var->len = tok->len;
   var->type = new_fn_type(ret_type);
 
   var->next = globals;
@@ -127,7 +128,7 @@ void add_gvar_function(char *name, Type *ret_type) {
   Token *tok = calloc(1, sizeof(Token));
   tok->str = name;
   tok->len = strlen(name);
-  GVar *func = new_function(tok, ret_type);
+  Var *func = new_function(tok, ret_type);
   func->extn = 1;
 }
 
@@ -410,11 +411,105 @@ Node *consume_char() {
   return node;
 }
 
+InitVal *gvar_init_val(Type *type) {
+
+  InitVal head;
+  head.next = NULL;
+
+  InitVal *cur = &head;
+  if (type->kind == TY_PTR) {
+    if (type->to == char_type) {
+      // char*
+      if (token->kind != TK_STR) {
+        error("unsupported init.");
+      }
+      Var *var = find_gstr_or_gen(token);
+      token = token->next;
+      InitVal *v = calloc(1, sizeof(InitVal));
+      v->ident = var->name;
+      v->len = var->len;
+      return v;
+    } else {
+      error("unsupported init. (1)");
+    }
+  }
+  if (type->kind == TY_ARRAY) {
+    if (type->to == char_type) {
+      // char*[]
+      if (token->kind != TK_STR) {
+        error("unsupported init. (2)");
+      }
+      InitVal *v = calloc(1, sizeof(InitVal));
+      Token *tok = token;
+      token = token->next;
+      v->str = tok->str;
+      v->strlen = tok->len;
+      return v;
+    } else if (consume("{")) {
+
+      InitVal head;
+      head.next = NULL;
+
+      while (1) {
+        if (consume("}")) break;
+        InitVal *v = calloc(1, sizeof(InitVal));
+        Token *ident = consume_ident();
+        if (ident) {
+          Var *var = find_gvar(ident);
+          v->ident = var->name;
+          v->len = var->len;
+        } else {
+          v->n = expect_number();
+        }
+        if (consume(",")) continue;
+      }
+      return head.next;
+    }
+  }
+  if (token->kind == TK_STR) {
+    fprintf(stderr, "gvar init str %s\n", substring(token->str, token->len));
+
+    InitVal *v = calloc(1, sizeof(InitVal));
+
+    Token *tok = token;
+    token = token->next;
+    if (token == TK_RESERVED && *token->str == ';') {
+      v->str = tok->str;
+      v->strlen = tok->len;
+    } else {
+      Var *gv = find_gstr_or_gen(tok);
+      v->ident = gv->name;
+      v->len = gv->len;
+      if (consume(",")) {
+        v->next = gvar_init_val(type);
+      }
+    }
+    return v;
+  }
+  if (token->kind == TK_NUM) {
+    InitVal *v = calloc(1, sizeof(InitVal));
+    v->n = expect_number();
+    if (consume(",")) {
+      v->next = gvar_init_val(type);
+    }
+    return v;
+  }
+
+  if (consume("{")) {
+    fprintf(stderr, "gvar init array %s\n", substring(token->str, token->len));
+    InitVal *v = gvar_init_val(type->to);
+    expect("}");
+    return v;
+  }
+  return NULL;
+}
+
 Node *consume_str() {
   if (token->kind != TK_STR) {
     return NULL;
   }
-  GVar *gvar = find_gstr_or_gen(token);
+
+  Var *gvar = find_gstr_or_gen(token);
   token = token->next;
 
   Node *node = new_node(ND_GVAR);
@@ -693,7 +788,7 @@ Type *expect_type() {
 }
 
 // defined local variable
-LVar *consume_lvar_define() {
+Var *consume_lvar_define() {
   Type *type = consume_type();
   if (!type) {
     return NULL;
@@ -716,7 +811,7 @@ LVar *consume_lvar_define() {
     new_size = sizeof_type(type);
   }
 
-  LVar *lvar = new_lvar(tok, type);
+  Var *lvar = new_lvar(tok, type);
   if (locals) {
     lvar->offset = locals->offset + new_size;
   } else {
@@ -790,7 +885,7 @@ Vector *expect_defined_args() {
     node->type = type;
 
     if (tok) {
-      LVar *lvar = new_lvar(tok, type);
+      Var *lvar = new_lvar(tok, type);
       if (locals) {
         lvar->offset = locals->offset + sizeof_type(type);
       } else {
@@ -882,13 +977,13 @@ Node *primary() {
 
   // function call
   if (consume("(")) {
-    GVar *gvar = find_gvar(tok);
+    Var *gvar = find_gvar(tok);
     if (gvar) {
       node = new_node(ND_CALL);
       node->type = gvar->type->to;
       node->val = gvar->extn;
     } else {
-      LVar *lvar = find_lvar(tok);
+      Var *lvar = find_lvar(tok);
       if (lvar) {
         node = new_node(ND_CALL);
         node->type = lvar->type->to;
@@ -912,7 +1007,7 @@ Node *primary() {
     return node;
   }
 
-  LVar *lvar = find_lvar(tok);
+  Var *lvar = find_lvar(tok);
   if (lvar) {
     node = new_node(ND_LVAR);
     node->type = lvar->type;
@@ -930,7 +1025,7 @@ Node *primary() {
       node->len = tok->len;
       node->val = evar->val;
     } else {
-      GVar *gvar = find_gvar(tok);
+      Var *gvar = find_gvar(tok);
       if (!gvar) {
         error_at(tok->str, "undefined ident: %s", substring(tok->str, tok->len));
       }
@@ -958,7 +1053,6 @@ Member *get_member(Type *type, Token *ident) {
 
   Member *member = find_member(members, ident);
   if (!member) {
-    Member *tmp = vec_get(members, 1);
     error_at(ident->str, "no members (type: %s)", substring(ty->name, ty->len));
   }
   return member;
@@ -1029,6 +1123,7 @@ Node *unary() {
       Node *index = expr();
       expect("]");
       node = new_node_deref(new_node_lr(ND_ADD, node, index));
+      //node = new_node_lr(ND_ADD, node, index);
       continue;
     }
 
@@ -1050,8 +1145,6 @@ Node *unary() {
       if (!ident) error_at(token->str, "no ident");
 
       Member *member = get_member(node->type->to, ident);
-      int new_offset = node->offset - member->offset;
-
       Node *addr = new_node_lr(ND_SUB, node, new_node_num(member->offset));
       addr->type = new_ptr_type(member->type);
       node = new_node_deref(addr);
@@ -1277,7 +1370,7 @@ Node *expr(void) {
 }
 
 Node *declaration(void) {
-  LVar *lvar = consume_lvar_define();
+  Var *lvar = consume_lvar_define();
   if (!lvar) return NULL;
 
   Node *node = new_node(ND_LVAR);
@@ -1304,7 +1397,7 @@ Node *block_stmt() {
 
 Node *stmt() {
   // scope in
-  LVar *tmp_locals = locals;
+  Var *tmp_locals = locals;
 
   Node *node = block_stmt();
   if (node) {
@@ -1533,7 +1626,7 @@ int eval_node(Node* node) {
 }
 
 Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
-  GVar *gvar = find_gvar(tok);
+  Var *gvar = find_gvar(tok);
   if (gvar) {
     if (!is_extern) {
       if (!gvar->extn) {
@@ -1542,7 +1635,7 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
       gvar->extn = 0;
     }
   } else {
-    gvar = calloc(1, sizeof(GVar));
+    gvar = calloc(1, sizeof(Var));
     gvar->type = type;
     gvar->extn = is_extern;
     gvar->next = globals;
@@ -1567,51 +1660,17 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
       expect("]");
     }
   }
-
   gvar->type = type;
-  gvar->val = tok->val;
 
   Node *node = new_node(ND_GVAR);
   node->ident = substring(tok->str, tok->len);
   node->len = tok->len;
   node->type = gvar->type;
+
   if (consume("=")) {
-
-    if (consume("{")) {
-      Vector *vec = new_vector();
-      do {
-        Node *e = expr();
-        vec_add(vec, e);
-        if (consume("}")) break;
-        expect(",");
-      } while (1);
-
-      // TODO array initializer
-      error_at(token->str, "TODO array initializer");
-
-    } else if (type_is_array(type) && type->to == char_type) {
-      if (token->kind != TK_STR) {
-        error("expected string literal");
-      }
-      gvar->str = substring(token->str, token->len);
-      token = token->next;
-    } else if (type_is_ptr(type) && type->to == char_type) {
-      Node* subnode = equality();
-      if (subnode->kind != ND_GVAR) {
-        error("expected gvar (string literal)");
-      }
-      gvar->str = subnode->ident;
-    } else {
-      gvar->val = eval_node(equality());
-    }
-    gvar->init = 1;
+    gvar->init = gvar_init_val(gvar->type);
   } else {
-    if (node->type != ptr_char_type) {
-      gvar->val = 0;
-    } else {
-      printf("# not initialize gvar str\n");
-    }
-    gvar->init = 0;
+    gvar->init = NULL;
   }
   expect(";");
   return node;
@@ -1689,7 +1748,9 @@ Node *global() {
     }
 
     Token *ident;
-    if (ident = consume_ident()) {
+
+    ident = consume_ident();
+    if (ident) {
       if (consume("(")) {
         expect_defined_args();
       } else {
@@ -1698,7 +1759,12 @@ Node *global() {
         def_type->to = type;
         vec_add(types, def_type);
       }
-    } else if (ident = consume_fp()) {
+      expect(";");
+      return NULL;
+    }
+
+    ident = consume_fp();
+    if (ident) {
       if (consume("(")) {
         expect_defined_args();
       }
@@ -1707,6 +1773,9 @@ Node *global() {
       def_type->kind = TY_TYPEDEF;
       def_type->to = type;
       vec_add(types, def_type);
+
+      expect(";");
+      return NULL;
     }
     expect(";");
     return NULL;
@@ -1756,13 +1825,13 @@ Node *global() {
 
   if (consume("(")) {
     // before parse function statement for recursive call
-    GVar *func = new_function(tok, type);
+    Var *func = new_function(tok, type);
     func->extn = 1; // declare function
 
     Node *block = NULL;
     Vector *args;
 
-    LVar *tmp_locals = locals;
+    Var *tmp_locals = locals;
     locals = NULL;
 
     args = expect_defined_args();
@@ -1800,9 +1869,11 @@ Node *global() {
 void program() {
   init_types();
   init_builtin();
+  fprintf(stderr, "program 3\n");
 
   int i = 0;
   while (!at_eof()) {
+    fprintf(stderr, "%d: %s\n", i, line(token->str));
     Node* n = global();
     if (n) {
       code[i++] = n;
@@ -1891,8 +1962,8 @@ Type *find_struct_type_or_gen(Token *tok) {
   return type;
 }
 
-LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals; var; var = var->next) {
+Var *find_lvar(Token *tok) {
+  for (Var *var = locals; var; var = var->next) {
     if (var->len == tok->len && memcmp(tok->str, var->name, var->len) == 0) {
       return var;
     }
@@ -1912,7 +1983,7 @@ Member *find_member(Vector *members, Token *tok) {
 
 void dump_gvar_circular() {
   Vector *vec = new_vector();
-  GVar *var = globals;
+  Var *var = globals;
   while (var) {
     fprintf(stderr, "gvar: %s\n", var->name);
     if (vec_contains(vec, var)) {
@@ -1925,7 +1996,7 @@ void dump_gvar_circular() {
 
 int gvar_has_circular() {
   Vector *vec = new_vector();
-  GVar *var = globals;
+  Var *var = globals;
   int i = 0;
   while (var) {
     i++;
@@ -1940,9 +2011,9 @@ int gvar_has_circular() {
   return 0;
 }
 
-GVar *find_gvar(Token *tok) {
+Var *find_gvar(Token *tok) {
   if (gvar_has_circular()) error("gvar has circuit");
-  for (GVar *var = globals; var; var = var->next) {
+  for (Var *var = globals; var; var = var->next) {
     if (tok->len == var->len && memcmp(tok->str, var->name, var->len) == 0) {
       return var;
     }
@@ -1977,24 +2048,25 @@ char *gen_gstr_name(int n) {
   return name;
 }
 
-GVar *find_gstr_or_gen(Token *tok) {
+Var *find_gstr_or_gen(Token *tok) {
   if (globals) {
-    for (GVar *var = globals; var; var = var->next) {
-      if (*(var->name) == '.'
-          && var->len == tok->len
-          && memcmp(tok->str, var->str, var->len) == 0) {
+    for (Var *var = globals; var; var = var->next) {
+      if (*(var->name) != '.') continue;
+
+      InitVal *v = var->init;
+      if (!v) continue;
+      if (tok->len == v->strlen && memcmp(tok->str, v->str, v->strlen) == 0) {
         return var;
       }
     }
   }
 
-  GVar *gvar = calloc(1, sizeof(GVar));
+  Var *gvar = calloc(1, sizeof(Var));
   gvar->name = gen_gstr_name(gstr_len++);
   gvar->type = new_array_type(char_type, tok->len);
-  gvar->init = 1;
-
-  gvar->str = substring(tok->str, tok->len);
-  gvar->len = tok->len;
+  gvar->init = calloc(1, sizeof(InitVal));
+  gvar->init->str = tok->str;
+  gvar->init->strlen = tok->len;
 
   gvar->next = globals;
   globals = gvar;
@@ -2005,7 +2077,7 @@ GVar *find_gstr_or_gen(Token *tok) {
 
 int sizeof_lvars() {
   int size = 0;
-  for (LVar *var = locals; var; var = var->next) {
+  for (Var *var = locals; var; var = var->next) {
     size += sizeof_type(var->type);
   }
   return size;

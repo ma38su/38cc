@@ -637,9 +637,6 @@ void test26() {
   assertInt("test25-6", 10, e->val1);
   assertInt("test25-6", 131, e->val2);
   assertInt("test25-6", -7, e->val3);
-
-
-
 }
 
 int main() {

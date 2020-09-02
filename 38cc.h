@@ -77,11 +77,11 @@ typedef enum {
 typedef struct Type Type;
 typedef struct Token Token;
 typedef struct Node Node;
-typedef struct LVar LVar;
-typedef struct GVar GVar;
 typedef struct Function Function;
 typedef struct Enum Enum;
 typedef struct Member Member;
+typedef struct Var Var;
+typedef struct InitVal InitVal;
 
 struct Type {
 
@@ -126,25 +126,28 @@ struct Node {
   int offset;   // for lvar
 };
 
-struct LVar {
-  LVar *next;
+struct Var {
+  Var *next;
   Type *type;
   char *name;
   int len;
-  int offset;
 
-  int level; // scope level
+  int offset; // local variable
+  int extn;
+
+  InitVal *init;  // <InitVal>
 };
 
-struct GVar {
-  GVar *next;
-  Type *type;
-  char *name;
+struct InitVal {
+  int n;
+
+  char *str;
+  int strlen;
+
+  char *ident;
   int len;
-  int val;   // int
-  char *str; // string
-  int extn;
-  int init;   // initialized 1 or not 0.
+
+  InitVal *next;
 };
 
 struct Enum {
@@ -175,8 +178,8 @@ extern char *filename;
 extern char *user_input;
 extern Token *token;
 extern Node *code[];
-extern LVar *locals;
-extern GVar *globals;
+extern Var *locals;
+extern Var *globals;
 
 extern Type *bool_type;
 extern Type *char_type;
@@ -197,8 +200,8 @@ char *line(char *p0);
 
 char *read_file(char *path);
 
-LVar *find_var(Token *tok);
-LVar *find_lvar(Token *tok);
+Var *find_var(Token *tok);
+Var *find_lvar(Token *tok);
 
 Token *tokenize();
 void program();

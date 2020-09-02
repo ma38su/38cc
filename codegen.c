@@ -274,7 +274,7 @@ bool gen_return(Node *node) {
 }
 
 void gen_gvars_uninit() {
-  for (GVar *var = globals; var; var = var->next) {
+  for (Var *var = globals; var; var = var->next) {
     if (var->init || var->extn || var->type->kind == TY_FUNCTION) {
       continue;
     }
@@ -286,7 +286,7 @@ void gen_gvars_uninit() {
 
 void gen_gvars() {
   int data_count = 0;
-  for (GVar *var = globals; var; var = var->next) {
+  for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->extn) {
       continue;
     }
@@ -297,31 +297,75 @@ void gen_gvars() {
   }
 
   printf("  .data\n");
-  for (GVar *var = globals; var; var = var->next) {
+  for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->extn) {
       continue;
     }
     if (var->type == char_type) {
       printf("%s:\n", var->name);
-      printf("  .byte %d\n", var->val);
+      printf("  .byte %d\n", var->init->n);
     } else if (var->type == short_type) {
       printf("%s:\n", var->name);
-      printf("  .word %d\n", var->val);
+      printf("  .word %d\n", var->init->n);
     } else if (var->type == int_type) {
       printf("%s:\n", var->name);
-      printf("  .long %d\n", var->val);
+      printf("  .long %d\n", var->init->n);
     } else if (var->type == long_type) {
       printf("%s:\n", var->name);
-      printf("  .quad %d\n", var->val);
+      printf("  .quad %d\n", var->init->n);
     } else if (*(var->name) == '.') {
       printf("%s:\n", var->name);
-      printf("  .string \"%s\"\n", var->str);
+      if (!var->init || !var->init->str) error("char* null: %s", var->name);
+      printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
+    } else if (type_is_array(var->type)) {
+      Type *t = var->type->to;
+      if (t == char_type) {
+        printf("%s:\n", var->name);
+        if (!var->init || !var->init->str) error("char[] null: %s %s", var->name, var->init->ident);
+        printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
+      } else if (type_is_ptr(t)) {
+        printf("%s:\n", var->name);
+        if (t->to == char_type) {
+          for (InitVal *v = var->init; v; v = v->next) {
+            if (v->ident && v->len > 0) {
+              printf("  .quad %s\n", substring(v->ident, v->len));
+            } else {
+              printf("  .string %s\n", substring(v->str, v->strlen));
+            }
+            //error("char*[] null: %s", var->name);
+          }
+        } else {
+          error("unsupported initialization");
+        }
+      } else {
+        printf("%s:\n", var->name);
+        if (t == char_type) {
+          for (InitVal *v = var->init; v; v = v->next) {
+            printf("  .byte %d\n", v->n);
+          }
+        } else if (t == short_type) {
+          for (InitVal *v = var->init; v; v = v->next) {
+            printf("  .word %d\n", v->n);
+          }
+        } else if (t == int_type) {
+          for (InitVal *v = var->init; v; v = v->next) {
+            printf("  .long %d\n", v->n);
+          }
+        } else if (t == long_type) {
+          for (InitVal *v = var->init; v; v = v->next) {
+            printf("  .quad %d\n", v->n);
+          }
+        } else if (type_is_ptr(t)) {
+          for (InitVal *v = var->init; v; v = v->next) {
+            printf("  .quad %s\n", v->ident);
+          }
+        }
+      }
     } else if (type_is_ptr(var->type)) {
       printf("%s:\n", var->name);
-      printf("  .quad %s\n", var->str);
-    } else if (type_is_array(var->type)) {
-      printf("%s:\n", var->name);
-      printf("  .string \"%s\"\n", var->str);
+      if (!var->init || !var->init->ident)
+        error("char[] null: %s", var->name);
+      printf("  .quad %s\n", var->init->ident);
     } else {
       printf("# unsupported type: %s: %s\n", var->name, var->type->name);
     }
@@ -342,9 +386,14 @@ bool gen_gvar(Node *node) {
     printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
   } else if (node->type == long_type) {
     printf("  mov rax, %s[rip]\n", node->ident);
-  } else if (type_is_array(node->type) && node->type->to == char_type) {
-    printf("  lea rax, %s[rip]\n", node->ident);
-  } else if (type_is_ptr(node->type) && node->type->to == char_type) {
+  } else if (type_is_array(node->type)) {
+    if (node->type->to == char_type) {
+      printf("  lea rax, %s[rip]\n", node->ident);
+    } else {
+      printf("  mov rax, qword ptr %s[rip]\n", node->ident);
+    }
+  //} else if (type_is_ptr(node->type) && node->type->to == char_type) {
+  } else if (type_is_ptr(node->type)) {
     printf("  mov rax, qword ptr %s[rip]\n", node->ident);
   } else {
     printf("  # not support gvar %s, type: %s\n", node->ident, node->type->name);
@@ -431,11 +480,9 @@ void gen_defined(Node *node) {
 }
 
 void gen_deref(Type *type) {
+  if (type->kind == TY_STRUCT) return;
   if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
     gen_deref(type->to);
-    return;
-  }
-  if (type->kind == TY_STRUCT) {
     return;
   }
 
