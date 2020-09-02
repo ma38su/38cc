@@ -6,9 +6,10 @@
 #include "38cc.h"
 #include "vector.h"
 
+int sizeof_type(Type *type);
+int sizeof_lvars();
 Type *consume_type();
 Node *consume_member();
-int sizeof_lvars();
 GVar *find_gvar(Token *tok);
 GVar *find_gstr_or_gen(Token *tok);
 Type *find_type(Token *tok);
