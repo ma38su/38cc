@@ -327,12 +327,8 @@ void gen_gvars() {
         printf("%s:\n", var->name);
         if (t->to == char_type) {
           for (InitVal *v = var->init; v; v = v->next) {
-            if (v->ident && v->len > 0) {
-              printf("  .quad %s\n", substring(v->ident, v->len));
-            } else {
-              printf("  .string %s\n", substring(v->str, v->strlen));
-            }
-            //error("char*[] null: %s", var->name);
+            if (!v->ident) error("illegal gvars");
+            printf("  .quad %s\n", substring(v->ident, v->len));
           }
         } else {
           error("unsupported initialization");
@@ -418,13 +414,13 @@ void gen_defined_function(Node *node) {
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n\n"); // prologue end
 
-  int size = node->val;
-  if (size > 0) {
-    if (size % 16 != 0) {
-      size = (size / 16 + 1) * 16;
+  int offset = node->val;
+  if (offset > 0) {
+    if (offset % 16 != 0) {
+      offset = (offset / 16 + 1) * 16;
     }
     // allocate local vars
-    printf("  sub rsp, %d # args+lvar\n", size);
+    printf("  sub rsp, %d # args+lvar\n", offset);
   }
 
   // extract args

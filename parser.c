@@ -304,6 +304,10 @@ bool consume(char *op) {
   return true;
 }
 
+bool peek(char *op) {
+  return token_is_reserved(token, op);
+}
+
 // read reserved symbol
 void expect(char *op) {
   if (!consume(op)) {
@@ -570,14 +574,16 @@ int sizeof_type(Type *type) {
 
 Node *consume_member_node() {
   Node *node;
-  if (node = consume_enum_node()) {
+  if (peek("enum")) {
+    node = consume_enum_node();
     Token *ident = consume_ident();
     if (ident) {
       node->ident = ident->str;
       node->len = ident->len;
     }
     node->type = int_type;
-  } else if (node = consume_union_node()) {
+  } else if (peek("union")) {
+    node = consume_union_node();
     // TODO union type
     //error_at(token->str, "TODO to support union type");
     Token *ident = consume_ident();
@@ -585,7 +591,8 @@ Node *consume_member_node() {
       node->ident = ident->str;
       node->len = ident->len;
     }
-  } else if (node = consume_struct_node()) {
+  } else if (peek("struct")) {
+    node = consume_struct_node();
     while (consume("*")) {
       node->type = new_ptr_type(node->type);
     }
@@ -758,9 +765,10 @@ Vector *expect_defined_args() {
     consume("const");
     consume("*");
 
-    Token *tok;
+    Token *tok = NULL;
     // some arg var names are ommited.
-    if (tok = consume_ident()) {
+    if (token->kind == TK_IDENT) {
+      tok = consume_ident();
       if (consume("[")) {
         if (consume("]")) {
           type = new_ptr_type(type);
@@ -770,7 +778,8 @@ Vector *expect_defined_args() {
           type = new_array_type(type, array_len);
         }
       }
-    } else if (tok = consume_fp()) {
+    } else if (peek("(")) {
+      tok = consume_fp();
       expect("(");
       while (!consume(")")) {
         token = token->next;
@@ -795,7 +804,6 @@ Vector *expect_defined_args() {
       node->ident = substring(tok->str, tok->len);
       node->len = tok->len;
       node->offset = lvar->offset;
-
     } else {
       node->ident = "";
       node->len = 0;
@@ -867,7 +875,7 @@ InitVal *gvar_init_val(Type *type) {
     if (type->to == char_type) {
       // char*[]
       if (token->kind != TK_STR) {
-        error("unsupported init. (2)");
+        error("TODO unsupported init. (2)");
       }
       InitVal *v = calloc(1, sizeof(InitVal));
       Token *tok = token;
@@ -875,64 +883,43 @@ InitVal *gvar_init_val(Type *type) {
       v->str = tok->str;
       v->strlen = tok->len;
       return v;
-    } else if (consume("{")) {
-      InitVal head;
-      head.next = NULL;
-      while (1) {
-        if (consume("}")) break;
-        InitVal *v = calloc(1, sizeof(InitVal));
-        if (token->kind == TK_STR) {
-          Token *string = consume_string();
-          v->str = string->str;
-          v->strlen = string->len;
-        } else if (token->kind == TK_IDENT) {
-          Token *ident = consume_ident();
-          Var *var = find_gvar(ident);
-          v->ident = var->name;
-          v->len = var->len;
-        } else {
-          v->n = expect_number();
+    } else if (type->to->kind == TY_PTR) {
+      if (consume("{")) {
+        if (consume("}")) error("TODO !!");
+        InitVal head;
+        head.next = NULL;
+        InitVal *cur = &head;
+        while (1) {
+          InitVal *v = calloc(1, sizeof(InitVal));
+          if (token->kind == TK_STR) {
+            Var *var = find_gstr_or_gen(token);
+            token = token->next;
+            v->ident = var->name;
+            v->len = var->len;
+          } else if (token->kind == TK_IDENT) {
+            Token *ident = consume_ident();
+            Var *var = find_gvar(ident);
+            v->ident = var->name;
+            v->len = var->len;
+          } else {
+            v->n = expect_number();
+          }
+          cur->next = v;
+          cur = v;
+          if (consume("}")) break;
+          expect(",");
         }
-        if (consume(",")) continue;
-      }
-      return head.next;
-    }
-  }
-  if (token->kind == TK_STR) {
-    fprintf(stderr, "gvar init str %s\n", substring(token->str, token->len));
-
-    InitVal *v = calloc(1, sizeof(InitVal));
-
-    Token *tok = token;
-    token = token->next;
-    if (token == TK_RESERVED && *token->str == ';') {
-      v->str = tok->str;
-      v->strlen = tok->len;
-    } else {
-      Var *gv = find_gstr_or_gen(tok);
-      v->ident = gv->name;
-      v->len = gv->len;
-      if (consume(",")) {
-        v->next = gvar_init_val(type);
+        return head.next;
       }
     }
-    return v;
   }
-  if (token->kind == TK_NUM) {
-    InitVal *v = calloc(1, sizeof(InitVal));
-    v->n = expect_number();
-    if (consume(",")) {
-      v->next = gvar_init_val(type);
-    }
-    return v;
-  }
+  Node *node = expr();
 
-  if (consume("{")) {
-    fprintf(stderr, "gvar init array %s\n", substring(token->str, token->len));
-    InitVal *v = gvar_init_val(type->to);
-    expect("}");
-    return v;
-  }
+  InitVal *v = calloc(1, sizeof(InitVal));
+  v->n = eval_node(node);
+  return v;
+
+  error_at(token->str, "unsupported state");
   return NULL;
 }
 
@@ -1658,6 +1645,7 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
   node->type = gvar->type;
 
   if (consume("=")) {
+    fprintf(stderr, "gvar: %s\n", substring(gvar->name, gvar->len));
     gvar->init = gvar_init_val(gvar->type);
   } else {
     gvar->init = NULL;
@@ -1669,8 +1657,8 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
 Node *global() {
 
   if (consume("typedef")) {
-    Node *node;
-    if (node = consume_struct_node()) {
+    if (peek("struct")) {
+      Node *node = consume_struct_node();
       Type *type = node->type;
       if (!type || type->kind != TY_STRUCT)
         error_at(token->str, "No defined struct type");
@@ -1692,7 +1680,8 @@ Node *global() {
       expect(";");
       return NULL;
     }
-    if (node = consume_union_node()) {
+    if (peek("union")) {
+      Node *node = consume_union_node();
       Type *type = node->type;
       if (!type || type->kind != TY_UNION)
         error_at(token->str, "No defined union type");
@@ -1710,7 +1699,8 @@ Node *global() {
       expect(";");
       return NULL;
     }
-    if (node = consume_enum_node()) {
+    if (peek("enum")) {
+      Node *node = consume_enum_node();
       Type *type = node->type;
       if (!type || (type != int_type && type->kind != TY_ENUM))
         error_at(token->str, "No defined enum type: %s", substring(type->name, type->len));
@@ -2051,6 +2041,7 @@ Var *find_gstr_or_gen(Token *tok) {
 
   Var *gvar = calloc(1, sizeof(Var));
   gvar->name = gen_gstr_name(gstr_len++);
+  gvar->len = strlen(gvar->name);
   gvar->type = new_array_type(char_type, tok->len);
   gvar->init = calloc(1, sizeof(InitVal));
   gvar->init->str = tok->str;
