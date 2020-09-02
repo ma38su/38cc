@@ -400,7 +400,7 @@ Token *consume_fp() {
   return tok;
 }
 
-Node *consume_char() {
+Node *consume_char_node() {
   if (token->kind != TK_CHAR) {
     return NULL;
   }
@@ -413,10 +413,6 @@ Node *consume_char() {
 
 InitVal *gvar_init_val(Type *type) {
 
-  InitVal head;
-  head.next = NULL;
-
-  InitVal *cur = &head;
   if (type->kind == TY_PTR) {
     if (type->to == char_type) {
       // char*
@@ -446,10 +442,8 @@ InitVal *gvar_init_val(Type *type) {
       v->strlen = tok->len;
       return v;
     } else if (consume("{")) {
-
       InitVal head;
       head.next = NULL;
-
       while (1) {
         if (consume("}")) break;
         InitVal *v = calloc(1, sizeof(InitVal));
@@ -504,7 +498,7 @@ InitVal *gvar_init_val(Type *type) {
   return NULL;
 }
 
-Node *consume_str() {
+Node *consume_string_node() {
   if (token->kind != TK_STR) {
     return NULL;
   }
@@ -604,7 +598,7 @@ Member *to_member(Node *node) {
   return member;
 }
 
-Node *consume_struct() {
+Node *consume_struct_node() {
   if (!consume("struct")) return NULL;
 
   Node *node = new_node(ND_STRUCT);
@@ -704,7 +698,7 @@ Node *consume_member() {
       node->ident = ident->str;
       node->len = ident->len;
     }
-  } else if (node = consume_struct()) {
+  } else if (node = consume_struct_node()) {
     while (consume("*")) {
       node->type = new_ptr_type(node->type);
     }
@@ -960,12 +954,12 @@ Node *primary() {
     return node;
   }
 
-  node = consume_char();
+  node = consume_char_node();
   if (node) {
     return node;
   }
 
-  node = consume_str();
+  node = consume_string_node();
   if (node) {
     return node;
   }
@@ -1154,7 +1148,7 @@ Node *unary() {
   }
 }
 
-Node *consume_cast() {
+Node *consume_cast_node() {
   Token *tmp = token;
   if (!consume("(")) return NULL;
 
@@ -1171,7 +1165,7 @@ Node *consume_cast() {
 }
 
 Node *cast() {
-  Node *node = consume_cast();
+  Node *node = consume_cast_node();
   if (node) {
     node->lhs = unary();
     return node;
@@ -1680,7 +1674,7 @@ Node *global() {
 
   if (consume("typedef")) {
     Node *node;
-    if (node = consume_struct()) {
+    if (node = consume_struct_node()) {
       Type *type = node->type;
       if (!type || type->kind != TY_STRUCT)
         error_at(token->str, "No defined struct type");
@@ -1784,7 +1778,7 @@ Node *global() {
   int is_extern = consume("extern") ? 1 : 0;
 
   Node *node;
-  node = consume_struct();
+  node = consume_struct_node();
   if (node) {
     if (is_extern) {
       // 変数宣言
