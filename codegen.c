@@ -355,9 +355,12 @@ void gen_defined_function(Node *node) {
   printf("  mov rbp, rsp\n\n"); // prologue end
 
   if (node->val > 0) {
+    int size = node->val;
+    if (size % 16 != 0) {
+      size = (size / 16 + 1) * 16;
+    }
     // allocate local vars
-    printf("  sub rsp, %d # args+lvar\n",
-        node->val);
+    printf("  sub rsp, %d # args+lvar\n", size);
   }
 
   // extract args
