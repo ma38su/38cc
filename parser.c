@@ -1847,7 +1847,7 @@ Node *global() {
     node->ident = substring(tok->str, tok->len);
     node->len = tok->len;
     node->lhs = block;
-    node->val = sizeof_args(args) + sizeof_lvars();
+    node->val = sizeof_lvars();
     node->type = func->type->to;
 
     locals = tmp_locals;
