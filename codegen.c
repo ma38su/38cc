@@ -14,6 +14,7 @@ void gen_defined(Node *node);
 bool gen(Node *node);
 void gen_num(int num);
 void gen_deref(Type *type);
+int sizeof_type(Type *type);
 
 char *reg64s[] = {
   "rdi", // 0
@@ -80,9 +81,13 @@ char* get_args_register(int size, int index) {
 }
 
 void gen_addr(Node* node) {
-  printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
-  printf("  push rax\n");
+  if (node->offset != 0) {
+    printf("  mov rax, rbp\n");
+    printf("  sub rax, %d\n", node->offset);
+    printf("  push rax\n");
+  } else {
+    printf("  push rbp\n");
+  }
 }
 
 void gen_function_call(Node *node) {
@@ -155,12 +160,15 @@ void truncate(Type *type) {
     printf("  setne al\n");
   }
 
-  if (type->size == 1) {
+  int size = sizeof_type(type);
+  if (size == 1) {
     printf("  movsx rax, al\n");
-  } else if (type->size == 2) {
+  } else if (size == 2) {
     printf("  movsx rax, ax\n");
-  } else if (type->size == 4) {
+  } else if (size == 4) {
     printf("  movsxd rax, eax\n");
+  } else {
+    fprintf(stderr, "warn: unsupported case? - size: %d", size);
   }
   printf("  push rax\n");
 }
@@ -270,7 +278,9 @@ void gen_gvars_uninit() {
     if (var->init || var->extn || var->type->kind == TY_FUNCTION) {
       continue;
     }
-    printf("  .comm   %s,%d,%d\n", var->name, var->type->size, var->type->size);
+    int size = sizeof_type(var->type);
+    // TODO alignment size
+    printf("  .comm   %s,%d,%d\n", var->name, size, size);
   }
 }
 
@@ -379,9 +389,23 @@ void gen_defined_function(Node *node) {
       printf("  pop rax\n");
 
       --index;
-      int size = arg->type->size;
-      char *r = get_args_register(size, index);
-      printf("  mov [rax], %s\n", r);
+      int size = sizeof_type(arg->type);
+      if (size == 1) {
+        char *r = get_args_register(size, index);
+        printf("  mov [rax], %s\n", r);
+      } else if (size == 2) {
+        char *r = get_args_register(size, index);
+        printf("  mov [rax], %s\n", r);
+      } else if (size == 4) {
+        char *r = get_args_register(size, index);
+        printf("  mov [rax], %s\n", r);
+        //printf("  mov dword ptr [rax], %s\n", r);
+      } else if (size == 8) {
+        char *r = get_args_register(size, index);
+        printf("  mov [rax], %s\n", r);
+      } else {
+        error("unsupported arg - sizeof(%s) = %d", substring(arg->ident, arg->len), size);
+      }
     }
   }
 
@@ -415,9 +439,8 @@ void gen_deref(Type *type) {
     return;
   }
 
-  int size = type->size;
   printf("  pop rax\n");
-
+  int size = sizeof_type(type);
   if (size == 1) {
     printf("  movsx rax, byte ptr [rax]\n");
   } else if (size == 2) {
@@ -447,8 +470,8 @@ void gen_num(int num) {
 }
 
 int max_size(Node* lhs, Node* rhs) {
-  int lsize = lhs->type->size;
-  int rsize = rhs->type->size;
+  int lsize = sizeof_type(lhs->type);
+  int rsize = sizeof_type(rhs->type);
   if (lsize >= rsize) {
     return lsize;
   } else {
@@ -532,7 +555,7 @@ bool gen(Node *node) {
       gen(node->lhs);
     }
 
-    int size = node->type->size;
+    int size = sizeof_type(node->type);
     if (node->lhs->kind == ND_GVAR) {
 
       gen(node->rhs);
@@ -562,12 +585,16 @@ bool gen(Node *node) {
 
       if (size == 1) {
         printf("  mov [rax], dil\n");
+        //printf("  mov byte ptr [rax], dil\n");
       } else if (size == 2) {
         printf("  mov [rax], di\n");
+        //printf("  mov word ptr [rax], di\n");
       } else if (size == 4) {
         printf("  mov [rax], edi\n");
+        //printf("  mov dword ptr [rax], edi\n");
       } else if (size == 8) {
         printf("  mov [rax], rdi\n");
+        //printf("  mov qword ptr [rax], rdi\n");
       } else {
         char *type_name = substring(node->type->name, node->type->len);
         error("illegal assign defref: sizeof(%s) = %d", type_name, size);
@@ -682,18 +709,28 @@ bool gen(Node *node) {
   printf("  # LHS\n");
   gen(node->lhs);
   if (!lhs_is_ptr && rhs_is_ptr) {
+    int rhs_size = sizeof_type(node->rhs->type->to);
+    if (rhs_size == 0) {
+      error("no rhs ptr size: %s",
+        substring(node->lhs->type->to->name, node->lhs->type->to->len));
+    }
     // for pointer calculation
     printf("  pop rax\n");
-    printf("  imul rax, %d\n", node->rhs->type->to->size);
+    printf("  imul rax, %d\n", rhs_size);
     printf("  push rax\n");
   }
 
   printf("  # RHS\n");
   gen(node->rhs);
   if (lhs_is_ptr && !rhs_is_ptr) {
+    int lhs_size = sizeof_type(node->lhs->type->to);
+    if (lhs_size == 0) {
+      error("no lhs ptr size %s",
+        substring(node->lhs->type->to->name, node->lhs->type->to->len));
+    }
     // for pointer calculation
     printf("  pop rax\n");
-    printf("  imul rax, %d\n", node->lhs->type->to->size);
+    printf("  imul rax, %d\n", lhs_size);
     printf("  push rax\n");
   }
 

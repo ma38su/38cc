@@ -79,7 +79,7 @@ Type *new_ptr_type(Type* type) {
 }
 
 Type *new_array_type(Type* type, int len) {
-  Type *ary_type = new_type("[]", 2, type->size * len);
+  Type *ary_type = new_type("[]", 2, sizeof_type(type) * len);
   ary_type->kind = TY_ARRAY;
   ary_type->to = type;
   return ary_type;
@@ -475,13 +475,9 @@ int fixed_members_offset(Vector *members) {
   int offset = 0;
   for (int i = 0; i < members->size; ++i) {
     Member *mem = vec_get(members, i);
-    int size_mem = mem->type->size;
+    int size_mem = sizeof_type(mem->type);
     if (unit < size_mem) {
-      if (size_mem > 8) {
-        unit = 8;
-      } else {
-        unit = size_mem;
-      }
+      unit = size_mem > 8 ? 8 : size_mem;
     }
 
     mem->offset = offset;
@@ -571,7 +567,7 @@ Node *consume_union() {
   int size_union = 0;
   for (int i = 0; i < members->size; ++i) {
     Member *m = vec_get(members, i);
-    int size = m->type->size;
+    int size = sizeof_type(m->type);
     if (size_union < size) size_union = size;
   }
 
@@ -585,6 +581,13 @@ Node *consume_union() {
   }
   node->type->members = members;
   return node;
+}
+
+int sizeof_type(Type *type) {
+  while (type->kind == TY_TYPEDEF) {
+    type = type->to;
+  }
+  return type->size;
 }
 
 Node *consume_member() {
@@ -706,10 +709,10 @@ LVar *consume_lvar_define() {
     int array_len = expect_number();
     expect("]");
 
-    new_size = type->size * array_len;
+    new_size = sizeof_type(type) * array_len;
     type = new_array_type(type, array_len);
   } else {
-    new_size = type->size;
+    new_size = sizeof_type(type);
   }
 
   LVar *lvar = new_lvar(tok, type);
@@ -788,9 +791,9 @@ Vector *expect_defined_args() {
     if (tok) {
       LVar *lvar = new_lvar(tok, type);
       if (locals) {
-        lvar->offset = locals->offset + type->size;
+        lvar->offset = locals->offset + sizeof_type(type);
       } else {
-        lvar->offset = type->size;
+        lvar->offset = sizeof_type(type);
       }
       lvar->next = locals;
       locals = lvar;
@@ -822,11 +825,8 @@ Node *consume_sizeof() {
   expect("(");
   Type *type = consume_type();
   if (type) {
-    while (type->kind == TY_TYPEDEF) {
-      type = type->to;
-    }
     expect(")");
-    return new_node_num(type->size);
+    return new_node_num(sizeof_type(type));
   }
 
   Node *node = equality();
@@ -847,8 +847,7 @@ Type *get_type(Node *node) {
 }
 
 int sizeof_node(Node* node) {
-  Type *type = get_type(node);
-  return type->size;
+  return sizeof_type(get_type(node));
 }
 
 Node *primary() {
@@ -1048,8 +1047,8 @@ Node *unary() {
     if (consume("->")) {
       Token *ident = consume_ident();
       if (!ident) error_at(token->str, "no ident");
-      Member *member = get_member(node->type->to, ident);
 
+      Member *member = get_member(node->type->to, ident);
       int new_offset = node->offset - member->offset;
 
       Node *addr = new_node_lr(ND_SUB, node, new_node_num(member->offset));
@@ -1425,7 +1424,7 @@ int sizeof_args(Vector *args) {
   int size = 0;
   for (int i = 0; i < args->size; ++i) {
     Node *node = vec_get(args, i);
-    size += node->type->size;
+    size += sizeof_type(node->type);
   }
   return size;
 }
@@ -1563,7 +1562,7 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
       type = new_array_type(type, array_len);
     } else {
       // gvar[]
-      type = new_array_type(type, type->size);
+      type = new_array_type(type, sizeof_type(type));
       expect("]");
     }
   }
@@ -1634,7 +1633,7 @@ Node *global() {
       if (!ident || ident->kind != TK_IDENT)
         error_at(token->str, "Illegal typedef struct");
 
-      int size_t = type->size;
+      int size_t = sizeof_type(type);
       Type *struct_type = new_type(ident->str, ident->len, size_t);
       struct_type->kind = TY_TYPEDEF;
       struct_type->to = type;
@@ -1652,7 +1651,7 @@ Node *global() {
       if (!ident || ident->kind != TK_IDENT)
         error_at(token->str, "Illegal typedef union");
 
-      int size_t = type->size;
+      int size_t = sizeof_type(type);
       Type *union_type = new_type(ident->str, ident->len, size_t);
       union_type->kind = TY_TYPEDEF;
       union_type->to = type;
@@ -1664,7 +1663,7 @@ Node *global() {
     if (node = consume_enum()) {
       Type *type = node->type;
       if (!type || (type != int_type && type->kind != TY_ENUM))
-        error_at(token->str, "No defined enum type: %s", substring(type->name, type->size));
+        error_at(token->str, "No defined enum type: %s", substring(type->name, type->len));
 
       Token *ident = consume_ident();
       if (!ident) {
@@ -1693,7 +1692,7 @@ Node *global() {
       if (consume("(")) {
         expect_defined_args();
       } else {
-        Type *def_type = new_type(ident->str, ident->len, type->size);
+        Type *def_type = new_type(ident->str, ident->len, sizeof_type(type));
         def_type->kind = TY_TYPEDEF;
         def_type->to = type;
         vec_add(types, def_type);
@@ -1703,7 +1702,7 @@ Node *global() {
         expect_defined_args();
       }
 
-      Type *def_type = new_type(ident->str, ident->len, type->size);
+      Type *def_type = new_type(ident->str, ident->len, sizeof_type(type));
       def_type->kind = TY_TYPEDEF;
       def_type->to = type;
       vec_add(types, def_type);
@@ -2006,7 +2005,7 @@ GVar *find_gstr_or_gen(Token *tok) {
 int sizeof_lvars() {
   int size = 0;
   for (LVar *var = locals; var; var = var->next) {
-    size += var->type->size;
+    size += sizeof_type(var->type);
   }
   return size;
 }
