@@ -594,6 +594,7 @@ void test25() {
 
   int *r1 = (int*) vec_get(v, 1);
   assertInt("test25-3", 11, *r1);
+  assertInt("test25-4", 2, v->size);
 }
 
 Char *new_char(char c) {

@@ -366,7 +366,14 @@ Type *consume_type() {
       break;
     }
     if (p0 == token) return NULL;
-    if (!type) error_at(token->str, "type is not set");
+    if (!type) {
+      Type *t = find_type(token);
+      if (t) {
+        error_at(token->str, "type is not set %s", substring(token->str, token->len));
+      } else {
+        error_at(token->str, "type is not set(null) %s", substring(token->str, token->len));
+      }
+    }
   }
   while (consume("*")) {
     type = new_ptr_type(type);
@@ -675,22 +682,6 @@ Vector *consume_args() {
     }
   }
   return args;
-}
-
-Type *expect_type() {
-  Token *tok;
-  tok = consume_ident();
-  if (!tok) {
-    error_at(token->str, "illegal type name");
-  }
-
-  Type *type;
-  type = find_type(tok);
-  if (!type) {
-    error_at(token->str, "undefined type");
-  }
-
-  return type;
 }
 
 // defined local variable
@@ -1863,9 +1854,19 @@ Node *global() {
   }
 }
 
+void dump_types() {
+  fprintf(stderr, "-- dump types begin --\n");
+  for (int i = 0; i < types->size; ++i) {
+    Type *type = vec_get(types, i);
+    fprintf(stderr, "  find %s\n", substring(type->name, type->len));
+  }
+  fprintf(stderr, "-- dump types end --\n");
+}
+
 void program() {
   init_types();
   init_builtin();
+  //dump_types();
 
   int i = 0;
   while (!at_eof()) {

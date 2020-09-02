@@ -11,10 +11,10 @@ try() {
   ./tmp/exe
   actual="$?"
 
-  if [ "$actual" = "$expected" ]; then
-    echo "\"$input\" => $actual is expected"
-    echo ""
-  else
+  if [ "$actual" != "$expected" ]; then
+    #echo "\"$input\" => $actual is expected"
+    #echo ""
+  #else
     echo "\"$input\" => $actual is not expected. $expected is expected,"
     echo ""
     exit 1

@@ -121,6 +121,9 @@ self-vector: 38cc vector.c
 test.s: 38cc .test.c
 	./38cc .test.c > test.s
 
+shtest: 38cc test.sh
+	./test.sh
+
 test: 38cc test.s vector.s
 	$(CC) test.s vector.s -o test
 	./test
@@ -129,19 +132,15 @@ test-gcc: test.c
 	$(CC) -o test_gcc test.c vector.c
 	./test_gcc
 
-test-gcc-debug: 38cc test.c
-	$(CC) -S -masm=intel test.c -o test_gcc.s
-	cat test_gcc.s
-
-sample: 38cc sample.c
+sample: 38cc sample.c vector.s
 
 	$(CC) -S -masm=intel sample.c -o sample-gcc.s
-	gcc -o sample-gcc sample-gcc.s
+	gcc -o sample-gcc sample-gcc.s vector.s
 	./sample-gcc
 
 	cpp sample.c .sample.c
 	./38cc .sample.c > sample-38cc.s
-	gcc -o sample-38cc sample-38cc.s
+	gcc -o sample-38cc sample-38cc.s vector.s
 	./sample-38cc
 
 sample-s: sample-gcc.s sample-38cc.s
@@ -149,9 +148,6 @@ sample-s: sample-gcc.s sample-38cc.s
 	./sample-gcc
 	gcc -o sample-38cc sample-38cc.s
 	./sample-38cc
-
-shtest: 38cc test.c
-	./_test.sh
 
 maptest:
 	gcc map_test.c map.c -o map_test
