@@ -80,57 +80,62 @@ char* get_args_register(int size, int index) {
 }
 
 void gen_addr(Node* node) {
-
-  printf("  # &%s\n", node->ident);
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
   printf("  push rax\n");
 }
 
 void gen_function_call(Node *node) {
-  if (node->kind != ND_CALL) {
-    error("not function call");
-  }
+  if (node->kind != ND_CALL) error("not function call");
 
   if (node->list) {
     for (int i = 0; i < node->list->size; ++i) {
       gen((Node *) vec_get(node->list, i));
     }
-    printf("  # set args %d to call %s\n",
-        node->list->size, node->ident);
     for (int i = node->list->size - 1; i >= 0; --i) {
       char *r = get_args_register(8, i);
       printf("  pop %s  # arg %d\n", r, i);
     }
   }
 
-  int lid = label_id++;
-  printf("  mov rax, rsp\n");
-  printf("  and rax, 15\n");
-  printf("  jnz .L.call.%d\n", lid);
+  int padding = 0;
+  if (padding) {
+    int lid = label_id++;
+    printf("  mov rax, rsp\n");
+    printf("  and rax, 15\n");
+    printf("  jnz .L.call.%d\n", lid);
 
-  // reset for return val
-  printf("  mov rax, 0\n");
-  if (node->val) {
-    printf("  call %s@PLT\n", node->ident);
+    // reset for return val
+    printf("  mov rax, 0\n");
+    if (node->val) {
+      printf("  call %s@PLT\n", node->ident);
+    } else {
+      printf("  call %s\n", node->ident);
+    }
+    printf("  jmp .L.end.%d\n", lid);
+
+    printf(".L.call.%d:\n", lid);
+    printf("  sub rsp, 8  # align rsb to 16 byte boundary\n");
+
+    // reset for return val
+    printf("  mov rax, 0\n");
+    if (node->val) {
+      printf("  call %s@PLT\n", node->ident);
+    } else {
+      printf("  call %s\n", node->ident);
+    }
+    printf("  add rsp, 8  # turn back rsb\n");
+
+    printf(".L.end.%d:\n", lid);
   } else {
-    printf("  call %s\n", node->ident);
+    // reset for return val
+    printf("  mov rax, 0\n");
+    if (node->val) {
+      printf("  call %s@PLT\n", node->ident);
+    } else {
+      printf("  call %s\n", node->ident);
+    }
   }
-  printf("  jmp .L.end.%d\n", lid);
-
-  printf(".L.call.%d:\n", lid);
-  printf("  sub rsp, 8  # align rsb to 16 byte boundary\n");
-
-  // reset for return val
-  printf("  mov rax, 0\n");
-  if (node->val) {
-    printf("  call %s@PLT\n", node->ident);
-  } else {
-    printf("  call %s\n", node->ident);
-  }
-  printf("  add rsp, 8  # turn back rsb\n");
-
-  printf(".L.end.%d:\n", lid);
 
   // after called, return value is stored rax
   printf("  push rax\n");
@@ -354,8 +359,8 @@ void gen_defined_function(Node *node) {
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n\n"); // prologue end
 
-  if (node->val > 0) {
-    int size = node->val;
+  int size = node->val;
+  if (size > 0) {
     if (size % 16 != 0) {
       size = (size / 16 + 1) * 16;
     }
@@ -427,9 +432,9 @@ void gen_deref(Type *type) {
   }
   printf("  push rax\n");
 }
+
 // push store address
 void gen_lval(Node *node) {
-  printf("  # gen_lval\n");
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
   } else {
