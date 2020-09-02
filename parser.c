@@ -856,20 +856,20 @@ int sizeof_node(Node* node) {
 InitVal *gvar_init_val(Type *type) {
 
   if (type->kind == TY_PTR) {
-    if (type->to == char_type) {
-      // char*
-      if (token->kind != TK_STR) {
-        error("unsupported init.");
-      }
-      Var *var = find_gstr_or_gen(token);
-      token = token->next;
-      InitVal *v = calloc(1, sizeof(InitVal));
-      v->ident = var->name;
-      v->len = var->len;
-      return v;
-    } else {
+    if (type->to != char_type) {
       error("unsupported init. (1)");
     }
+
+    // char*
+    if (token->kind != TK_STR) {
+      error("unsupported init.");
+    }
+    Var *var = find_gstr_or_gen(token);
+    token = token->next;
+    InitVal *v = calloc(1, sizeof(InitVal));
+    v->ident = var->name;
+    v->len = var->len;
+    return v;
   }
   if (type->kind == TY_ARRAY) {
     if (type->to == char_type) {
@@ -883,34 +883,53 @@ InitVal *gvar_init_val(Type *type) {
       v->str = tok->str;
       v->strlen = tok->len;
       return v;
-    } else if (type->to->kind == TY_PTR) {
-      if (consume("{")) {
-        if (consume("}")) error("TODO !!");
-        InitVal head;
-        head.next = NULL;
-        InitVal *cur = &head;
-        while (1) {
-          InitVal *v = calloc(1, sizeof(InitVal));
-          if (token->kind == TK_STR) {
-            Var *var = find_gstr_or_gen(token);
-            token = token->next;
-            v->ident = var->name;
-            v->len = var->len;
-          } else if (token->kind == TK_IDENT) {
-            Token *ident = consume_ident();
-            Var *var = find_gvar(ident);
-            v->ident = var->name;
-            v->len = var->len;
-          } else {
-            v->n = expect_number();
-          }
-          cur->next = v;
-          cur = v;
-          if (consume("}")) break;
-          expect(",");
+    }
+    if (!consume("{")) {
+      error("illegal expression.");
+    }
+
+    if (consume("}")) error("TODO !!");
+
+    if (type->to->kind == TY_PTR) {
+      InitVal head;
+      head.next = NULL;
+      InitVal *cur = &head;
+      while (1) {
+        InitVal *v = calloc(1, sizeof(InitVal));
+        if (token->kind == TK_NUM) error("illegal token");
+
+        Var *var;
+        if (token->kind == TK_STR) {
+          var = find_gstr_or_gen(token);
+          token = token->next;
+        } else if (token->kind == TK_IDENT) {
+          Token *ident = consume_ident();
+          var = find_gvar(ident);
+        } else {
+          error("illegal token");
         }
-        return head.next;
+        v->ident = var->name;
+        v->len = var->len;
+        cur->next = v;
+        cur = v;
+        if (consume("}")) break;
+        expect(",");
       }
+      return head.next;
+    } else if (type->to->kind == TY_PRM) {
+      InitVal head;
+      head.next = NULL;
+      InitVal *cur = &head;
+      while (1) {
+        InitVal *v = calloc(1, sizeof(InitVal));
+        if (token->kind != TK_NUM) error("illegal token");
+        v->n = expect_number();
+        cur->next = v;
+        cur = v;
+        if (consume("}")) break;
+        expect(",");
+      }
+      return head.next;
     }
   }
   Node *node = expr();
@@ -1099,8 +1118,8 @@ Node *unary() {
       }
       Node *index = expr();
       expect("]");
+
       node = new_node_deref(new_node_lr(ND_ADD, node, index));
-      //node = new_node_lr(ND_ADD, node, index);
       continue;
     }
 
@@ -1645,7 +1664,6 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
   node->type = gvar->type;
 
   if (consume("=")) {
-    fprintf(stderr, "gvar: %s\n", substring(gvar->name, gvar->len));
     gvar->init = gvar_init_val(gvar->type);
   } else {
     gvar->init = NULL;

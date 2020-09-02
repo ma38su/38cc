@@ -664,7 +664,9 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_DEREF) {
     gen(node->lhs);
-    gen_deref(node->lhs->type->to);
+    if (node->lhs->type->kind != TY_ARRAY) {
+      gen_deref(node->lhs->type->to);
+    }
     return true;
   }
 

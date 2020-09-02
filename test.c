@@ -639,6 +639,27 @@ void test26() {
   assertInt("test25-6", -7, e->val3);
 }
 
+char *ptr_str = "HeLlo"; // 0
+char ary_str[] = "HelLo"; // 0
+
+char *strings[2] = {
+  "Hello", // 0
+  "World" // 1
+};
+
+int nums[] = {7, 11, 13};
+
+void test27() {
+  assertStr("test27-1", "HeLlo", ptr_str);
+  assertStr("test27-2", "HelLo", ary_str);
+
+  assertStr("test27-1", "Hello", strings[0]);
+  assertStr("test27-2", "World", strings[1]);
+  assertInt("test27-3", 7, nums[0]);
+  assertInt("test27-3", 11, nums[1]);
+  assertInt("test27-3", 13, nums[2]);
+}
+
 int main() {
   test1();
   test2();
