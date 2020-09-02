@@ -881,8 +881,12 @@ InitVal *gvar_init_val(Type *type) {
       while (1) {
         if (consume("}")) break;
         InitVal *v = calloc(1, sizeof(InitVal));
-        Token *ident = consume_ident();
-        if (ident) {
+        if (token->kind == TK_STR) {
+          Token *string = consume_string();
+          v->str = string->str;
+          v->strlen = string->len;
+        } else if (token->kind == TK_IDENT) {
+          Token *ident = consume_ident();
           Var *var = find_gvar(ident);
           v->ident = var->name;
           v->len = var->len;
@@ -1859,7 +1863,6 @@ void program() {
 
   int i = 0;
   while (!at_eof()) {
-    fprintf(stderr, "%d: %s\n", i, line(token->str));
     Node* n = global();
     if (n) {
       code[i++] = n;
