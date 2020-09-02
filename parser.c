@@ -35,7 +35,7 @@ Node *shift();
 Node *unary();
 Node *ternay();
 
-int reduce_node(Node* node);
+int eval_node(Node* node);
 
 // current token
 Token *token;
@@ -445,7 +445,7 @@ Node *consume_enum() {
     evar->len = tok->len;
 
     if (consume("=")) {
-      evar->val = reduce_node(expr());
+      evar->val = eval_node(expr());
       enum_id = evar->val + 1;
     } else {
       evar->val = enum_id++;
@@ -541,6 +541,8 @@ Node *consume_struct() {
   } else {
     node->type = new_type("_", 1, size_struct); // TODO
     node->type->kind = TY_STRUCT;
+
+    // 検索できないので追加もしない
   }
   node->type->members = members;
   return node;
@@ -622,7 +624,7 @@ Node *consume_member() {
   }
 
   while (consume("[")) {
-    int array_len = reduce_node(equality());
+    int array_len = eval_node(equality());
     expect("]");
     node->type = new_array_type(node->type, array_len);
   }
@@ -820,6 +822,9 @@ Node *consume_sizeof() {
   expect("(");
   Type *type = consume_type();
   if (type) {
+    while (type->kind == TY_TYPEDEF) {
+      type = type->to;
+    }
     expect(")");
     return new_node_num(type->size);
   }
@@ -835,7 +840,8 @@ Type *get_type(Node *node) {
       || node->kind == ND_DEREF
       || node->kind == ND_STRUCT
       || node->kind == ND_LVAR) {
-    return node->type;
+    Type *type = node->type;
+    return type;
   }
   return get_type(node->lhs);
 }
@@ -1425,15 +1431,15 @@ int sizeof_args(Vector *args) {
 }
 
 // pre calculation
-int reduce_node(Node* node) {
+int eval_node(Node* node) {
   if (node->kind == ND_NUM) {
     return node->val;
   }
   if (node->kind == ND_TERNARY) {
-    return reduce_node(node->cnd) ? reduce_node(node->thn) : reduce_node(node->els);
+    return eval_node(node->cnd) ? eval_node(node->thn) : eval_node(node->els);
   }
 
-  int lhs_val = reduce_node(node->lhs);
+  int lhs_val = eval_node(node->lhs);
 
   if (node->kind == ND_CAST) {
     if (node->type == bool_type) {
@@ -1471,13 +1477,13 @@ int reduce_node(Node* node) {
   }
 
   if (node->kind == ND_AND) {
-    return lhs_val && reduce_node(node->rhs);
+    return lhs_val && eval_node(node->rhs);
   }
   if (node->kind == ND_OR) {
-    return lhs_val || reduce_node(node->rhs);
+    return lhs_val || eval_node(node->rhs);
   }
 
-  int rhs_val = reduce_node(node->rhs);
+  int rhs_val = eval_node(node->rhs);
   if (node->kind == ND_EQ) {
     return lhs_val == rhs_val;
   }
@@ -1596,7 +1602,7 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
       }
       gvar->str = subnode->ident;
     } else {
-      gvar->val = reduce_node(equality());
+      gvar->val = eval_node(equality());
     }
     gvar->init = 1;
   } else {
