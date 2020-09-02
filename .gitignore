@@ -4,8 +4,10 @@ core
 *.s
 tmp
 38cc
-38cc
+38cc2
+38cc3
 test
 test2
+test3
 *.code-workspace
 sample**
