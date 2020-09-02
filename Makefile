@@ -11,42 +11,60 @@ FILE = test
 
 $(OBJS): 38cc.h $(SRCS)
 
-self: 38cc main.s token.s parser.s codegen.s reader.s debug.s vector.s .test.c .vector.c
+.vector.c: vector.c
+	cpp vector.c .vector.c
+
+.main.c: main.c
+	cpp main.c -o .main.c
+
+.reader.c: reader.c
+	cpp reader.c -o .reader.c
+
+.token.c: token.c
+	cpp token.c -o .token.c
+
+.parser.c: parser.c
+	cpp parser.c -o .parser.c
+
+.test.c: test.c
+	cpp test.c -o .test.c
+
+self: 38cc main.s token.s parser.s codegen.s reader.s debug.s vector.s .test.c
 	$(CC) -o self38cc main.s token.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
 
-	./self38cc .test.c > test.s
-	./self38cc .vector.c > .vector.s
-	$(CC) test.s .vector.s -o test
-	./test
+	#./self38cc .test.c > test2.s
+	#./self38cc .vector.c > vector2.s
+	#./self38cc .reader.c > reader2.s
 
-main.s: main.c
+	#$(CC) test2.s vector2.s -o test2
+	#./test2
+
+main.s: 38cc main.c .main.c
 	$(CC) -S -masm=intel main.c -o main.s
+	#./38cc .main.c > main.s
 
-self-main: 38cc main.c
-	cpp main.c -o .main.c
+self-main: 38cc .main.c
 	./38cc .main.c > main.s
 
-self-reader: 38cc reader.c
-	cpp reader.c -o .reader.c
+self-reader: 38cc .reader.c
 	./38cc .reader.c > reader.s
 
-reader.s: 38cc reader.c
-	$(CC) -S -masm=intel reader.c -o reader.s
-	#cpp reader.c -o .reader.c
-	#./38cc .reader.c > reader.s
+reader.s: 38cc reader.c .reader.c
+	#$(CC) -S -masm=intel reader.c -o reader.s
+	./38cc .reader.c > reader.s
 
-token.s: token.c
-	$(CC) -S -masm=intel token.c -o token.s
-
-self-token: 38cc token.c
-	cpp token.c -o .token.c
+token.s: 38cc token.c .token.c
+	#$(CC) -S -masm=intel token.c -o token.s
 	./38cc .token.c > token.s
 
-parser.s: parser.c
-	$(CC) -S -masm=intel parser.c -o parser.s
+self-token: 38cc token.c .token.c
+	./38cc .token.c > token.s
 
-self-parser: 38cc parser.c
-	cpp parser.c -o .parser.c
+parser.s: 38cc parser.c .parser.c
+	$(CC) -S -masm=intel parser.c -o parser.s
+	#./38cc .parser.c > parser.s
+
+self-parser: 38cc .parser.c
 	./38cc .parser.c > parser.s
 
 codegen.s: codegen.c
@@ -63,20 +81,13 @@ self-debug: 38cc debug.c
 	cpp debug.c -o .debug.c
 	./38cc .debug.c > debug.s
 
-.vector.c: vector.c
-	cpp vector.c .vector.c
-
-vector.s: vector.c
-	#cpp vector.c .vector.c
-	#./38cc .vector.c > vector.s
-	$(CC) -S -masm=intel vector.c -o vector.s
+vector.s: 38cc vector.c .vector.c
+	#$(CC) -S -masm=intel vector.c -o vector.s
+	./38cc .vector.c > vector.s
 
 self-vector: 38cc vector.c
 	cpp vector.c -o .vector.c
 	./38cc .vector.c > vector.s
-
-.test.c: 38cc test.c
-	cpp test.c -o .test.c
 
 test.s: 38cc .test.c
 	./38cc .test.c > test.s

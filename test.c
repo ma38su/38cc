@@ -5,6 +5,8 @@
 
 #include "vector.h"
 
+#include "38cc.h"
+
 //static int debug = 0;
 //extern int debug;
 int debug = 0;
@@ -464,16 +466,21 @@ void test16() {
 } 
 
 typedef struct Nest {
-  enum {
+  enum NestType {
     A = 1,
     B = 3,
   } type;
   char *name;
 } Nest;
 
-void test17() {
+Nest *new_nest(enum NestType type) {
   Nest *nest = calloc(1, sizeof(Nest));
-  nest->type = B;
+  nest->type = type;
+  return nest;
+}
+
+void test17() {
+  Nest *nest = new_nest(B);
   nest->name = "test17";
 
   assertInt("test17-1", 16, sizeof(Nest));
@@ -510,31 +517,6 @@ void test19() {
     assertInt("test19-3", 0, i & ~i);
   }
 }
-
-int add(int v1, int v2) {
-  return v1 + v2;
-}
-
-typedef int (*intint2int) (int, int);
-typedef int intint2int_2 (int, int);
-
-/*
-int fn1(intint2int f) {
-  return f(7, 11);
-}
-
-int fn2(intint2int_2 *f) {
-  return f(3, 5);
-}
-
-void test11() {
-  intint2int f1 = add;
-  assertInt("test11-1", 18, fn1(f1));
-
-  intint2int_2 *f2 = add;
-  assertInt("test11-1", 8, fn2(f2));
-}
-*/
 
 int v20 = 3;
 void test20() {
@@ -593,7 +575,7 @@ void test24() {
 
 void test25() {
   Vector *v = new_vector();
-  assertInt("test24-1", 8, sizeof(v));
+  assertInt("test25-1", 8, sizeof(v));
 
   int v1 = 7;
   int v2 = 11;
@@ -602,20 +584,45 @@ void test25() {
   int *p2;
 
   p1 = &v1;
-  p2 = &v1;
+  p2 = &v2;
 
   vec_add(v, p1);
   vec_add(v, p2);
 
   int *r0 = (int*) vec_get(v, 0);
-  assertInt("test24-2", 7, *r0);
+  assertInt("test25-2", 7, *r0);
 
   int *r1 = (int*) vec_get(v, 1);
-  assertInt("test24-2", 11, *r1);
+  assertInt("test25-3", 11, *r1);
+}
+
+Char *new_char(char c) {
+  Char *ins = calloc(1, sizeof(Char));
+  ins->val = c;
+  return ins;
+}
+
+Token *new_token(TokenKind kind, Token *cur, char *str) {
+  Token *tok = calloc(1, sizeof(Token));
+  tok->kind = kind;
+  tok->str = str;
+  cur->next = tok;
+  return tok;
+}
+
+void test26() {
+  Char *c = new_char('Z');
+  assertInt("test25-1", 8, sizeof(c));
+  assertChar("test25-2", 'Z', c->val);
+
+  Token head;
+  char *str = "{}";
+  Token *token = new_token(TK_RESERVED, &head, str);
+  assertInt("test25-3", 8, sizeof(token));
+  assertInt("test25-3", TK_RESERVED, token->kind);
 }
 
 int main() {
-
   test1();
   test2();
   test3();
@@ -640,8 +647,35 @@ int main() {
   test22();
   test23();
   test24();
+  test25();
+  test26();
   return 0;
 }
+
+int add(int v1, int v2) {
+  return v1 + v2;
+}
+
+typedef int (*intint2int) (int, int);
+typedef int intint2int_2 (int, int);
+
+/*
+int fn1(intint2int f) {
+  return f(7, 11);
+}
+
+int fn2(intint2int_2 *f) {
+  return f(3, 5);
+}
+
+void test11() {
+  intint2int f1 = add;
+  assertInt("test11-1", 18, fn1(f1));
+
+  intint2int_2 *f2 = add;
+  assertInt("test11-1", 8, fn2(f2));
+}
+*/
 
 void assert(char* name, int ret) {
   if (ret) {

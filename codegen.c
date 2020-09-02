@@ -138,7 +138,7 @@ void gen_function_call(Node *node) {
 
 // cast
 void truncate(Type *type) {
-  if (type->kind == TY_TYPEDEF) {
+  if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
     truncate(type->to);
     return;
   }
@@ -399,7 +399,7 @@ void gen_defined(Node *node) {
 }
 
 void gen_deref(Type *type) {
-  if (type->kind == TY_TYPEDEF) {
+  if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
     gen_deref(type->to);
     return;
   }

@@ -5,56 +5,21 @@
 
 #include "38cc.h"
 
-Token *new_token(TokenKind kind, Token *cur, char *str) {
-  Token *tok = calloc(1, sizeof(Token));
-  tok->kind = kind;
-  tok->str = str;
-  cur->next = tok;
-  return tok;
-}
+int is_alnum(char c);
+int lvar_len(char *p0);
+int starts_with(char *p, int pl, char *string);
 
-bool is_alnum(char c) {
-  return ('a' <= c && c <= 'z')
-      || ('A' <= c && c <= 'Z')
-      || ('0' <= c && c <= '9')
-      || (c == '_');
-}
-
-int lvar_len(char *p0) {
-  char *p = p0;
-  if (('a' <= *p && *p <= 'z')
-      || ('A' <= *p && *p <= 'Z')
-      || *p == '_') {
-
-    while (is_alnum(*p)) p++;
-  }
-  return p - p0;
-}
+Token *new_token(TokenKind kind, Token *cur, char *str);
+char *next_ptr(char *p0, char c);
+char to_escape_char(char v);
+char *skip_brackets(char *p);
+Token *read_char_literal(Token *cur, char *p);
+Token *read_str_literal(Token *cur, char *p);
 
 char *next_ptr(char *p0, char c) {
   char *p = p0;
   while (*p != c) p++;
   return p;
-}
-
-char to_escape_char(char v) {
-  if (v == '0') {
-    return '\0';
-  } else if (v == 'a') {
-    return '\a'; // beep
-  } else if (v == 'b') {
-    return '\b'; // backspace
-  } else if (v == 'f') {
-    return '\f';
-  } else if (v == 'n') {
-    return '\n';
-  } else if (v == 'r') {
-    return '\r';
-  } else if (v == 't') {
-    return '\t';
-  } else {
-    return v;
-  }
 }
 
 char *skip_brackets(char *p) {
@@ -76,11 +41,6 @@ char *skip_brackets(char *p) {
     ++p;
   }
   return p;
-}
-
-int starts_with(char *p, int pl, char *string) {
-  int l = strlen(string);
-  return pl == l && memcmp(p, string, l) == 0;
 }
 
 Token *read_char_literal(Token *cur, char *p) {
@@ -263,6 +223,5 @@ Token *tokenize() {
     error_at(p, "unexpected token");
   }
   new_token(TK_EOF, cur, p);
-
   return head.next;
 }

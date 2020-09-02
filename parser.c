@@ -10,12 +10,14 @@ Type *consume_type();
 Node *consume_member();
 int sizeof_lvars();
 GVar *find_gvar(Token *tok);
-GVar *find_or_gen_gstr(Token *tok);
+GVar *find_gstr_or_gen(Token *tok);
 Type *find_type(Token *tok);
-Type *find_or_gen_struct_type(Token *tok);
+Type *find_struct_type_or_gen(Token *tok);
 Type *find_struct_type(Token *tok);
-Type *find_or_gen_union_type(Token *tok);
+Type *find_union_type_or_gen(Token *tok);
 Type *find_union_type(Token *tok);
+Type *find_enum_type(Token *tok);
+Type *find_enum_type_or_gen(Token *tok);
 
 Member *find_member(Vector *members, Token *tok);
 
@@ -351,6 +353,12 @@ Type *consume_type() {
     type = find_union_type(token);
     if (!type) return NULL;
     token = token->next;
+  } else if (consume("enum")) {
+    if (token->kind != TK_IDENT) return NULL;
+
+    type = find_enum_type(token);
+    if (!type) return NULL;
+    token = token->next;
   } else {
     if (token->kind != TK_IDENT) return NULL;
 
@@ -405,7 +413,7 @@ Node *consume_str() {
   if (token->kind != TK_STR) {
     return NULL;
   }
-  GVar *gvar = find_or_gen_gstr(token);
+  GVar *gvar = find_gstr_or_gen(token);
   token = token->next;
 
   Node *node = new_node(ND_GVAR);
@@ -416,10 +424,11 @@ Node *consume_str() {
 }
 
 Node *consume_enum() {
-  if (!consume("enum")) {
-    return NULL;
-  }
 
+  if (!consume("enum")) return NULL;
+
+  Node *node = new_node(ND_ENUM);
+  node->type = int_type;
   Token *tag = consume_ident();
 
   int enum_id = 0;
@@ -437,6 +446,7 @@ Node *consume_enum() {
 
     if (consume("=")) {
       evar->val = reduce_node(expr());
+      enum_id = evar->val + 1;
     } else {
       evar->val = enum_id++;
     }
@@ -447,14 +457,16 @@ Node *consume_enum() {
       break;
     }
   }
-  
-  Node *node = new_node(ND_ENUM);
-  node->type = int_type;
 
   if (tag) {
     node->ident = substring(tag->str, tag->len);
     node->len = tag->len;
+    if (find_enum_type(tag)) error("override enum type");
+    node->type = find_enum_type_or_gen(tag);
+  } else {
+    node->type = int_type;
   }
+
   return node;
 }
 
@@ -509,7 +521,7 @@ Node *consume_struct() {
   if (!consume("{")) {
     if (!tag) error_at(token->str, "illegal struct");
 
-    node->type = find_or_gen_struct_type(tag);
+    node->type = find_struct_type_or_gen(tag);
     return node;
   }
 
@@ -522,8 +534,8 @@ Node *consume_struct() {
 
   int size_struct = fixed_members_offset(members);
   if (tag) {
-    node->type = find_or_gen_struct_type(tag);
-    if (node->type->size != 0) error("override type");
+    node->type = find_struct_type_or_gen(tag);
+    if (node->type->size != 0) error("override struct type");
 
     node->type->size = size_struct;
   } else {
@@ -543,7 +555,7 @@ Node *consume_union() {
   if (!consume("{")) {
     if (!tag) error_at(token->str, "illegal union");
 
-    node->type = find_or_gen_union_type(tag);
+    node->type = find_union_type_or_gen(tag);
     return node;
   }
 
@@ -562,8 +574,8 @@ Node *consume_union() {
   }
 
   if (tag) {
-    node->type = find_or_gen_union_type(tag);
-    if (node->type->size != 0) error("override type");
+    node->type = find_union_type_or_gen(tag);
+    if (node->type->size != 0) error("override union type");
     node->type->size = size_union;
   } else {
     node->type = new_type("_", 1, size_union); // TODO
@@ -928,7 +940,7 @@ Node *primary() {
 
 Member *get_member(Type *type, Token *ident) {
   Type *ty = type;
-  while (ty->kind == TY_TYPEDEF) {
+  while (ty->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
     ty = ty->to;
   }
   if (!ty) error_at(token->str, "no type");
@@ -1644,6 +1656,10 @@ Node *global() {
       return NULL;
     }
     if (node = consume_enum()) {
+      Type *type = node->type;
+      if (!type || (type != int_type && type->kind != TY_ENUM))
+        error_at(token->str, "No defined enum type: %s", substring(type->name, type->size));
+
       Token *ident = consume_ident();
       if (!ident) {
         error_at(token->str, "Illegal typedef enum");
@@ -1793,11 +1809,36 @@ Type *find_type(Token *tok) {
   for (int i = 0; i < types->size; ++i) {
     Type *type = vec_get(types, i);
     if (type->kind == TY_STRUCT) continue;
+    if (type->kind == TY_UNION) continue;
+    if (type->kind == TY_ENUM) continue;
     if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
       return type;
     }
   }
   return NULL;
+}
+
+Type *find_enum_type(Token *tok) {
+  for (int i = 0; i < types->size; ++i) {
+    Type *type = vec_get(types, i);
+    if (type->kind != TY_ENUM) continue;
+    if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
+      return type;
+    }
+  }
+  return NULL;
+}
+
+Type *find_enum_type_or_gen(Token *tok) {
+  Type *type = find_enum_type(tok);
+  if (type) return type;
+
+  type = new_type(tok->str, tok->len, int_type->size);
+  type->kind = TY_ENUM;
+  type->to = int_type;
+
+  vec_add(types, type);
+  return type;
 }
 
 Type *find_union_type(Token *tok) {
@@ -1811,7 +1852,7 @@ Type *find_union_type(Token *tok) {
   return NULL;
 }
 
-Type *find_or_gen_union_type(Token *tok) {
+Type *find_union_type_or_gen(Token *tok) {
   Type *type = find_union_type(tok);
   if (type) return type;
 
@@ -1833,7 +1874,7 @@ Type *find_struct_type(Token *tok) {
   return NULL;
 }
 
-Type *find_or_gen_struct_type(Token *tok) {
+Type *find_struct_type_or_gen(Token *tok) {
   Type *type = find_struct_type(tok);
   if (type) return type;
 
@@ -1930,7 +1971,7 @@ char *gen_gstr_name(int n) {
   return name;
 }
 
-GVar *find_or_gen_gstr(Token *tok) {
+GVar *find_gstr_or_gen(Token *tok) {
   if (globals) {
     for (GVar *var = globals; var; var = var->next) {
       if (*(var->name) == '.'

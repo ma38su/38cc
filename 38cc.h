@@ -62,6 +62,18 @@ typedef enum {
   TK_EOF,       // End of File
 } TokenKind;
 
+typedef enum {
+  TY_VOID,
+  TY_PRM,
+  TY_PTR,
+  TY_ARRAY,
+  TY_FUNCTION,
+  TY_ENUM,
+  TY_UNION,
+  TY_STRUCT,
+  TY_TYPEDEF,
+} TypeKind;
+
 typedef struct Type Type;
 typedef struct Token Token;
 typedef struct Node Node;
@@ -72,16 +84,8 @@ typedef struct Enum Enum;
 typedef struct Member Member;
 
 struct Type {
-  enum {
-    TY_VOID,
-    TY_PRM,
-    TY_PTR,
-    TY_ARRAY,
-    TY_FUNCTION,
-    TY_UNION,
-    TY_STRUCT,
-    TY_TYPEDEF,
-  } kind;
+
+  TypeKind kind;
 
   char *name;
   int len;  // length of string
@@ -195,7 +199,6 @@ char *read_file(char *path);
 
 LVar *find_var(Token *tok);
 LVar *find_lvar(Token *tok);
-Type *find_type(Token *tok);
 
 Token *tokenize();
 void program();
