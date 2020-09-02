@@ -19,7 +19,6 @@ int main(int argc, char **argv) {
   printf("  .file \"%s\"\n", filename);
 
   fprintf(stderr, "read_file! %s\n", filename);
-  //fprintf(stderr, "read_file(%s)\n", filename);
   user_input = read_file(filename);
 
   fprintf(stderr, "tokenize()\n");

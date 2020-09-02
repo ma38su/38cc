@@ -1785,7 +1785,7 @@ Node *global() {
   node = consume_struct_node();
   if (node) {
     if (is_extern) {
-      // 変数宣言
+      // declared variable
       Type *t = node->type;
       while (consume("*")) {
         t = new_ptr_type(t);
@@ -1850,7 +1850,6 @@ Node *global() {
     node->val = sizeof_args(args) + sizeof_lvars();
     node->type = func->type->to;
 
-    // local変数を戻す(サイズ計算後)
     locals = tmp_locals;
 
     if (is_inline) {

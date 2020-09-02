@@ -41,12 +41,13 @@ $(OBJS): 38cc.h $(SRCS)
 self: 38cc main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s .test.c
 	$(CC) -o 38cc2 main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
 
+	./38cc2 .main.c > main2.s
 	./38cc2 .test.c > test2.s
 	./38cc2 .vector.c > vector2.s
 	./38cc2 .reader.c > reader2.s
 	./38cc2 .subtoken.c > subtoken2.s
 
-	$(CC) -o 38cc3 main.s token.s newtoken.s subtoken2.s parser.s codegen.s reader2.s debug.s vector.s $(LDFLAGS)
+	$(CC) -o 38cc3 main.s token.s newtoken.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
 
 	./38cc3 .vector.c > vector3.s
 	./38cc3 .reader.c > reader3.s

@@ -287,9 +287,7 @@ void gen_gvars_uninit() {
 void gen_gvars() {
   int data_count = 0;
   for (Var *var = globals; var; var = var->next) {
-    if (!var->init || var->extn) {
-      continue;
-    }
+    if (!var->init || var->extn) continue;
     data_count++;
   }
   if (data_count == 0) {
@@ -298,9 +296,7 @@ void gen_gvars() {
 
   printf("  .data\n");
   for (Var *var = globals; var; var = var->next) {
-    if (!var->init || var->extn) {
-      continue;
-    }
+    if (!var->init || var->extn) continue;
     if (var->type == char_type) {
       printf("%s:\n", var->name);
       printf("  .byte %d\n", var->init->n);
