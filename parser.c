@@ -572,11 +572,15 @@ Node *consume_union_node() {
   return node;
 }
 
-int sizeof_type(Type *type) {
+Type *raw_type(Type *type) {
   while (type->kind == TY_TYPEDEF) {
     type = type->to;
   }
-  return type->size;
+  return type;
+}
+
+int sizeof_type(Type *type) {
+  return raw_type(type)->size;
 }
 
 Node *consume_member_node() {
@@ -1132,7 +1136,7 @@ Node *unary() {
       if (!ident) error_at(token->str, "no ident");
 
       Member *member = get_member(node->type->to, ident);
-      Node *addr = new_node_lr(ND_SUB, node, new_node_num(member->offset));
+      Node *addr = new_node_lr(ND_ADD, node, new_node_num(member->offset));
       addr->type = new_ptr_type(member->type);
       node = new_node_deref(addr);
       continue;

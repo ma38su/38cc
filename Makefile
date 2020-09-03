@@ -38,26 +38,56 @@ $(OBJS): 38cc.h $(SRCS)
 .test.c: test.c
 	cpp test.c -o .test.c
 
-self: 38cc main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s .test.c
+.sample.c: sample.c
+	cpp sample.c -o .sample.c
+
+38cc2: main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s
 	$(CC) -o 38cc2 main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
 
-	./38cc2 .main.c > main2.s
+self: 38cc2 .test.c
 	./38cc2 .test.c > test2.s
 	./38cc2 .vector.c > vector2.s
-	./38cc2 .reader.c > reader2.s
-	./38cc2 .subtoken.c > subtoken2.s
-
-	$(CC) -o 38cc3 main.s token.s newtoken.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
-
-	./38cc3 .vector.c > vector3.s
-	./38cc3 .reader.c > reader3.s
-	./38cc3 .subtoken.c > subtoken3.s
-	diff reader2.s reader3.s
-	diff subtoken2.s subtoken3.s
-	diff vector2.s vector3.s
-
 	$(CC) test2.s vector2.s -o test2
 	./test2
+
+#	./38cc2 .sample.c > sample2.s
+#	./38cc2 .main.c > main2.s
+#	./38cc2 .test.c > test2.s
+#	./38cc2 .vector.c > vector2.s
+#	./38cc2 .reader.c > reader2.s
+#	./38cc2 .subtoken.c > subtoken2.s
+
+#	$(CC) -o 38cc3 main.s token.s newtoken.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
+
+#	./38cc3 .vector.c > vector3.s
+#	./38cc3 .reader.c > reader3.s
+#	./38cc3 .subtoken.c > subtoken3.s
+#	diff reader2.s reader3.s
+#	diff subtoken2.s subtoken3.s
+#	diff vector2.s vector3.s
+
+#	$(CC) test2.s vector2.s -o test2
+#	./test2
+
+
+sample: 38cc sample.c vector.s
+	$(CC) -S -masm=intel sample.c -o sample-gcc.s
+	gcc -o sample-gcc sample-gcc.s vector.s
+	./sample-gcc
+	
+	cpp sample.c .sample.c
+	./38cc .sample.c > sample-38cc.s
+	gcc -o sample-38cc sample-38cc.s vector.s
+	./sample-38cc
+
+sample-s: sample-gcc.s sample-38cc.s vector.s
+	gcc -o sample-gcc sample-gcc.s vector.s
+	./sample-gcc
+	gcc -o sample-38cc sample-38cc.s vector.s
+	./sample-38cc
+
+sample.s: 38cc sample.c .sample.c
+	./38cc .sample.c > sample.s
 
 main.s: 38cc main.c .main.c
 	$(CC) -S -masm=intel main.c -o main.s
@@ -91,8 +121,8 @@ debug.s: debug.c
 	$(CC) -S -masm=intel debug.c -o debug.s
 
 vector.s: 38cc vector.c .vector.c
-	$(CC) -S -masm=intel vector.c -o vector.s
-	#./38cc .vector.c > vector.s
+	#$(CC) -S -masm=intel vector.c -o vector.s
+	./38cc .vector.c > vector.s
 
 self-main: 38cc .main.c
 	./38cc .main.c > main.s
@@ -131,23 +161,6 @@ test: 38cc test.s vector.s
 test-gcc: test.c
 	$(CC) -o test_gcc test.c vector.c
 	./test_gcc
-
-sample: 38cc sample.c vector.s
-
-	$(CC) -S -masm=intel sample.c -o sample-gcc.s
-	gcc -o sample-gcc sample-gcc.s vector.s
-	./sample-gcc
-
-	cpp sample.c .sample.c
-	./38cc .sample.c > sample-38cc.s
-	gcc -o sample-38cc sample-38cc.s vector.s
-	./sample-38cc
-
-sample-s: sample-gcc.s sample-38cc.s
-	gcc -o sample-gcc sample-gcc.s
-	./sample-gcc
-	gcc -o sample-38cc sample-38cc.s
-	./sample-38cc
 
 maptest:
 	gcc map_test.c map.c -o map_test

@@ -4,7 +4,7 @@
 
 char *filename;
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
   if (argc != 2) {
     fprintf(stderr, "Illegal num of argmuments.\n");
     return 1;

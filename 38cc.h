@@ -194,6 +194,7 @@ extern Type *str_type;
 int type_is_array(Type *type);
 int type_is_ptr(Type *type);
 int sizeof_node(Node* node);
+Type *raw_type(Type *type);
 
 char *substring(char *str, int len);
 char *line(char *p0);

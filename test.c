@@ -578,23 +578,30 @@ void test25() {
   assertInt("test25-1", 8, sizeof(v));
 
   int v1 = 7;
-  int v2 = 11;
+  int v2 = 17;
+  int v3 = 29;
 
   int *p1;
   int *p2;
+  int *p3;
 
   p1 = &v1;
   p2 = &v2;
+  p3 = &v3;
 
   vec_add(v, p1);
   vec_add(v, p2);
+  vec_add(v, p3);
 
   int *r0 = (int*) vec_get(v, 0);
   assertInt("test25-2", 7, *r0);
 
   int *r1 = (int*) vec_get(v, 1);
-  assertInt("test25-3", 11, *r1);
-  assertInt("test25-4", 2, v->size);
+  assertInt("test25-3", 17, *r1);
+
+  int *r2 = (int*) vec_get(v, 2);
+  assertInt("test25-4", 29, *r2);
+  assertInt("test25-5", 3 , v->size);
 }
 
 Char *new_char(char c) {

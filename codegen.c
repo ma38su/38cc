@@ -119,6 +119,7 @@ bool gen_gvar(Node *node) {
   printf("  push rax\n");
   return true;
 }
+
 void gen_function_call(Node *node) {
   if (node->kind != ND_CALL) error("not function call");
 
@@ -743,28 +744,34 @@ bool gen(Node *node) {
 
   gen(node->lhs);
   if (!lhs_is_ptr && rhs_is_ptr) {
-    int rhs_size = sizeof_type(node->rhs->type->to);
-    if (rhs_size == 0) {
-      error("no rhs ptr size: %s",
-        substring(node->lhs->type->to->name, node->lhs->type->to->len));
+    // TODO ptr calc
+    if (raw_type(raw_type(node->rhs->type)->to)->kind != TY_STRUCT) {
+      int rhs_size = sizeof_type(node->rhs->type->to);
+      if (rhs_size == 0) {
+        error("no rhs ptr size: %s",
+          substring(node->lhs->type->to->name, node->lhs->type->to->len));
+      }
+      // for pointer calculation
+      printf("  pop rax\n");
+      printf("  imul rax, %d\n", rhs_size);
+      printf("  push rax\n");
     }
-    // for pointer calculation
-    printf("  pop rax\n");
-    printf("  imul rax, %d\n", rhs_size);
-    printf("  push rax\n");
   }
 
   gen(node->rhs);
   if (lhs_is_ptr && !rhs_is_ptr) {
-    int lhs_size = sizeof_type(node->lhs->type->to);
-    if (lhs_size == 0) {
-      error("no lhs ptr size %s",
-        substring(node->lhs->type->to->name, node->lhs->type->to->len));
+    // TODO ptr calc
+    if (raw_type(raw_type(node->lhs->type)->to)->kind != TY_STRUCT) {
+      int lhs_size = sizeof_type(node->lhs->type->to);
+      if (lhs_size == 0) {
+        error("no lhs ptr size %s",
+          substring(node->lhs->type->to->name, node->lhs->type->to->len));
+      }
+      // for pointer calculation
+      printf("  pop rax\n");
+      printf("  imul rax, %d\n", lhs_size);
+      printf("  push rax\n");
     }
-    // for pointer calculation
-    printf("  pop rax\n");
-    printf("  imul rax, %d\n", lhs_size);
-    printf("  push rax\n");
   }
 
   if (node->kind == ND_SHL) {
