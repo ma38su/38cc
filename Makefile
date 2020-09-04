@@ -71,7 +71,7 @@ self: 38cc2 .test.c
 
 
 sample: 38cc sample.c vector.s
-	$(CC) -S -masm=intel sample.c -o sample-gcc.s
+	$(CC) -O0 -S -masm=intel sample.c -o sample-gcc.s
 	gcc -o sample-gcc sample-gcc.s vector.s
 	./sample-gcc
 	

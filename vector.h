@@ -12,6 +12,7 @@ struct Vector {
 Vector *new_vector();
 
 void vec_add(Vector *vector, void *value);
+void vec_set(Vector *vector, int i, void *value);
 void *vec_get(Vector *vector, int index);
 int vec_contains(Vector *vector, void *value);
 

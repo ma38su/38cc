@@ -216,18 +216,18 @@ void gen_block(Node *node) {
 }
 
 bool gen_while(Node *node) {
-  if (node->kind != ND_WHILE) {
+  if (node->kind != ND_WHILE && node->kind != ND_FOR) {
     error("not while");
   }
 
   int prev_lid = current_lid;
   int lid = current_lid = label_id++;
   printf(".L.begin.%d:\n", lid);
-  gen(node->lhs);
+  gen(node->cnd);
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
   printf("  je  .L.end.%d\n", lid);
-  gen(node->rhs);
+  gen(node->thn);
   printf("  jmp .L.begin.%d\n", lid);
   printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
@@ -257,10 +257,10 @@ bool gen_for(Node *node) {
   if (node->kind != ND_FOR) {
     error("not for");
   }
-  if (node->lhs) {
-    gen(node->lhs);
+  if (node->ini) {
+    gen(node->ini);
   }
-  return gen_while(node->rhs);
+  return gen_while(node);
 }
 
 bool gen_if(Node *node) {
@@ -395,25 +395,18 @@ void gen_defined_function(Node *node) {
   if (node->kind != ND_FUNCTION) {
     error("node is not function");
   }
-  if (!node->lhs) {
-    // skip extern function;
-    return;
-  }
+  if (!node->lhs) return; // skip extern function;
 
   // function label
-  printf("\n");
   printf("  .global %s\n", node->ident);
   printf("%s:\n", node->ident);
   printf("  push rbp\n");
-  printf("  mov rbp, rsp\n\n"); // prologue end
+  printf("  mov rbp, rsp\n"); // prologue end
 
-  int offset = node->val;
+  int offset = node->offset;
   if (offset > 0) {
-    if (offset % 16 != 0) {
-      offset = (offset / 16 + 1) * 16;
-    }
     // allocate local vars
-    printf("  sub rsp, %d # args+lvar\n", offset);
+    printf("  sub rsp, %d\n", offset);
   }
 
   // extract args

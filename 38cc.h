@@ -113,6 +113,7 @@ struct Node {
   Node *rhs;    // right-hand side
 
   // if, ?:
+  Node *ini;
   Node *cnd;    // condition
   Node *thn;    // then
   Node *els;    // else

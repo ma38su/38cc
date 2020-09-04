@@ -33,6 +33,14 @@ void vec_add(Vector *vector, void *value) {
   vector->_array[vector->size++] = value;
 }
 
+void vec_set(Vector *vector, int i, void *value) {
+  if (i >= vector->size) {
+    fprintf(stderr, "array out of exception: %d >= %d", i, vector->size);
+    return;
+  }
+  vector->_array[i] = value;
+}
+
 void *vec_get(Vector *vector, int index) {
   return vector->_array[index];
 }

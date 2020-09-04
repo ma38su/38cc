@@ -162,6 +162,11 @@ Token *tokenize() {
       continue;
     }
 
+    if (*p == '0' && (*(p + 1) == 'x' || *(p + 1) == 'X')) {
+      cur = new_token(TK_NUM, cur, p);
+      cur->val = strtol(p, &p, 16);
+      continue;
+    }
     if (isdigit(*p)) {
       cur = new_token(TK_NUM, cur, p);
       cur->val = strtol(p, &p, 10);

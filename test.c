@@ -569,8 +569,24 @@ typedef union LongUnion LongUnion;
 
 void test24() {
   assertInt("test24-1", 4, sizeof(IntUnion));
-  assertInt("test24-1", 8, sizeof(union LongUnion));
-  assertInt("test24-1", 8, sizeof(LongUnion));
+  assertInt("test24-2", 8, sizeof(union LongUnion));
+  assertInt("test24-3", 8, sizeof(LongUnion));
+
+  IntUnion val;
+  val.v2 = 0xF1F2F3F4;
+
+  assertInt("test24-4", 0xfffffff4, val.v1);
+  assertInt("test24-5", 0xf1f2f3f4, val.v2);
+  assertInt("test24-6", 0xfffff3f4, val.v3);
+
+  val.v1 = 0xF7;
+  assertInt("test24-7", 0xfffffff7, val.v1);
+  assertInt("test24-8", 0xf1f2f3f7, val.v2);
+  assertInt("test24-9", 0xfffff3f7, val.v3);
+  val.v3 = (short) 0x3333E137;
+  assertInt("test24-10", 0x00000037, val.v1);
+  assertInt("test24-11", 0xF1F2E137, val.v2);
+  assertInt("test24-12", 0xFFFFE137, val.v3);
 }
 
 void test25() {

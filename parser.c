@@ -788,14 +788,14 @@ Vector *expect_defined_args() {
 
     if (tok) {
       Var *lvar = new_lvar(tok, type);
+      int size_t = sizeof_type(type);
       if (locals) {
-        lvar->offset = locals->offset + sizeof_type(type);
+        lvar->offset = locals->offset + size_t;
       } else {
-        lvar->offset = sizeof_type(type);
+        lvar->offset = size_t;
       }
       lvar->next = locals;
       locals = lvar;
-
       node->ident = substring(tok->str, tok->len);
       node->len = tok->len;
       node->offset = lvar->offset;
@@ -1125,6 +1125,7 @@ Node *unary() {
       int new_offset = node->offset - member->offset;
 
       node = new_node(ND_LVAR);
+      node->ident = substring(ident->str, ident->len);
       node->offset = new_offset;
       node->type = member->type;
 
@@ -1365,6 +1366,7 @@ Node *declaration(void) {
   if (!lvar) return NULL;
 
   Node *node = new_node(ND_LVAR);
+  node->ident = substring(lvar->name, lvar->len);
   node->offset = lvar->offset;
   node->type = lvar->type;
   if (consume("=")) {
@@ -1446,9 +1448,9 @@ Node *stmt() {
   if (consume("while")) {
     node = new_node(ND_WHILE);
     expect("(");
-    node->lhs = expr();
+    node->cnd = expr();
     expect(")");
-    node->rhs = stmt();
+    node->thn = stmt();
 
     // scope out
     locals = tmp_locals;
@@ -1463,29 +1465,27 @@ Node *stmt() {
     if (!consume(";")) {
       Node *d = declaration();
       if (d) {
-        node->lhs = d;
+        node->ini = d;
       } else {
-        node->lhs = expr();
+        node->ini = expr();
       }
       expect(";");
     }
 
-    Node *node_while = new_node(ND_WHILE);
-    node->rhs = node_while;
     if (consume(";")) {
-      node_while->lhs = new_node_num(1);
+      node->cnd = new_node_num(1);
     } else {
-      node_while->lhs = expr();
+      node->cnd = expr();
       expect(";");
     }
     if (consume(")")) {
-      node_while->rhs = stmt();
+      node->thn = stmt();
     } else {
       Node *sub = new_node(ND_NONE);
       sub->rhs = expr();
       expect(")");
       sub->lhs = stmt();
-      node_while->rhs = sub;
+      node->thn = sub;
     }
 
     // scope out
@@ -1667,6 +1667,52 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
   return node;
 }
 
+void fixed_lvar_offset(Node *node, int frame_size) {
+  if (!node) return;
+  if (node->kind == ND_LVAR) {
+    char *node_ident = substring(node->ident, node->len);
+    fprintf(stderr, "%s offset1: %d\n", node_ident, node->offset);
+    node->offset = frame_size - node->offset;
+    fprintf(stderr, "%s offset2: %d\n", node_ident, node->offset);
+
+    Token t;
+    t.str = node->ident;
+    t.len = node->len;
+    Var *var = find_lvar(&t);
+    if (var) {
+      fprintf(stderr, "offset1: %d\n", node->offset);
+      var->offset = frame_size - var->offset;
+      fprintf(stderr, "offset2: %d\n", node->offset);
+    }
+  } else if (node->kind == ND_FUNCTION) {
+    Vector *list = node->list;
+    if (list) {
+      for (int i = 0; i < list->size; ++i) {
+        Node *n = vec_get(list, i);
+        fixed_lvar_offset(n, frame_size);
+      }
+    }
+    fixed_lvar_offset(node->lhs, frame_size);
+  } else if (node->kind == ND_BLOCK) {
+    Vector *list = node->list;
+    for (int i = 0; i < list->size; ++i) {
+      Node *n = vec_get(list, i);
+      fixed_lvar_offset(n, frame_size);
+    }
+  } else if (node->kind == ND_IF) {
+    fixed_lvar_offset(node->thn, frame_size);
+    fixed_lvar_offset(node->els, frame_size);
+  } else if (node->kind == ND_DO || node->kind == ND_WHILE) {
+    fixed_lvar_offset(node->thn, frame_size);
+  } else if (node->kind == ND_FOR) {
+    fixed_lvar_offset(node->ini, frame_size);
+    fixed_lvar_offset(node->thn, frame_size);
+  } else if (node->kind == ND_NONE) {
+    fixed_lvar_offset(node->lhs, frame_size);
+    fixed_lvar_offset(node->rhs, frame_size);
+  }
+}
+
 Node *global() {
 
   if (consume("typedef")) {
@@ -1837,14 +1883,24 @@ Node *global() {
       }
     }
 
+    int size_lvars = sizeof_lvars();
+    if ((size_lvars & 15) != 0) {
+      size_lvars = (size_lvars / 16 + 1) * 16;
+    }
     node = new_node(ND_FUNCTION);
     node->list = args;
     node->ident = substring(tok->str, tok->len);
     node->len = tok->len;
     node->lhs = block;
-    node->val = sizeof_lvars();
+    node->offset = size_lvars;
     node->type = func->type->to;
 
+    /*
+    if (block) {
+      fixed_lvar_offset(node, size_lvars);
+    }
+    */
+    
     locals = tmp_locals;
 
     if (is_inline) {
@@ -1857,6 +1913,8 @@ Node *global() {
     return new_gvar_node(tok, type, is_extern);
   }
 }
+
+
 
 void dump_types() {
   fprintf(stderr, "-- dump types begin --\n");
