@@ -523,6 +523,11 @@ bool gen(Node *node) {
   if (!node) {
     error("node is NULL");
   }
+  if (node->kind == ND_COMMENT) {
+    printf("  ### %s\n", node->ident);
+    return gen(node->lhs);
+  }
+
   if (node->kind == ND_NONE) {
     if (node->lhs) {
       gen(node->lhs);

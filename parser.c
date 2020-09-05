@@ -475,27 +475,23 @@ Node *consume_enum_node() {
   return node;
 }
 
+int align(int offset, int size) {
+  if ((offset & (size - 1)) == 0)
+    return offset;
+  return ((offset / size) + 1) * size;
+}
+
 int fixed_members_offset(Vector *members) {
   int unit = 1;
   int offset = 0;
   for (int i = 0; i < members->size; ++i) {
     Member *mem = vec_get(members, i);
     int size_mem = sizeof_type(mem->type);
-    if (unit < size_mem) {
-      unit = size_mem > 8 ? 8 : size_mem;
-    }
-
-    mem->offset = offset;
-    if ((offset % size_mem) == 0) {
-      offset += size_mem;
-    } else {
-      offset = (offset / size_mem + 2) * size_mem;
-    }
+    if (unit < size_mem) unit = size_mem;
+    mem->offset = offset = align(offset, size_mem);
+    offset += size_mem;
   }
-  
-  if ((offset % unit) != 0) {
-    offset = (offset / unit + 1) * unit;
-  }
+  offset = align(offset, unit);
   return offset;
 }
 
@@ -522,12 +518,10 @@ Node *consume_struct_node() {
   if (tag) {
     node->type = find_struct_type_or_gen(tag);
     if (node->type->size != 0) error("override struct type");
-
     node->type->size = size_struct;
   } else {
     node->type = new_type("_", 1, size_struct); // TODO
     node->type->kind = TY_STRUCT;
-
     // 検索できないので追加もしない
   }
   node->type->members = members;
@@ -942,6 +936,11 @@ Node *primary() {
   Node *node;
   Token *tok;
 
+  node = consume_sizeof_node();
+  if (node) {
+    return node;
+  }
+
   if (consume("(")) {
     Type *type = consume_type();
     if (type) error_at(token->str, "illegal cast");
@@ -980,7 +979,7 @@ Node *primary() {
         node->type = lvar->type->to;
         node->val = 0;
       } else {
-        error(tok->str, "function is not found: %s", substring(tok->str, tok->len));
+        error_at(tok->str, "function is not found");
       }
     }
 
@@ -1049,52 +1048,17 @@ Member *get_member(Type *type, Token *ident) {
   return member;
 }
 
-Node *unary() {
-  // pre ++
-  if (consume("++")) {
-    Node *node = primary();
-    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_node_num(1)));
-  }
-  // pre -- 
-  if (consume("--")) {
-    Node *node = primary();
-    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_node_num(1)));
-  }
-  if (consume("-")) {
-    return new_node_lr(ND_SUB, new_node_num(0), primary());
-  }
-  if (consume("+")) {
-    return primary();
-  }
-  if (consume("~")) {
-    Node *node = new_node(ND_BITNOT);
-    node->lhs = unary();
-    node->type = int_type;
-    return node;
-  }
-  if (consume("!")) {
-    Node *node = new_node(ND_NOT);
-    node->lhs = unary();
-    node->type = int_type;
-    return node;
-  }
+Node *new_comment(Node *node, char *comment) {
+  Node *n = new_node(ND_COMMENT);
+  n->lhs = node;
+  n->type = node->type;
+  n->ident = comment;
+  return n;
+}
 
-  if (consume("*")) {
-    return new_node_deref(unary());
-  }
-  if (consume("&")) {
-    Node *node = new_node(ND_ADDR);
-    node->lhs = unary();
-    node->type = new_ptr_type(node->lhs->type);
-    return node;
-  }
+Node *postfix() {
 
-  Node *node = consume_sizeof_node();
-  if (node) {
-    return node;
-  }
-
-  node = primary();
+  Node *node = primary();
 
   for (;;) {
     // post ++ or --
@@ -1129,6 +1093,13 @@ Node *unary() {
       node->offset = new_offset;
       node->type = member->type;
 
+      /*
+      node = new_comment(node, node->ident);
+      char* buf = calloc(10, sizeof(char));
+      sprintf(buf, "offset: %d, member: %d", node->offset, member->offset);
+      node = new_comment(node, buf);
+      */
+
       continue;
     }
 
@@ -1144,6 +1115,48 @@ Node *unary() {
     }
     return node;
   }
+}
+
+Node *unary() {
+  // pre ++
+  if (consume("++")) {
+    Node *node = primary();
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_node_num(1)));
+  }
+  // pre -- 
+  if (consume("--")) {
+    Node *node = primary();
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_node_num(1)));
+  }
+  if (consume("-")) {
+    Node *node = primary();
+    return new_node_lr(ND_SUB, new_node_num(0), node);
+  }
+  if (consume("+")) {
+    return primary();
+  }
+  if (consume("~")) {
+    Node *node = new_node(ND_BITNOT);
+    node->lhs = unary();
+    node->type = int_type;
+    return node;
+  }
+  if (consume("!")) {
+    Node *node = new_node(ND_NOT);
+    node->lhs = unary();
+    node->type = int_type;
+    return node;
+  }
+  if (consume("*")) {
+    return new_node_deref(unary());
+  }
+  if (consume("&")) {
+    Node *node = new_node(ND_ADDR);
+    node->lhs = unary();
+    node->type = new_ptr_type(node->lhs->type);
+    return node;
+  }
+  return postfix();
 }
 
 Node *consume_cast_node() {
@@ -1907,7 +1920,6 @@ Node *global() {
       vec_add(inlines, node);
       return NULL;
     }
-
     return node;
   } else {
     return new_gvar_node(tok, type, is_extern);

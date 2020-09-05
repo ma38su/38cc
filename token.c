@@ -183,7 +183,9 @@ Token *tokenize() {
     int l = lvar_len(p);
     if (l > 0) {
       // skip
-      if (starts_with(p, l, "static")) {
+      if (starts_with(p, l, "static")
+          || starts_with(p, l, "unsigned")
+          || starts_with(p, l, "signed")) {
         p += l;
         continue;
       }

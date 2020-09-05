@@ -51,6 +51,8 @@ typedef enum {
   ND_DO,          // 43 do
   ND_LABEL,       // 44
 
+  ND_COMMENT,
+
 } NodeKind;
 
 typedef enum {

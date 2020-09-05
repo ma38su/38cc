@@ -288,20 +288,20 @@ void test7() {
   assertInt("test7-18", 4, sizeof(int_array_7[1]));
 
   assertInt("test7-19", 1, sizeof(struct Char));
-  assertInt("test7-19", 1, sizeof(Char));
-  assertInt("test7-20", 2, sizeof(Short));
-  assertInt("test7-21", 4, sizeof(Int));
+  assertInt("test7-20", 1, sizeof(Char));
+  assertInt("test7-21", 2, sizeof(Short));
+  assertInt("test7-22", 4, sizeof(Int));
 
-  assertInt("test7-22", 4, sizeof(ShortChar));
-  assertInt("test7-23", 8, sizeof(IntChar));
-  assertInt("test7-24", 16, sizeof(LongChar));
-  assertInt("test7-25", 24, sizeof(CharLongChar));
-  assertInt("test7-26", 16, sizeof(CharCharLong));
-  assertInt("test7-27", 8, sizeof(IntShortShort));
-  assertInt("test7-28", 12, sizeof(ShortIntShort));
+  assertInt("test7-23", 4, sizeof(ShortChar));
+  assertInt("test7-24", 8, sizeof(IntChar));
+  assertInt("test7-25", 16, sizeof(LongChar));
+  assertInt("test7-26", 24, sizeof(CharLongChar));
+  assertInt("test7-27", 16, sizeof(CharCharLong));
+  assertInt("test7-28", 8, sizeof(IntShortShort));
+  assertInt("test7-29", 12, sizeof(ShortIntShort));
 
-  assertInt("test7-29", 24, sizeof(LongLongLong));
-  assertInt("test7-30", 12, sizeof(IntIntInt));
+  assertInt("test7-30", 24, sizeof(LongLongLong));
+  assertInt("test7-31", 12, sizeof(IntIntInt));
 }
 
 //struct User User;
@@ -568,13 +568,14 @@ union LongUnion {
 typedef union LongUnion LongUnion;
 
 void test24() {
+
   assertInt("test24-1", 4, sizeof(IntUnion));
   assertInt("test24-2", 8, sizeof(union LongUnion));
   assertInt("test24-3", 8, sizeof(LongUnion));
 
   IntUnion val;
-  val.v2 = 0xF1F2F3F4;
 
+  val.v2 = 0xF1F2F3F4;
   assertInt("test24-4", 0xfffffff4, val.v1);
   assertInt("test24-5", 0xf1f2f3f4, val.v2);
   assertInt("test24-6", 0xfffff3f4, val.v3);
@@ -583,7 +584,7 @@ void test24() {
   assertInt("test24-7", 0xfffffff7, val.v1);
   assertInt("test24-8", 0xf1f2f3f7, val.v2);
   assertInt("test24-9", 0xfffff3f7, val.v3);
-  val.v3 = (short) 0x3333E137;
+  val.v3 = (short) 0xE137;
   assertInt("test24-10", 0x00000037, val.v1);
   assertInt("test24-11", 0xF1F2E137, val.v2);
   assertInt("test24-12", 0xFFFFE137, val.v3);
@@ -686,9 +687,16 @@ void test27() {
 }
 
 void test28() {
-  int a[2];
-  a[0] = 3;
-  assertInt("test28-1", 3, a[0]);
+
+  int d[2];
+  d[0] = 3;
+
+  short a = 0xF718;
+  int b = a;
+  char c = (char) b;
+  assertInt("test28-1", 0xFFFFF718, b);
+  assertInt("test28-2", 0x18, c);
+  assertInt("test28-3", 3, d[0]);
 }
 
 int main() {
