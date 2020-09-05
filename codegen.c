@@ -197,8 +197,6 @@ void truncate(Type *type) {
     printf("  movsx rax, ax\n");
   } else if (size == 4) {
     printf("  movsxd rax, eax\n");
-  } else {
-    fprintf(stderr, "warn: unsupported case? - size: %d", size);
   }
   printf("  push rax\n");
 }

@@ -1,6 +1,6 @@
 CFLAGS=-Wall -std=c11 -g -static
-SRCS=main.c token.c newtoken.c subtoken.c parser.c codegen.c reader.c debug.c vector.c
-OBJS=main.o token.o newtoken.o subtoken.o parser.o codegen.o reader.o debug.o vector.o
+SRCS=main.c token.c subtoken.c parser.c codegen.c reader.c debug.c vector.c
+OBJS=main.o token.o subtoken.o parser.o codegen.o reader.o debug.o vector.o
 #SRCS=$(wildcard *.c)
 #OBJS=$(SRCS:.c=.o)
 
@@ -26,14 +26,14 @@ $(OBJS): 38cc.h $(SRCS)
 .subtoken.c: subtoken.c
 	cpp subtoken.c -o .subtoken.c
 
-.newtoken.c: newtoken.c
-	cpp newtoken.c -o .newtoken.c
-
 .parser.c: parser.c
 	cpp parser.c -o .parser.c
 
 .codegen.c: codegen.c
 	cpp codegen.c -o .codegen.c
+
+.debug.c: debug.c
+	cpp debug.c -o .debug.c
 
 .test.c: test.c
 	cpp test.c -o .test.c
@@ -41,8 +41,8 @@ $(OBJS): 38cc.h $(SRCS)
 .sample.c: sample.c
 	cpp sample.c -o .sample.c
 
-38cc2: main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s
-	$(CC) -o 38cc2 main.s token.s newtoken.s subtoken.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
+38cc2: main.s token.s subtoken.s parser.s codegen.s reader.s debug.s vector.s
+	$(CC) -o 38cc2 main.s token.s subtoken.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
 
 self: 38cc2 .test.c
 	./38cc2 .test.c > test2.s
@@ -57,7 +57,7 @@ self: 38cc2 .test.c
 #	./38cc2 .reader.c > reader2.s
 #	./38cc2 .subtoken.c > subtoken2.s
 
-#	$(CC) -o 38cc3 main.s token.s newtoken.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
+#	$(CC) -o 38cc3 main.s token.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
 
 #	./38cc3 .vector.c > vector3.s
 #	./38cc3 .reader.c > reader3.s
@@ -89,25 +89,25 @@ sample-s: sample-gcc.s sample-38cc.s vector.s
 sample.s: 38cc sample.c .sample.c
 	./38cc .sample.c > sample.s
 
-main.s: 38cc main.c .main.c
-	$(CC) -S -masm=intel main.c -o main.s
-	#./38cc .main.c > main.s
-
 reader.s: 38cc reader.c .reader.c
 	#$(CC) -S -masm=intel reader.c -o reader.s
 	./38cc .reader.c > reader.s
-
-token.s: 38cc token.c .token.c
-	$(CC) -S -masm=intel token.c -o token.s
-	#./38cc .token.c > token.s
 
 subtoken.s: 38cc subtoken.c .subtoken.c
 	#$(CC) -S -masm=intel subtoken.c -o subtoken.s
 	./38cc .subtoken.c > subtoken.s
 
-newtoken.s: 38cc newtoken.c .newtoken.c
-	$(CC) -S -masm=intel newtoken.c -o newtoken.s
-	#./38cc .newtoken.c > newtoken.s
+vector.s: 38cc vector.c .vector.c
+	#$(CC) -S -masm=intel vector.c -o vector.s
+	./38cc .vector.c > vector.s
+
+main.s: 38cc main.c .main.c
+	$(CC) -S -masm=intel main.c -o main.s
+	#./38cc .main.c > main.s
+
+token.s: 38cc token.c .token.c
+	$(CC) -S -masm=intel token.c -o token.s
+	#./38cc .token.c > token.s
 
 parser.s: 38cc parser.c .parser.c
 	$(CC) -S -masm=intel parser.c -o parser.s
@@ -117,12 +117,9 @@ codegen.s: 38cc codegen.c .codegen.c
 	$(CC) -S -masm=intel codegen.c -o codegen.s
 	#./38cc .codegen.c > codegen.s
 
-debug.s: debug.c
+debug.s: 38cc debug.c .debug.c
 	$(CC) -S -masm=intel debug.c -o debug.s
-
-vector.s: 38cc vector.c .vector.c
-	#$(CC) -S -masm=intel vector.c -o vector.s
-	./38cc .vector.c > vector.s
+	#./38cc .debug.c > debug.s
 
 self-main: 38cc .main.c
 	./38cc .main.c > main.s

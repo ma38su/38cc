@@ -16,12 +16,6 @@ char *skip_brackets(char *p);
 Token *read_char_literal(Token *cur, char *p);
 Token *read_str_literal(Token *cur, char *p);
 
-char *next_ptr(char *p0, char c) {
-  char *p = p0;
-  while (*p != c) p++;
-  return p;
-}
-
 char *skip_brackets(char *p) {
   // skip (*)
   while (isspace(*p)) ++p;
@@ -41,41 +35,6 @@ char *skip_brackets(char *p) {
     ++p;
   }
   return p;
-}
-
-Token *read_char_literal(Token *cur, char *p) {
-  // character literal
-  if (*p != '\'') return NULL;
-
-  Token *tok = new_token(TK_CHAR, cur, ++p);
-  if (*p == '\\') {
-    tok->len = 2;
-    tok->val = to_escape_char(*(++p));
-  } else {
-    tok->len = 1;
-    tok->val = *p;
-  }
-  if (*(++p) != '\'') {
-    error_at(tok->str, "unexpected token. expected token is \"'\"");
-  }
-  return tok;
-}
-
-Token *read_str_literal(Token *cur, char *p) {
-  if (*p != '"') return NULL;
-
-  char* p0 = ++p;
-  while (*p) {
-    p = next_ptr(p, '"');
-    if (*(p - 1) != '\\') break;
-    p++;
-  }
-
-  Token *tok = new_token(TK_STR, cur, p0);
-  tok->len = p - p0;
-  p++;
-
-  return tok;
 }
 
 Token *tokenize() {

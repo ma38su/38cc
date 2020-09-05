@@ -141,7 +141,7 @@ void test4() {
   sprintf(buf, "%s, World", s1);
   assertStr("test4-7", buf, "Hello, World");
 
-    sprintf(buf, "%s, %s", s1, s2);
+  sprintf(buf, "%s, %s", s1, s2);
   assertStr("test4-8", buf, "Hello, World");
 }
 
@@ -252,6 +252,27 @@ typedef struct {
   int val3;
 } IntIntInt;
 
+typedef struct {
+  char val1;
+  short val2;
+  int val3;
+  long val4;
+} CharShortIntLong;
+
+typedef struct {
+  long val1;
+  int val2;
+  short val3;
+  char val4;
+} LongIntShortChar;
+
+typedef struct {
+  char val1;
+  long val2;
+  int val3;
+  short val4;
+} CharLongIntShort;
+
 void test7() {
 
   char char_val;
@@ -302,6 +323,38 @@ void test7() {
 
   assertInt("test7-30", 24, sizeof(LongLongLong));
   assertInt("test7-31", 12, sizeof(IntIntInt));
+
+  CharLongChar val1;
+  assertInt("test7-32", 0, (unsigned long) &val1.val1 - (unsigned long) &val1);
+  assertInt("test7-33", 8, (unsigned long) &val1.val2 - (unsigned long) &val1);
+  assertInt("test7-34", 16, (unsigned long) &val1.val3 - (unsigned long) &val1);
+
+  CharCharLong val2;
+  assertInt("test7-35", 0, (unsigned long) &val2.val1 - (unsigned long) &val2);
+  assertInt("test7-36", 1, (unsigned long) &val2.val2 - (unsigned long) &val2);
+  assertInt("test7-37", 8, (unsigned long) &val2.val3 - (unsigned long) &val2);
+
+  CharShortIntLong val3;
+  assertInt("test7-38", 16, sizeof(val3));
+  assertInt("test7-39", 0, (unsigned long) &val3.val1 - (unsigned long) &val3);
+  assertInt("test7-40", 0, (unsigned long) &val3.val1 - (unsigned long) &val3);
+  assertInt("test7-41", 2, (unsigned long) &val3.val2 - (unsigned long) &val3);
+  assertInt("test7-42", 4, (unsigned long) &val3.val3 - (unsigned long) &val3);
+  assertInt("test7-43", 8, (unsigned long) &val3.val4 - (unsigned long) &val3);
+
+  LongIntShortChar val4;
+  assertInt("test7-44", 16, sizeof(val4));
+  assertInt("test7-45", 0, (unsigned long) &val4.val1 - (unsigned long) &val4);
+  assertInt("test7-46", 8, (unsigned long) &val4.val2 - (unsigned long) &val4);
+  assertInt("test7-47", 12, (unsigned long) &val4.val3 - (unsigned long) &val4);
+  assertInt("test7-48", 14, (unsigned long) &val4.val4 - (unsigned long) &val4);
+
+  CharLongIntShort val5;
+  assertInt("test7-49", 24, sizeof(val5));
+  assertInt("test7-50", 0, (unsigned long) &val5.val1 - (unsigned long) &val5);
+  assertInt("test7-51", 8, (unsigned long) &val5.val2 - (unsigned long) &val5);
+  assertInt("test7-52", 16, (unsigned long) &val5.val3 - (unsigned long) &val5);
+  assertInt("test7-53", 20, (unsigned long) &val5.val4 - (unsigned long) &val5);
 }
 
 //struct User User;
