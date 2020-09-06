@@ -1906,22 +1906,13 @@ Node *global() {
     }
 
     int size_lvars = sizeof_lvars();
-    if ((size_lvars & 15) != 0) {
-      size_lvars = (size_lvars / 16 + 1) * 16;
-    }
     node = new_node(ND_FUNCTION);
     node->list = args;
     node->ident = substring(tok->str, tok->len);
     node->len = tok->len;
     node->lhs = block;
-    node->offset = align(size_lvars, 16);
+    node->offset = size_lvars;
     node->type = func->type->to;
-
-    /*
-    if (block) {
-      fixed_lvar_offset(node, size_lvars);
-    }
-    */
     
     locals = tmp_locals;
 
@@ -2157,11 +2148,14 @@ Var *find_gstr_or_gen(Token *tok) {
 
 int sizeof_lvars() {
   int size = 0;
-  int offset = 0;
+  //int offset = 0;
   for (Var *var = locals; var; var = var->next) {
+    size += sizeof_type(var->type);
+    /*
     int size = sizeof_type(var->type);
     offset = align(offset, size);
+    */
   }
-  return size;
+  return align(size, 16);
 }
 
