@@ -188,6 +188,7 @@ void truncate(Type *type) {
   if (type == bool_type) {
     printf("  cmp rax, 0\n");
     printf("  setne al\n");
+    printf("  movzb rax, al\n");
   }
 
   int size = sizeof_type(type);
@@ -595,6 +596,12 @@ bool gen(Node *node) {
       printf("  pop rax\n");
 
       Node *lhs = node->lhs;
+      if (lhs->type == bool_type) {
+        printf("  cmp rax, 0\n");
+        printf("  setne al\n");
+        printf("  movzb rax, al\n");
+      }
+
       if (lhs->type == char_type) {
         printf("  movsx byte ptr %s[rip], rax\n", name);
       } else if (lhs->type == short_type) {
@@ -614,7 +621,12 @@ bool gen(Node *node) {
       printf("  # assign\n");
       printf("  pop rdi\n");
       printf("  pop rax\n");
-
+      
+      if (node->lhs->type == bool_type) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+      }
       if (size == 1) {
         printf("  mov [rax], dil\n");
         //printf("  mov byte ptr [rax], dil\n");

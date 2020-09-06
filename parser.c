@@ -8,23 +8,27 @@
 
 int sizeof_type(Type *type);
 int sizeof_lvars();
+int gvar_has_circular();
+int align(int offset, int size);
+int eval_node(Node* node);
+
 Type *consume_type();
 Member *consume_member();
 Var *find_gvar(Token *tok);
 Var *find_gstr_or_gen(Token *tok);
+
 Type *find_type(Token *tok);
+
 Type *find_struct_type_or_gen(Token *tok);
 Type *find_struct_type(Token *tok);
-Type *find_union_type_or_gen(Token *tok);
-Type *find_union_type(Token *tok);
-Type *find_enum_type(Token *tok);
-Type *find_enum_type_or_gen(Token *tok);
-
 Member *find_member(Vector *members, Token *tok);
 
-Enum *find_enum(Token *tok);
+Type *find_union_type_or_gen(Token *tok);
+Type *find_union_type(Token *tok);
 
-int gvar_has_circular();
+Enum *find_enum(Token *tok);
+Type *find_enum_type(Token *tok);
+Type *find_enum_type_or_gen(Token *tok);
 
 Node *new_node(NodeKind kind);
 Node *stmt();
@@ -36,8 +40,6 @@ Node *shift();
 Node *unary();
 Node *ternay();
 int expect_number();
-
-int eval_node(Node* node);
 
 // current token
 Token *token;
@@ -283,10 +285,17 @@ Node *new_node_lr(NodeKind kind, Node *lhs, Node *rhs) {
   return node;
 }
 
-Node *new_node_num(int val) {
+Node *new_int_node(int val) {
   Node *node = new_node(ND_NUM);
   node->val = val;
   node->type = int_type;
+  return node;
+}
+
+Node *new_long_node(int val) {
+  Node *node = new_node(ND_NUM);
+  node->val = val;
+  node->type = long_type;
   return node;
 }
 
@@ -817,12 +826,12 @@ Node *consume_sizeof_node() {
   Type *type = consume_type();
   if (type) {
     expect(")");
-    return new_node_num(sizeof_type(type));
+    return new_long_node(sizeof_type(type));
   }
 
   Node *node = equality();
   expect(")");
-  return new_node_num(sizeof_node(node));
+  return new_long_node(sizeof_node(node));
 }
 
 Type *get_type(Node *node) {
@@ -962,7 +971,7 @@ Node *primary() {
 
   tok = consume_ident();
   if (!tok) {
-    return new_node_num(expect_number());
+    return new_int_node(expect_number());
   }
 
   // function call
@@ -1063,11 +1072,11 @@ Node *postfix() {
   for (;;) {
     // post ++ or --
     if (consume("++")) {
-      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_node_num(1)));
+      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_int_node(1)));
       continue;
     }
     if (consume("--")) {
-      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_node_num(1)));
+      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_int_node(1)));
       continue;
     }
 
@@ -1108,7 +1117,7 @@ Node *postfix() {
       if (!ident) error_at(token->str, "no ident");
 
       Member *member = get_member(node->type->to, ident);
-      Node *addr = new_node_lr(ND_ADD, node, new_node_num(member->offset));
+      Node *addr = new_node_lr(ND_ADD, node, new_int_node(member->offset));
       addr->type = new_ptr_type(member->type);
       node = new_node_deref(addr);
       continue;
@@ -1121,16 +1130,16 @@ Node *unary() {
   // pre ++
   if (consume("++")) {
     Node *node = primary();
-    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_node_num(1)));
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_int_node(1)));
   }
   // pre -- 
   if (consume("--")) {
     Node *node = primary();
-    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_node_num(1)));
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_int_node(1)));
   }
   if (consume("-")) {
     Node *node = primary();
-    return new_node_lr(ND_SUB, new_node_num(0), node);
+    return new_node_lr(ND_SUB, new_int_node(0), node);
   }
   if (consume("+")) {
     return primary();
@@ -1486,7 +1495,7 @@ Node *stmt() {
     }
 
     if (consume(";")) {
-      node->cnd = new_node_num(1);
+      node->cnd = new_int_node(1);
     } else {
       node->cnd = expr();
       expect(";");
@@ -1905,7 +1914,7 @@ Node *global() {
     node->ident = substring(tok->str, tok->len);
     node->len = tok->len;
     node->lhs = block;
-    node->offset = size_lvars;
+    node->offset = align(size_lvars, 16);
     node->type = func->type->to;
 
     /*
@@ -2148,8 +2157,10 @@ Var *find_gstr_or_gen(Token *tok) {
 
 int sizeof_lvars() {
   int size = 0;
+  int offset = 0;
   for (Var *var = locals; var; var = var->next) {
-    size += sizeof_type(var->type);
+    int size = sizeof_type(var->type);
+    offset = align(offset, size);
   }
   return size;
 }
