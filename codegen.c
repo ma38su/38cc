@@ -13,7 +13,8 @@ void gen_defined(Node *node);
 
 bool gen(Node *node);
 void gen_num(int num);
-void gen_deref(Type *type);
+void gen_deref(Node *node);
+void gen_deref_type(Type *type);
 int sizeof_type(Type *type);
 
 char *reg64s[] = {
@@ -80,7 +81,47 @@ char* get_args_register(int size, int index) {
   }
 }
 
+void gen_deref(Node *node) {
+  if (node->kind == ND_ADDR) {
+    gen(node->lhs);
+    return;
+  }
+  gen(node);
+  gen_deref_type(node->type->to);
+}
+
+void gen_deref_type(Type *type) {
+  if (type->kind == TY_STRUCT) {
+    printf("  # deref struct\n");
+    return;
+  }
+  if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
+    gen_deref_type(type->to);
+    return;
+  }
+
+  printf("  pop rax\n");
+  int size = sizeof_type(type);
+  if (size == 1) {
+    printf("  movsx rax, byte ptr [rax]\n");
+  } else if (size == 2) {
+    printf("  movsx rax, word ptr [rax]\n");
+  } else if (size == 4) {
+    printf("  movsxd rax, dword ptr [rax]\n");
+  } else if (size == 8) {
+    printf("  mov rax, [rax]\n");
+  } else {
+    char *type_name = substring(type->name, type->len);
+    error("illegal defref size: sizeof(%s) = %d %d", type_name, size, type->kind);
+  }
+  printf("  push rax\n");
+}
+
 void gen_addr(Node* node) {
+  if (node->kind == ND_DEREF) {
+    gen(node->lhs);
+    return;
+  }
   if (node->offset != 0) {
     printf("  mov rax, rbp\n");
     printf("  sub rax, %d\n", node->offset);
@@ -482,30 +523,6 @@ void gen_defined(Node *node) {
   }
 }
 
-void gen_deref(Type *type) {
-  if (type->kind == TY_STRUCT) return;
-  if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
-    gen_deref(type->to);
-    return;
-  }
-
-  printf("  pop rax\n");
-  int size = sizeof_type(type);
-  if (size == 1) {
-    printf("  movsx rax, byte ptr [rax]\n");
-  } else if (size == 2) {
-    printf("  movsx rax, word ptr [rax]\n");
-  } else if (size == 4) {
-    printf("  movsxd rax, dword ptr [rax]\n");
-  } else if (size == 8) {
-    printf("  mov rax, [rax]\n");
-  } else {
-    char *type_name = substring(type->name, type->len);
-    error("illegal defref size: sizeof(%s) = %d %d", type_name, size, type->kind);
-  }
-  printf("  push rax\n");
-}
-
 // push store address
 void gen_lval(Node *node) {
   if (node->kind == ND_DEREF) {
@@ -587,7 +604,7 @@ bool gen(Node *node) {
     gen_addr(node);
 
     if (!type_is_array(node->type)) {
-      gen_deref(node->type);
+      gen_deref_type(node->type);
     }
     return true;
   }
@@ -677,8 +694,7 @@ bool gen(Node *node) {
     return true;
   }
   if (node->kind == ND_DEREF) {
-    gen(node->lhs);
-    gen_deref(node->lhs->type->to);
+    gen_deref(node->lhs);
     return true;
   }
 

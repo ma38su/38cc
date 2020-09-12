@@ -13,6 +13,7 @@ int debug = 0;
 
 void assert(char* name, int ret);
 void assertInt(char *, int, int);
+void assertLong(char *, long, long);
 
 void assertChar(char *name, char expect, char actual) {
   if (actual == expect) {
@@ -725,11 +726,6 @@ void test26() {
   assertInt("test26-6", 10, e->val1);
   assertInt("test26-7", 131, e->val2);
   assertInt("test26-8", -7, e->val3);
-
-  long p1 = (long) e;
-  long p2 = (long) &e->val1;
-
-  assertPtr("test26-9", p1, p2);
 }
 
 char *ptr_str = "HeLlo"; // 0
@@ -767,6 +763,13 @@ void test28() {
   assertInt("test28-3", 3, d[0]);
 }
 
+void test29() {
+  int a = 7;
+  int *p = &a;
+
+  assertInt("test29", 7, *&*&*&a);
+}
+
 int main() {
   test1();
   test2();
@@ -796,6 +799,7 @@ int main() {
   test26();
   test27();
   test28();
+  test29();
   return 0;
 }
 
@@ -843,6 +847,17 @@ void assertInt(char *name, int expect, int actual) {
     printf("%s: NG, expect: %d, actual: %d\n", name, expect, actual);
   }
 }
+
+void assertLong(char *name, long expect, long actual) {
+  if (actual == expect) {
+    if (debug) {
+      printf("%s: OK, expect: %ld, actual: %ld\n", name, expect, actual);
+    }
+  } else {
+    printf("%s: NG, expect: %ld, actual: %ld\n", name, expect, actual);
+  }
+}
+
 
 
 
