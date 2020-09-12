@@ -19,7 +19,6 @@ typedef enum {
   ND_BLOCK,       // 11 {}
   ND_IF,          // 12 if
   ND_WHILE,       // 13 while
-  ND_NONE,        // 14 return
   ND_FOR,         // 15 for
   ND_ADD,         // 16 +
   ND_SUB,         // 17 -
@@ -67,6 +66,7 @@ typedef enum {
 typedef enum {
   TY_VOID,
   TY_PRM,
+  TY_UNSIGNED,
   TY_PTR,
   TY_ARRAY,
   TY_FUNCTION,
@@ -93,6 +93,7 @@ struct Type {
   int len;  // length of string
   int size; // size of type
 
+  int is_unsigned;
   // ptr or array. *char = * -> char,
   // fp: return type
   Type *to;
@@ -117,6 +118,8 @@ struct Node {
   // if, ?:
   Node *ini;
   Node *cnd;    // condition
+  Node *stp;
+
   Node *thn;    // then
   Node *els;    // else
 

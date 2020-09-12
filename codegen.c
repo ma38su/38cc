@@ -183,7 +183,6 @@ void truncate(Type *type) {
     return;
   }
 
-  if (type->kind != TY_PRM) return;
   printf("  pop rax\n");
   if (type == bool_type) {
     printf("  cmp rax, 0\n");
@@ -192,12 +191,22 @@ void truncate(Type *type) {
   }
 
   int size = sizeof_type(type);
-  if (size == 1) {
-    printf("  movsx rax, al\n");
-  } else if (size == 2) {
-    printf("  movsx rax, ax\n");
-  } else if (size == 4) {
-    printf("  movsxd rax, eax\n");
+  if (type->kind == TY_PRM) {
+    if (size == 1) {
+      printf("  movsx rax, al\n");
+    } else if (size == 2) {
+      printf("  movsx rax, ax\n");
+    } else if (size == 4) {
+      printf("  movsxd rax, eax\n");
+    }
+  } else if (type->kind == TY_UNSIGNED) {
+    if (size == 1) {
+      printf("  movzx rax, al\n");
+    } else if (size == 2) {
+      printf("  movzx rax, ax\n");
+    } else if (size == 4) {
+      printf("  movzxd rax, eax\n");
+    }
   }
   printf("  push rax\n");
 }
@@ -215,7 +224,7 @@ void gen_block(Node *node) {
 }
 
 bool gen_while(Node *node) {
-  if (node->kind != ND_WHILE && node->kind != ND_FOR) {
+  if (node->kind != ND_WHILE) {
     error("not while");
   }
 
@@ -259,7 +268,20 @@ bool gen_for(Node *node) {
   if (node->ini) {
     gen(node->ini);
   }
-  return gen_while(node);
+
+  int prev_lid = current_lid;
+  int lid = current_lid = label_id++;
+  printf(".L.begin.%d:\n", lid);
+  gen(node->cnd);
+  printf("  pop rax # while\n");
+  printf("  cmp rax, 0\n");
+  printf("  je  .L.end.%d\n", lid);
+  gen(node->thn);
+  if (node->stp) gen(node->stp);
+  printf("  jmp .L.begin.%d\n", lid);
+  printf(".L.end.%d:\n", lid);
+  current_lid = prev_lid;
+  return false;
 }
 
 bool gen_if(Node *node) {
@@ -527,15 +549,6 @@ bool gen(Node *node) {
     return gen(node->lhs);
   }
 
-  if (node->kind == ND_NONE) {
-    if (node->lhs) {
-      gen(node->lhs);
-    }
-    if (node->rhs) {
-      gen(node->rhs);
-    }
-    return true;
-  }
   if (node->kind == ND_IF) {
     return gen_if(node);
   }

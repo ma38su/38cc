@@ -34,6 +34,16 @@ void assertStr(char *name, char *expect, char *actual) {
   }
 }
 
+void assertPtr(char *name, long expect, long actual) {
+  if (actual == expect) {
+    if (debug) {
+      printf("%s: OK, expect: 0x%lX, actual: 0x%lX\n", name, expect, actual);
+    }
+  } else {
+    printf("%s: NG, expect: 0x%lX, actual: 0x%lX\n", name, expect, actual);
+  }
+}
+
 typedef enum {
   MAME_A,
   MAME_B,
@@ -715,6 +725,11 @@ void test26() {
   assertInt("test26-6", 10, e->val1);
   assertInt("test26-7", 131, e->val2);
   assertInt("test26-8", -7, e->val3);
+
+  long p1 = (long) e;
+  long p2 = (long) &e->val1;
+
+  assertPtr("test26-9", p1, p2);
 }
 
 char *ptr_str = "HeLlo"; // 0
@@ -828,3 +843,6 @@ void assertInt(char *name, int expect, int actual) {
     printf("%s: NG, expect: %d, actual: %d\n", name, expect, actual);
   }
 }
+
+
+
