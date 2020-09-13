@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "38cc.h"
 
@@ -63,16 +64,7 @@ char *skip_brackets(char *p) {
   return p;
 }
 
-int lvar_len(char *p0) {
-  char *p = p0;
-  if (('a' <= *p && *p <= 'z')
-      || ('A' <= *p && *p <= 'Z')
-      || *p == '_') {
 
-    while (is_alnum(*p)) p++;
-  }
-  return p - p0;
-}
 
 int starts_with(char *p, int pl, char *string) {
   int l = strlen(string);
@@ -134,5 +126,4 @@ Token *read_str_literal(Token *cur, char *p) {
 
   return tok;
 }
-
 

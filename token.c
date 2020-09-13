@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "38cc.h"
 
@@ -18,6 +19,18 @@ Token *read_str_literal(Token *cur, char *p);
 
 bool is_space(char p);
 char *skip_brackets(char *p);
+
+int lvar_len(char *p0) {
+  char *p = p0;
+  if (('a' <= *p && *p <= 'z')
+      || ('A' <= *p && *p <= 'Z')
+      || *p == '_') {
+    do {
+      p++;
+    } while (is_alnum(*p));
+  }
+  return p - p0;
+}
 
 Token *tokenize() {
   char *p = user_input;
@@ -124,7 +137,7 @@ Token *tokenize() {
     int l = lvar_len(p);
     if (l > 0) {
       // skip
-      if (starts_with(p, l, "signed")) {
+      if (starts_with(p, l, "signed") || starts_with(p, l, "volatile")) {
         p += l;
         continue;
       }
@@ -134,12 +147,15 @@ Token *tokenize() {
           p += l;
           continue;
         }
+
         // skip builtin
+        /*
         if (starts_with(p, l, "__builtin_bswap32")
             || starts_with(p, l, "__builtin_bswap64")) {
           p += l;
           continue;
         }
+        */
 
         if (starts_with(p, l, "__inline")) {
           cur = new_token(TK_RESERVED, cur, p);
@@ -166,7 +182,7 @@ Token *tokenize() {
       continue;
     }
     
-    error_at(p, "unexpected token");
+    error_at(p, "unexpected token %d %d", l, sizeof(p));
   }
   new_token(TK_EOF, cur, p);
   return head.next;

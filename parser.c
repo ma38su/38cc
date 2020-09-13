@@ -11,6 +11,7 @@ int sizeof_lvars();
 int gvar_has_circular();
 int align(int offset, int size);
 int eval_node(Node* node);
+int is_alnum(char c);
 
 Type *consume_type();
 Member *consume_member();
@@ -18,7 +19,6 @@ Var *find_gvar(Token *tok);
 Var *find_gstr_or_gen(Token *tok);
 
 Type *find_type(Token *tok);
-Type *find_unsigned_type(Token *tok);
 
 Type *find_struct_type_or_gen(Token *tok);
 Type *find_struct_type(Token *tok);
@@ -72,33 +72,43 @@ Type *ptr_char_type;
 
 int gstr_len = 0; // number of global string variable
 
-Type *new_type(char* name, int len, int size) {
+Type *new_type(char* name, int size) {
   Type *type;
   type = calloc(1, sizeof(Type));
   type->name = name;
-  type->len = len;
+  type->len = strlen(name);
+  type->size = size;
+  return type;
+}
+
+Type *new_prm_type(char* name, int size) {
+  Type *type;
+  type = calloc(1, sizeof(Type));
+  type->kind = TY_PRM;
+  type->name = name;
+  type->len = strlen(name);
   type->size = size;
   return type;
 }
 
 Type *new_ptr_type(Type* type) {
-  Type *ptr_type = new_type("*", 1, 8);
+  Type *ptr_type = new_type("*", 8);
   ptr_type->kind = TY_PTR;
   ptr_type->to = type;
   return ptr_type;
 }
 
 Type *new_array_type(Type* type, int len) {
-  Type *ary_type = new_type("[]", 2, sizeof_type(type) * len);
+  Type *ary_type = new_type("[]", sizeof_type(type) * len);
   ary_type->kind = TY_ARRAY;
   ary_type->to = type;
   return ary_type;
 }
 
 Type *new_fn_type(Type* ret_type) {
-  Type *fn_type = new_type("(*)()", 5, 0);
+  Type *fn_type = new_type("(*)()", 0);
   fn_type->kind = TY_FUNCTION;
-  fn_type->to = ret_type;
+  fn_type->ret = ret_type;
   return fn_type;
 }
 
@@ -115,7 +125,7 @@ int is_pre_type(Token* tok) {
 Var *new_var(Token *tok, Type *type) {
   Var *var = calloc(1, sizeof(Var));
   var->name = tok->str;
-  var->len = tok->len; // strlen
+  var->len = tok->len;
   var->type = type;
   return var;
 }
@@ -129,7 +139,7 @@ Var *new_lvar(Token *tok, Type *type) {
   } else {
     lvar->offset = size;
   }
-  
+
   lvar->next = locals;
   locals = lvar;
   return lvar;
@@ -166,48 +176,55 @@ void init_types() {
   types = new_vector();
   inlines = new_vector();
   
-  bool_type = new_type("_Bool", 5, 1);
-  bool_type->kind = TY_PRM;
+  bool_type = new_prm_type("_Bool", 1);
+  char_type = new_prm_type("char", sizeof(char));
+  short_type = new_prm_type("short", sizeof(short));
+  int_type = new_prm_type("int", sizeof(int));
+  long_type = new_prm_type("long", sizeof(long));
+  float_type = new_prm_type("float", sizeof(float));
+  double_type = new_prm_type("double", sizeof(double));
 
-  char_type = new_type("char", 4, 1);
-  char_type->kind = TY_PRM;
+  unsigned_char_type = new_prm_type("unsigned char", sizeof(unsigned char));
+  unsigned_char_type->is_unsigned = 1;
 
-  short_type = new_type("short", 5, 2);
-  short_type->kind = TY_PRM;
+  unsigned_short_type = new_prm_type("unsigned short", sizeof(unsigned short));
+  unsigned_short_type->is_unsigned = 1;
 
-  int_type = new_type("int", 3, 4);
-  int_type->kind = TY_PRM;
+  unsigned_int_type = new_prm_type("unsigned int", sizeof(unsigned int));
+  unsigned_int_type->is_unsigned = 1;
 
-  long_type = new_type("long", 4, 8);
-  long_type->kind = TY_PRM;
-
-  float_type = new_type("float", 5, 4);
-  float_type->kind = TY_PRM;
-
-  double_type = new_type("double", 6, 8);
-  double_type->kind = TY_PRM;
-
-  unsigned_char_type = new_type("char", 4, 1);
-  unsigned_char_type->kind = TY_UNSIGNED;
-
-  unsigned_short_type = new_type("short", 5, 2);
-  unsigned_short_type->kind = TY_UNSIGNED;
-
-  unsigned_int_type = new_type("int", 3, 4);
-  unsigned_int_type->kind = TY_UNSIGNED;
-
-  unsigned_long_type = new_type("long", 4, 8);
-  unsigned_long_type->kind = TY_UNSIGNED;
-
-  void_type = new_type("void", 4, 8);
-  void_type->kind = TY_VOID;
-
-  Type *builtin_va_list = new_type("__builtin_va_list", 17, 8);
-  builtin_va_list->kind = TY_VOID;
+  unsigned_long_type = new_prm_type("unsigned long", sizeof(unsigned long));
+  unsigned_long_type->is_unsigned = 1;
 
   ptr_char_type = new_ptr_type(char_type);
 
-  vec_add(types, void_type);
+  Type *long_int_type = new_prm_type("long int", sizeof(long int));
+  vec_add(types, long_int_type);
+
+  Type *short_int_type = new_prm_type("short int", sizeof(short int));
+  vec_add(types, short_int_type);
+
+  Type *long_long_int_type = new_prm_type("long long int", sizeof(long long int));
+  vec_add(types, long_long_int_type);
+
+  Type *unsigned_long_int_type = new_prm_type("unsigned long int", sizeof(unsigned long int));
+  unsigned_long_int_type->is_unsigned = 1;
+  vec_add(types, unsigned_long_int_type);
+
+  Type *long_unsigned_int_type = new_prm_type("long unsigned int", sizeof(long unsigned int));
+  long_unsigned_int_type->is_unsigned = 1;
+  vec_add(types, long_unsigned_int_type);
+  
+  Type *unsigned_short_int_type = new_prm_type("unsigned short int", sizeof(unsigned short int));
+  unsigned_short_int_type->is_unsigned = 1;
+  vec_add(types, unsigned_short_int_type);
+
+  Type *long_double_type = new_prm_type("long double", sizeof(long double));
+  vec_add(types, long_double_type);
+
+  Type *unsigned_long_long_int_type = new_prm_type("unsigned long long int", sizeof(unsigned long long int));
+  vec_add(types, unsigned_long_long_int_type);
+
   vec_add(types, bool_type);
   vec_add(types, char_type);
   vec_add(types, short_type);
@@ -221,7 +238,13 @@ void init_types() {
   vec_add(types, unsigned_int_type);
   vec_add(types, unsigned_long_type);
 
-  vec_add(types, builtin_va_list);
+  void_type = new_type("void", sizeof(void));
+  void_type->kind = TY_VOID;
+  vec_add(types, void_type);
+
+  Type *builtin_va_list_type = new_type("__builtin_va_list", sizeof(__builtin_va_list));
+  builtin_va_list_type->kind = TY_VOID;
+  vec_add(types, builtin_va_list_type);
 }
 
 int type_is_ptr_or_array(Type *type) {
@@ -229,15 +252,18 @@ int type_is_ptr_or_array(Type *type) {
 }
 
 int type_is_array(Type *type) {
+  type = raw_type(type);
   return type->len == 2 && memcmp(type->name, "[]", 2) == 0;
 }
 
 int type_is_ptr(Type *type) {
+  type = raw_type(type);
   return type->len == 1 && memcmp(type->name, "*", 1) == 0;
 }
 
 bool type_is_func(Type *type) {
-  return type->to && !type_is_ptr_or_array(type);
+  type = raw_type(type);
+  return type->ret && !type_is_ptr_or_array(type);
 }
 
 Node *new_node(NodeKind kind) {
@@ -250,24 +276,25 @@ Node *new_node_deref(Node *lhs) {
   if (!lhs) {
     error("no node at new_node_deref");
   }
-  if (!lhs->type) {
+  Type *type = raw_type(lhs->type);
+  if (!type) {
     error("no type at new_node_deref %d", lhs->kind);
   }
-  if (!lhs->type->to) {
-    error("type is not ptr at new_node_deref: %s", lhs->type->name);
+  if (!type->to) {
+    error("type is not ptr at new_node_deref");
   }
   Node *node = new_node(ND_DEREF);
   node->lhs = lhs;
-  node->type = lhs->type->to;
+  node->type = type->to;
   return node;
 }
 
 Type *to_type(Type *lhs_type, Type *rhs_type) {
   if (type_is_func(lhs_type)) {
-    lhs_type = lhs_type->to;
+    lhs_type = lhs_type->ret;
   }
   if (type_is_func(rhs_type)) {
-    rhs_type = rhs_type->to;
+    rhs_type = rhs_type->ret;
   }
 
   int lhs_ptr = type_is_ptr_or_array(lhs_type);
@@ -288,9 +315,9 @@ Type *to_type(Type *lhs_type, Type *rhs_type) {
     return rhs_type;
   } else if (lhs_type->size > rhs_type->size) {
     return lhs_type;
-  } else if (lhs_type->kind == TY_UNSIGNED) {
+  } else if (lhs_type->is_unsigned) {
     return lhs_type;
-  } else if (rhs_type->kind == TY_UNSIGNED) {
+  } else if (rhs_type->is_unsigned) {
     return rhs_type;
   } else {
     return lhs_type;
@@ -370,6 +397,15 @@ void expect(char *op) {
   }
 }
 
+int distance(Token *tok1, Token *tok2) {
+  int len = (int) (tok2->str - tok1->str) + (tok2->len);
+  int len2 = tok1->len + 1 + tok2->len;
+  if (len != len2) {
+    return 0;
+  }
+  return len;
+}
+
 Token *consume_ident() {
   if (token->kind != TK_IDENT) {
     return NULL;
@@ -405,65 +441,40 @@ Type *consume_type() {
   } else {
     if (token->kind != TK_IDENT) return NULL;
 
-    int is_unsigned = 0;
     Token *p0 = token;
-    Token *p1 = NULL;
-    while (1) {
-      if (memcmp(token->str, "unsigned", 8) == 0) {
-        p1 = token;
+
+    type = find_type(token);
+    if (!type && !is_pre_type(token)) return NULL;
+
+    while (token->next) {
+      if (!is_alnum(*token->next->str)) {
         token = token->next;
-        is_unsigned = 1;
-        continue;
+        break;
       }
 
-      Type *type1;
-      if (is_unsigned) {
-        type1 = find_unsigned_type(token);
-//        fprintf(stderr, "consume unsigned: %s\n", substring(token->str, token->len));
-      } else {
-        type1 = find_type(token);
-      }
-      if (is_pre_type(token)) {
-        type = type1;
-        p1 = token;
-        token = token->next;
-        continue;
-      }
+      int len = token->len;
+      int new_len = distance(token, token->next);
+      token->len = new_len;
+
+      Type *type1 = find_type(token);
       if (type1) {
+        //fprintf(stderr, "found %s\n", substring(token->str, token->len));
         type = type1;
-        p1 = token;
+        token->next = token->next->next;
+      } else if (is_pre_type(token->next)) {
+        type = NULL;
+        token->next = token->next->next;
+      } else {
+        //fprintf(stderr, "break: %s\n", substring(token->str, token->len));
+        token->len = len; // rollback
         token = token->next;
+        break;
       }
-      break;
     }
     if (p0 == token) return NULL;
-
-    if (p0 != p1) {
-      Token *p = p0;
-
-      int newlen = p->len;
-      while (p != p1) {
-        p = p->next;
-        newlen += 1 + p->len;
-      }
-      if (newlen != (p1->len + (int) (p1->str - p0->str))) {
-        // TODO
-        error("unsupported type: %d %d %s", newlen, p1->len + (int) (p1->str - p0->str),
-          substring(p0->str, p1->len + (int) (p1->str - p0->str)));
-      }
-      //p0->len = newlen;
-      //type = find_type(p0);
-    }
-
-    if (!type) {
-      Type *t = find_type(token);
-      if (t) {
-        error_at(token->str, "type is not set %s", substring(token->str, token->len));
-      } else {
-        error_at(token->str, "type is not set(null) %s", substring(token->str, token->len));
-      }
-    }
+    if (!type) error_at(token->str, "type is not set(null) %s", substring(token->str, token->len));
   }
+
   while (consume("*")) {
     type = new_ptr_type(type);
   }
@@ -609,7 +620,7 @@ Node *consume_struct_node() {
     if (node->type->size != 0) error("override struct type");
     node->type->size = size_struct;
   } else {
-    node->type = new_type("_", 1, size_struct); // TODO
+    node->type = new_type("_", size_struct); // TODO
     node->type->kind = TY_STRUCT;
     // 検索できないので追加もしない
   }
@@ -648,7 +659,7 @@ Node *consume_union_node() {
     if (node->type->size != 0) error("override union type");
     node->type->size = size_union;
   } else {
-    node->type = new_type("_", 1, size_union); // TODO
+    node->type = new_type("_", size_union); // TODO
     node->type->kind = TY_UNION;
   }
   node->type->members = members;
@@ -656,8 +667,8 @@ Node *consume_union_node() {
 }
 
 Type *raw_type(Type *type) {
-  while (type->kind == TY_TYPEDEF) {
-    type = type->to;
+  while (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
+    type = type->def;
   }
   return type;
 }
@@ -827,7 +838,7 @@ Vector *expect_defined_args() {
       while (!consume(")")) {
         token = token->next;
       }
-      type = new_type("fn", 2, 8);
+      type = new_type("fn", 8);
       type->kind = TY_PTR;
     }
 
@@ -890,7 +901,7 @@ int sizeof_node(Node* node) {
 InitVal *gvar_init_val(Type *type) {
 
   if (type->kind == TY_PTR) {
-    if (type->to != char_type) {
+    if (raw_type(type)->to != char_type) {
       error("unsupported init. (1)");
     }
 
@@ -906,7 +917,7 @@ InitVal *gvar_init_val(Type *type) {
     return v;
   }
   if (type->kind == TY_ARRAY) {
-    if (type->to == char_type) {
+    if (raw_type(type->to) == char_type) {
       // char*[]
       if (token->kind != TK_STR) {
         error("TODO unsupported init. (2)");
@@ -924,7 +935,7 @@ InitVal *gvar_init_val(Type *type) {
 
     if (consume("}")) error("TODO !!");
 
-    if (type->to->kind == TY_PTR) {
+    if (raw_type(type->to)->kind == TY_PTR) {
       InitVal head;
       head.next = NULL;
       InitVal *cur = &head;
@@ -950,7 +961,7 @@ InitVal *gvar_init_val(Type *type) {
         expect(",");
       }
       return head.next;
-    } else if (type->to->kind == TY_PRM || type->to->kind == TY_UNSIGNED) {
+    } else if (raw_type(type->to)->kind == TY_PRM) {
       InitVal head;
       head.next = NULL;
       InitVal *cur = &head;
@@ -1015,13 +1026,13 @@ Node *primary() {
     Var *gvar = find_gvar(tok);
     if (gvar) {
       node = new_node(ND_CALL);
-      node->type = gvar->type->to;
+      node->type = gvar->type->ret;
       node->val = gvar->extn;
     } else {
       Var *lvar = find_lvar(tok);
       if (lvar) {
         node = new_node(ND_CALL);
-        node->type = lvar->type->to;
+        node->type = lvar->type->ret;
         node->val = 0;
       } else {
         error_at(tok->str, "function is not found");
@@ -1077,7 +1088,7 @@ Node *primary() {
 Member *get_member(Type *type, Token *ident) {
   Type *ty = type;
   while (ty->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
-    ty = ty->to;
+    ty = ty->def;
   }
   if (!ty) error_at(token->str, "no type");
 
@@ -1108,11 +1119,19 @@ Node *postfix() {
   for (;;) {
     // post ++ or --
     if (consume("++")) {
-      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_int_node(1)));
+      if (node->type->to) {
+        node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_PTR_ADD, node, new_int_node(1)));
+      } else {
+        node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_int_node(1)));
+      }
       continue;
     }
     if (consume("--")) {
-      node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_int_node(1)));
+      if (node->type->to) {
+        node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_PTR_SUB, node, new_int_node(1)));
+      } else {
+        node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_int_node(1)));
+      }
       continue;
     }
 
@@ -1123,7 +1142,7 @@ Node *postfix() {
       Node *index = expr();
       expect("]");
 
-      node = new_node_deref(new_node_lr(ND_ADD, node, index));
+      node = new_node_deref(new_node_lr(ND_PTR_ADD, node, index));
       continue;
     }
 
@@ -1152,7 +1171,7 @@ Node *postfix() {
       Token *ident = consume_ident();
       if (!ident) error_at(token->str, "no ident");
 
-      Member *member = get_member(node->type->to, ident);
+      Member *member = get_member(raw_type(node->type)->to, ident);
       Node *addr = new_node_lr(ND_ADD, node, new_int_node(member->offset));
       addr->type = new_ptr_type(member->type);
       node = new_node_deref(addr);
@@ -1166,12 +1185,20 @@ Node *unary() {
   // pre ++
   if (consume("++")) {
     Node *node = primary();
-    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_int_node(1)));
+    if (node->type->to) {
+      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_ADD, node, new_int_node(1)));
+    } else {
+      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_int_node(1)));
+    }
   }
   // pre -- 
   if (consume("--")) {
     Node *node = primary();
-    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_int_node(1)));
+    if (node->type->to) {
+      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_SUB, node, new_int_node(1)));
+    } else {
+      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_int_node(1)));
+    }
   }
   if (consume("-")) {
     Node *node = primary();
@@ -1250,9 +1277,26 @@ Node *add() {
   Node *node = mul();
   for (;;) {
     if (consume("+")) {
-      node = new_node_lr(ND_ADD, node, mul());
+      Node *node2 = mul();
+      if (node->type->to) {
+        if (node2->type->to) error("illegal");
+        node = new_node_lr(ND_PTR_ADD, node, node2);
+      } else if (node2->type->to) {
+        node = new_node_lr(ND_PTR_ADD, node2, node);
+      } else {
+        node = new_node_lr(ND_ADD, node, node2);
+      }
     } else if (consume("-")) {
-      node = new_node_lr(ND_SUB, node, mul());
+      Node *node2 = mul();
+      if (node->type->to && node2->type->to) {
+        node = new_node_lr(ND_PTR_DIFF, node, node2);
+      } else if (node->type->to) {
+        node = new_node_lr(ND_PTR_SUB, node, node2);
+      } else if (node2->type->to) {
+        node = new_node_lr(ND_SUB, new_long_node(0), new_node_lr(ND_PTR_SUB, node2, node));
+      } else {
+        node = new_node_lr(ND_SUB, node, node2);
+      }
     } else {
       return node;
     }
@@ -1390,9 +1434,17 @@ Node *ternay() {
 Node *assign() {
   Node *node = ternay();
   if (consume("+=")) {
-    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, assign()));
+    if (node->type->to) {
+      node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_ADD, node, assign()));
+    } else {
+      node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, assign()));
+    }
   } else if (consume("-=")) {
-    node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, assign()));
+    if (node->type->to) {
+      node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_SUB, node, assign()));
+    } else {
+      node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, assign()));
+    }
   } else if (consume("*=")) {
     node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_MUL, node, assign()));
   } else if (consume("/=")) {
@@ -1521,9 +1573,6 @@ Node *stmt() {
     if (consume("else")) {
       node->els = stmt();
     }
-
-    // scope out
-    locals = tmp_locals;
     return node;
   }
 
@@ -1535,9 +1584,6 @@ Node *stmt() {
     node->cnd = expr();
     expect(")");
     expect(";");
-
-    // scope out
-    locals = tmp_locals;
     return node;
   }
   if (consume("while")) {
@@ -1546,10 +1592,6 @@ Node *stmt() {
     node->cnd = expr();
     expect(")");
     node->thn = stmt();
-
-    // scope out
-    locals = tmp_locals;
-
     return node;
   }
   
@@ -1583,7 +1625,6 @@ Node *stmt() {
 
     // scope out
     locals = tmp_locals;
-
     return node;
   }
 
@@ -1709,18 +1750,23 @@ int eval_node(Node* node) {
   return -1;
 }
 
-Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
+Node *new_gvar_node(Token *tok, Type *t, int is_extern) {
   Var *gvar = find_gvar(tok);
+  Type *type = t;
   if (gvar) {
     if (!is_extern) {
       if (!gvar->extn) {
         error_at(tok->str, "duplicated defined gvar");
       }
       gvar->extn = 0;
+      gvar->is_static = 1;
     }
   } else {
     gvar = new_gvar(tok, type);
     gvar->extn = is_extern;
+    if (!is_extern) {
+      gvar->is_static = 1;
+    }
   }
 
   if (consume("[")) {
@@ -1734,7 +1780,15 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
       type = new_array_type(type, sizeof_type(type));
       expect("]");
     }
+
+    if (type->to->kind == TY_PTR) {
+      fprintf(stderr, "type3: %s\n", type->to->to->name);
+    }
   }
+  if (type->to && type->to->kind == TY_PTR) {
+    fprintf(stderr, "type4: %s\n", type->to->to->name);
+  }
+
   gvar->type = type;
 
   Node *node = new_node(ND_GVAR);
@@ -1755,18 +1809,18 @@ void fixed_lvar_offset(Node *node, int frame_size) {
   if (!node) return;
   if (node->kind == ND_LVAR) {
     char *node_ident = substring(node->ident, node->len);
-    fprintf(stderr, "%s offset1: %d\n", node_ident, node->offset);
+    fprintf(stderr, "%s offset1: %ld\n", node_ident, node->offset);
     node->offset = frame_size - node->offset;
-    fprintf(stderr, "%s offset2: %d\n", node_ident, node->offset);
+    fprintf(stderr, "%s offset2: %ld\n", node_ident, node->offset);
 
     Token t;
     t.str = node->ident;
     t.len = node->len;
     Var *var = find_lvar(&t);
     if (var) {
-      fprintf(stderr, "offset1: %d\n", node->offset);
+      fprintf(stderr, "offset1: %ld\n", node->offset);
       var->offset = frame_size - var->offset;
-      fprintf(stderr, "offset2: %d\n", node->offset);
+      fprintf(stderr, "offset2: %ld\n", node->offset);
     }
   } else if (node->kind == ND_FUNCTION) {
     Vector *list = node->list;
@@ -1812,9 +1866,9 @@ Node *global() {
         error_at(token->str, "Illegal typedef struct");
 
       int size_t = sizeof_type(type);
-      Type *struct_type = new_type(ident->str, ident->len, size_t);
+      Type *struct_type = new_type(substring(ident->str, ident->len), size_t);
       struct_type->kind = TY_TYPEDEF;
-      struct_type->to = type;
+      struct_type->def = type;
       vec_add(types, struct_type);
 
       expect(";");
@@ -1831,9 +1885,9 @@ Node *global() {
         error_at(token->str, "Illegal typedef union");
 
       int size_t = sizeof_type(type);
-      Type *union_type = new_type(ident->str, ident->len, size_t);
+      Type *union_type = new_type(substring(ident->str, ident->len), size_t);
       union_type->kind = TY_TYPEDEF;
-      union_type->to = type;
+      union_type->def = type;
       vec_add(types, union_type);
 
       expect(";");
@@ -1850,7 +1904,7 @@ Node *global() {
         error_at(token->str, "Illegal typedef enum");
       }
       if (ident->kind == TK_IDENT) {
-        Type *enum_type = new_type(ident->str, ident->len, 4);
+        Type *enum_type = new_type(substring(ident->str, ident->len), 4);
         enum_type->kind = TY_PRM;
         vec_add(types, enum_type);
       }
@@ -1874,9 +1928,9 @@ Node *global() {
       if (consume("(")) {
         expect_defined_args();
       } else {
-        Type *def_type = new_type(ident->str, ident->len, sizeof_type(type));
+        Type *def_type = new_type(substring(ident->str, ident->len), sizeof_type(type));
         def_type->kind = TY_TYPEDEF;
-        def_type->to = type;
+        def_type->def = type;
         vec_add(types, def_type);
       }
       expect(";");
@@ -1889,9 +1943,9 @@ Node *global() {
         expect_defined_args();
       }
 
-      Type *def_type = new_type(ident->str, ident->len, sizeof_type(type));
+      Type *def_type = new_type(substring(ident->str, ident->len), sizeof_type(type));
       def_type->kind = TY_TYPEDEF;
-      def_type->to = type;
+      def_type->def = new_fn_type(type);
       vec_add(types, def_type);
 
       expect(";");
@@ -1971,7 +2025,7 @@ Node *global() {
     node->len = tok->len;
     node->lhs = block;
     node->offset = size_lvars;
-    node->type = func->type->to;
+    node->type = func->type->ret;
     
     locals = tmp_locals;
 
@@ -2017,19 +2071,11 @@ Type *find_type(Token *tok) {
     if (type->kind == TY_STRUCT) continue;
     if (type->kind == TY_UNION) continue;
     if (type->kind == TY_ENUM) continue;
-    if (type->kind == TY_UNSIGNED) continue;
     if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
-      return type;
-    }
-  }
-  return NULL;
-}
 
-Type *find_unsigned_type(Token *tok) {
-  for (int i = 0; i < types->size; ++i) {
-    Type *type = vec_get(types, i);
-    if (type->kind != TY_UNSIGNED) continue;
-    if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
+      if (type->kind != TY_PRM && type->kind != TY_VOID && type->kind != TY_TYPEDEF) {
+        error("illegal init types %d", type->kind);
+      }
       return type;
     }
   }
@@ -2051,9 +2097,9 @@ Type *find_enum_type_or_gen(Token *tok) {
   Type *type = find_enum_type(tok);
   if (type) return type;
 
-  type = new_type(tok->str, tok->len, int_type->size);
+  type = new_type(substring(tok->str, tok->len), int_type->size);
   type->kind = TY_ENUM;
-  type->to = int_type;
+  type->def = int_type;
 
   vec_add(types, type);
   return type;
@@ -2074,7 +2120,7 @@ Type *find_union_type_or_gen(Token *tok) {
   Type *type = find_union_type(tok);
   if (type) return type;
 
-  type = new_type(tok->str, tok->len, 0);
+  type = new_type(substring(tok->str, tok->len), 0);
   type->kind = TY_UNION;
 
   vec_add(types, type);
@@ -2096,7 +2142,7 @@ Type *find_struct_type_or_gen(Token *tok) {
   Type *type = find_struct_type(tok);
   if (type) return type;
 
-  type = new_type(tok->str, tok->len, 0);
+  type = new_type(substring(tok->str, tok->len), 0);
   type->kind = TY_STRUCT;
 
   vec_add(types, type);

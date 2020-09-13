@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "vector.h"
@@ -35,7 +34,7 @@ void vec_add(Vector *vector, void *value) {
 
 void vec_set(Vector *vector, int i, void *value) {
   if (i >= vector->size) {
-    fprintf(stderr, "array out of exception: %d >= %d", i, vector->size);
+    //fprintf(stderr, "array out of exception: %d >= %d", i, vector->size);
     return;
   }
   vector->_array[i] = value;

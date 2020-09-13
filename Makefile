@@ -57,14 +57,17 @@ self: 38cc2 .test.c .test_gcc.c
 	./38cc2 .vector.c > vector2.s
 	diff vector.s vector2.s
 
-	./38cc2 .subtoken.c > subtoken2.s
-	diff subtoken.s subtoken2.s
-
-	./38cc2 .subcodegen.c > subcodegen2.s
-	diff subcodegen.s subcodegen2.s
-
 	./38cc2 .reader.c > reader2.s
 	diff reader.s reader2.s
+
+	#./38cc2 .subtoken.c > subtoken2.s
+	#diff subtoken.s subtoken2.s
+
+	#./38cc2 .subcodegen.c > subcodegen2.s
+	#diff subcodegen.s subcodegen2.s
+
+	#./38cc2 .token.c > token2.s
+	#diff token.s token2.s
 
 	$(CC) test2.s test2_gcc.s vector2.s -o test2
 	./test2
@@ -89,20 +92,22 @@ self: 38cc2 .test.c .test_gcc.c
 #	./test2
 
 
-sample: 38cc sample.c vector.s
+sample: 38cc sample.c
+	$(CC) -O0 -S -masm=intel sample2.c -o sample2.s
+
 	$(CC) -O0 -S -masm=intel sample.c -o sample-gcc.s
-	gcc -o sample-gcc sample-gcc.s vector.s
+	gcc -o sample-gcc sample-gcc.s sample2.s
 	./sample-gcc
 	
 	cpp sample.c .sample.c
 	./38cc .sample.c > sample-38cc.s
-	gcc -o sample-38cc sample-38cc.s vector.s
+	gcc -o sample-38cc sample-38cc.s sample2.s
 	./sample-38cc
 
-sample-s: sample-gcc.s sample-38cc.s vector.s
-	gcc -o sample-gcc sample-gcc.s vector.s
+sample-s: sample-gcc.s sample-38cc.s sample2.s
+	gcc -o sample-gcc sample-gcc.s sample2.s
 	./sample-gcc
-	gcc -o sample-38cc sample-38cc.s vector.s
+	gcc -o sample-38cc sample-38cc.s sample2.s
 	./sample-38cc
 
 sample.s: 38cc sample.c .sample.c
@@ -129,8 +134,8 @@ main.s: 38cc main.c .main.c
 	#./38cc .main.c > main.s
 
 token.s: 38cc token.c .token.c
-	$(CC) -S -masm=intel token.c -o token.s
-	#./38cc .token.c > token.s
+	#$(CC) -S -masm=intel token.c -o token.s
+	./38cc .token.c > token.s
 
 parser.s: 38cc parser.c .parser.c
 	$(CC) -S -masm=intel parser.c -o parser.s

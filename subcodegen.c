@@ -4,11 +4,12 @@
 
 extern int label_id;
 extern int current_lid;
+
 bool gen(Node *node);
 int sizeof_type(Type *type);
 void gen_addr(Node *node);
 void gen_gvars_uninit();
-void gen_gvars();
+void gen_gvar_declarations();
 void gen_defined(Node *code);
 void gen_deref_type(Type *type);
 void gen_defined_function(Node *node);
@@ -80,7 +81,7 @@ void gen_lval(Node *node) {
   }
 }
 
-bool gen_gvar(Node *node) {
+void gen_gvar(Node *node) {
   if (node->kind != ND_GVAR) {
     error("node is not gvar");
   }
@@ -95,7 +96,7 @@ bool gen_gvar(Node *node) {
   } else if (node->type == long_type) {
     printf("  mov rax, %s[rip]\n", node->ident);
   } else if (type_is_array(node->type)) {
-    if (node->type->to == char_type) {
+    if (raw_type(raw_type(node->type)->to) == char_type) {
       printf("  lea rax, %s[rip]\n", node->ident);
     } else {
       printf("  lea rax, %s[rip]\n", node->ident);
@@ -107,7 +108,6 @@ bool gen_gvar(Node *node) {
     printf("  # not support gvar %s, type: %s\n", node->ident, node->type->name);
   }
   printf("  push rax\n");
-  return true;
 }
 
 void gen_return(Node *node) {
@@ -203,7 +203,7 @@ void gen_num(int num) {
 // cast
 void truncate(Type *type) {
   if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
-    truncate(type->to);
+    truncate(type->def);
     return;
   }
 
@@ -223,7 +223,7 @@ void truncate(Type *type) {
     } else if (size == 4) {
       printf("  movsxd rax, eax\n");
     }
-  } else if (type->kind == TY_UNSIGNED) {
+  } else if (type->is_unsigned) {
     if (size == 1) {
       printf("  movzx rax, al\n");
     } else if (size == 2) {
@@ -332,7 +332,7 @@ void gen_deref(Node *node) {
     return;
   }
   gen(node);
-  gen_deref_type(node->type->to);
+  gen_deref_type(raw_type(node->type)->to);
 }
 
 void gen_deref_type(Type *type) {
@@ -341,7 +341,7 @@ void gen_deref_type(Type *type) {
     return;
   }
   if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
-    gen_deref_type(type->to);
+    gen_deref_type(type->def);
     return;
   }
 
@@ -369,7 +369,7 @@ void gen_addr(Node* node) {
   }
   if (node->offset != 0) {
     printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->offset);
+    printf("  sub rax, %ld\n", node->offset);
     printf("  push rax\n");
   } else {
     printf("  push rbp\n");
@@ -386,11 +386,109 @@ int max_size(Node* lhs, Node* rhs) {
   }
 }
 
+void gen_ternary(Node *node) {
+  int lid = label_id++;
+  printf("  # TERNAY (?:)\n");
+  gen(node->cnd);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je  .L.false.%d\n", lid);
+  gen(node->thn);
+  printf("  jmp .L.end.%d\n", lid);
+  printf(".L.false.%d:\n", lid);
+  gen(node->els);
+  printf(".L.end.%d:\n", lid);
+}
+
+
+void gen_gvar_declaration(Var *var) {
+  char *name = substring(var->name, var->len);
+
+  if (var->is_static) {
+    printf("  .global %s\n", name);
+  }
+  if (var->type == char_type) {
+    printf("%s:\n", name);
+    printf("  .byte %d\n", var->init->n);
+  } else if (var->type == short_type) {
+    printf("%s:\n", name);
+    printf("  .word %d\n", var->init->n);
+  } else if (var->type == int_type) {
+    printf("%s:\n", name);
+    printf("  .long %d\n", var->init->n);
+  } else if (var->type == long_type) {
+    printf("%s:\n", name);
+    printf("  .quad %d\n", var->init->n);
+  } else if (*name == '.') {
+    printf("%s:\n", name);
+    if (!var->init || !var->init->str) error("char* null: %s", name);
+    printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
+  } else if (type_is_array(var->type)) {
+    Type *t = var->type->to;
+
+    if (t == char_type) {
+      printf("%s:\n", name);
+      if (!var->init || !var->init->str) error("char[] null: %s %s", name, var->init->ident);
+      printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
+    } else if (type_is_ptr(t)) {
+      printf("%s:\n", name);
+      printf(" # DEBUG1\n");
+      if (t->to == char_type) {
+        for (InitVal *v = var->init; v; v = v->next) {
+          if (!v->ident) error("illegal gvars");
+          printf("  .quad %s\n", substring(v->ident, v->len));
+        }
+      } else {
+        error("unsupported initialization");
+      }
+    } else {
+      printf("%s:\n", name);
+      if (t) {
+        if (t->name) {
+          printf(" # DEBUG3 %d\n", t->kind);
+        } else {
+          printf(" # DEBUG4 %d\n", t->kind);
+        }
+      } else {
+        printf(" # DEBUG2\n");
+      }
+      if (t == char_type) {
+        for (InitVal *v = var->init; v; v = v->next) {
+          printf("  .byte %d\n", v->n);
+        }
+      } else if (t == short_type) {
+        for (InitVal *v = var->init; v; v = v->next) {
+          printf("  .word %d\n", v->n);
+        }
+      } else if (t == int_type) {
+        for (InitVal *v = var->init; v; v = v->next) {
+          printf("  .long %d\n", v->n);
+        }
+      } else if (t == long_type) {
+        for (InitVal *v = var->init; v; v = v->next) {
+          printf("  .quad %d\n", v->n);
+        }
+      } else if (type_is_ptr(t)) {
+        for (InitVal *v = var->init; v; v = v->next) {
+          printf("  .quad %s\n", v->ident);
+        }
+      }
+    }
+  } else if (type_is_ptr(var->type)) {
+    printf("%s:\n", name);
+    if (!var->init || !var->init->ident)
+      error("char[] null: %s", name);
+    printf("  .quad %s\n", var->init->ident);
+  } else {
+    error("unsupported type");
+    //printf("# unsupported type: %s: %s\n", name, var->type->name);
+  }
+}
+
 void codegen() {
   printf("  .intel_syntax noprefix\n");
   gen_gvars_uninit();
-  //printf("  .section  .rodata\n");
-  gen_gvars();
+  gen_gvar_declarations();
 
   printf("\n");
   printf("  .text\n");
@@ -400,6 +498,7 @@ void codegen() {
 }
 
 int type_is_struct_ref(Type* type) {
+  type = raw_type(type);
   if (type->kind == TY_PTR) {
     return type_is_struct_ref(type->to);
   }

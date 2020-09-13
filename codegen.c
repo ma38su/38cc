@@ -12,13 +12,15 @@ int max_size(Node* lhs, Node* rhs);
 bool gen(Node *node);
 void gen_lval(Node *node);
 bool gen_gvar(Node *node);
-void gen_gvars();
+void gen_gvar_declarations();
+void gen_gvar_declaration(Var *var);
 void gen_gvars_uninit();
 void gen_defined(Node *node);
 void gen_defined_function(Node *node);
 void gen_num(int num);
 void gen_deref(Node *node);
 void gen_deref_type(Type *type);
+void gen_ternary(Node *node);
 void truncate(Type *type);
 int type_is_struct_ref(Type* type);
 char* get_args_register(int size, int index);
@@ -55,18 +57,27 @@ void gen_gvars_uninit() {
       continue;
     }
     int size = sizeof_type(var->type);
+    char *name = substring(var->name, var->len);
+    if (var->is_static) {
+      printf("  .global %s\n", name);
+    }
     // TODO alignment size
-    printf("  .comm   %s,%d,%d\n", substring(var->name, var->len), size, size);
+    printf("  .comm   %s,%d,%d\n", name, size, size);
   }
 }
 
-// self NG
-void gen_gvars() {
+int n_gvars() {
   int data_count = 0;
   for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->extn) continue;
     data_count++;
   }
+  return data_count;
+}
+
+// self NG
+void gen_gvar_declarations() {
+  int data_count = n_gvars();
   if (data_count == 0) {
     return;
   }
@@ -74,71 +85,7 @@ void gen_gvars() {
   printf("  .data\n");
   for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->extn) continue;
-    char *name = substring(var->name, var->len);
-    if (var->type == char_type) {
-      printf("%s:\n", name);
-      printf("  .byte %d\n", var->init->n);
-    } else if (var->type == short_type) {
-      printf("%s:\n", name);
-      printf("  .word %d\n", var->init->n);
-    } else if (var->type == int_type) {
-      printf("%s:\n", name);
-      printf("  .long %d\n", var->init->n);
-    } else if (var->type == long_type) {
-      printf("%s:\n", name);
-      printf("  .quad %d\n", var->init->n);
-    } else if (*name == '.') {
-      printf("%s:\n", name);
-      if (!var->init || !var->init->str) error("char* null: %s", name);
-      printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
-    } else if (type_is_array(var->type)) {
-      Type *t = var->type->to;
-      if (t == char_type) {
-        printf("%s:\n", name);
-        if (!var->init || !var->init->str) error("char[] null: %s %s", name, var->init->ident);
-        printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
-      } else if (type_is_ptr(t)) {
-        printf("%s:\n", name);
-        if (t->to == char_type) {
-          for (InitVal *v = var->init; v; v = v->next) {
-            if (!v->ident) error("illegal gvars");
-            printf("  .quad %s\n", substring(v->ident, v->len));
-          }
-        } else {
-          error("unsupported initialization");
-        }
-      } else {
-        printf("%s:\n", name);
-        if (t == char_type) {
-          for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .byte %d\n", v->n);
-          }
-        } else if (t == short_type) {
-          for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .word %d\n", v->n);
-          }
-        } else if (t == int_type) {
-          for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .long %d\n", v->n);
-          }
-        } else if (t == long_type) {
-          for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .quad %d\n", v->n);
-          }
-        } else if (type_is_ptr(t)) {
-          for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .quad %s\n", v->ident);
-          }
-        }
-      }
-    } else if (type_is_ptr(var->type)) {
-      printf("%s:\n", name);
-      if (!var->init || !var->init->ident)
-        error("char[] null: %s", name);
-      printf("  .quad %s\n", var->init->ident);
-    } else {
-      printf("# unsupported type: %s: %s\n", name, var->type->name);
-    }
+    gen_gvar_declaration(var);
   }
 }
 
@@ -160,11 +107,9 @@ void gen_defined_function(Node *node) {
     // allocate local vars
     printf("  sub rsp, %d\n", offset);
   }
-
   // extract args
   if (node->list) {
     int index = node->list->size;
-
     for (int i = node->list->size - 1; i >= 0; --i) {
       Node *arg = (Node *) vec_get(node->list, i);
       printf("  # extract arg \"%s\"\n", arg->ident);
@@ -318,14 +263,14 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_addr(node);
-
     if (!type_is_array(node->type)) {
       gen_deref_type(node->type);
     }
     return true;
   }
   if (node->kind == ND_GVAR) {
-    return gen_gvar(node);
+    gen_gvar(node);
+    return true;
   }
 
   if (node->kind == ND_ASSIGN || node->kind == ND_ASSIGN_POST) {
@@ -349,19 +294,8 @@ bool gen(Node *node) {
     gen_deref(node->lhs);
     return true;
   }
-
   if (node->kind == ND_TERNARY) {
-    int lid = label_id++;
-    printf("  # TERNAY (?:)\n");
-    gen(node->cnd);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
-    printf("  je  .L.false.%d\n", lid);
-    gen(node->thn);
-    printf("  jmp .L.end.%d\n", lid);
-    printf(".L.false.%d:\n", lid);
-    gen(node->els);
-    printf(".L.end.%d:\n", lid);
+    gen_ternary(node);
     return true;
   }
 
@@ -428,44 +362,8 @@ bool gen(Node *node) {
     }
   }
 
-  bool lhs_is_ptr = type_is_ptr(node->lhs->type) || type_is_array(node->lhs->type);
-  bool rhs_is_ptr = type_is_ptr(node->rhs->type) || type_is_array(node->rhs->type);
-
   gen(node->lhs);
-  if (!lhs_is_ptr && rhs_is_ptr) {
-    // TODO ptr calc
-    if (raw_type(raw_type(node->rhs->type)->to)->kind != TY_STRUCT) {
-      int rhs_size = sizeof_type(node->rhs->type->to);
-      if (rhs_size == 0) {
-        error("no rhs ptr size: %s",
-          substring(node->lhs->type->to->name, node->lhs->type->to->len));
-      }
-      if (rhs_size != 1) {
-        // for pointer calculation
-        printf("  pop rax\n");
-        printf("  imul rax, %d\n", rhs_size);
-        printf("  push rax\n");
-      }
-    }
-  }
-
   gen(node->rhs);
-  if (lhs_is_ptr && !rhs_is_ptr) {
-    // TODO ptr calc
-    if (raw_type(raw_type(node->lhs->type)->to)->kind != TY_STRUCT) {
-      int lhs_size = sizeof_type(node->lhs->type->to);
-      if (lhs_size == 0) {
-        error("no lhs ptr size %s",
-          substring(node->lhs->type->to->name, node->lhs->type->to->len));
-      }
-      if (lhs_size != 1) {
-        // for pointer calculation
-        printf("  pop rax\n");
-        printf("  imul rax, %d\n", lhs_size);
-        printf("  push rax\n");
-      }
-    }
-  }
 
   if (node->kind == ND_SHL) {
     printf("  pop rcx\n");
@@ -483,7 +381,21 @@ bool gen(Node *node) {
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
-  if (node->kind == ND_ADD) {
+  if (node->kind == ND_PTR_ADD) {
+    int ptr_size = sizeof_type(node->lhs->type->to);
+    printf("  imul rdi, %d\n", ptr_size);
+    printf("  add rax, rdi\n");
+  } else if (node->kind == ND_PTR_SUB) {
+    int ptr_size = sizeof_type(node->lhs->type->to);
+    printf("  imul rdi, %d\n", ptr_size);
+    printf("  sub rax, rdi\n");
+  } else if (node->kind == ND_PTR_DIFF) {
+    int ptr_size = sizeof_type(node->lhs->type->to);
+    printf("  sub rax, rdi\n");
+    printf("  mov rdi, %d\n", ptr_size);
+    printf("  cqo\n");
+    printf("  idiv rdi\n");
+  } else if (node->kind == ND_ADD) {
     printf("  add rax, rdi\n");
   } else if (node->kind == ND_SUB) {
     printf("  sub rax, rdi\n");

@@ -31,5 +31,6 @@ int main(int argc, char *argv[]) {
   program();
   //fprintf(stderr, "codegen...\n");
   codegen();
+  //fprintf(stderr, "end...\n");
   return 0;
 }
