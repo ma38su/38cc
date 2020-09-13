@@ -771,31 +771,6 @@ Vector *consume_args() {
   return args;
 }
 
-// defined local variable
-Var *consume_lvar_define() {
-  consume("static");
-
-  Type *type = consume_type();
-  if (!type) {
-    return NULL;
-  }
-
-  Token *tok = consume_ident();
-  if (!tok)
-    error_at(token->str, "illegal lvar name");
-  if (find_lvar(tok))
-    error_at(tok->str, "duplicated defined lvar");
-
-  if (consume("[")) {
-    int array_len = expect_number();
-    expect("]");
-
-    type = new_array_type(type, array_len);
-  }
-
-  return new_lvar(tok, type);
-}
-
 int consume_void_args() {
   if (consume(")")) {
     return 1;
@@ -1445,18 +1420,50 @@ Node *expr(void) {
   return assign();
 }
 
-Node *declaration(void) {
-  Var *lvar = consume_lvar_define();
-  if (!lvar) return NULL;
 
-  Node *node = new_node(ND_LVAR);
-  node->ident = substring(lvar->name, lvar->len);
-  node->offset = lvar->offset;
-  node->type = lvar->type;
-  if (consume("=")) {
-    node = new_node_lr(ND_ASSIGN, node, assign());
+// defined local variable
+Node *declaration(void) {
+  int is_static = consume("static");
+
+  Type *type = consume_type();
+  if (!type) {
+    return NULL;
   }
-  return node;
+
+  Token *tok = consume_ident();
+  if (!tok)
+    error_at(token->str, "illegal lvar name");
+  if (find_lvar(tok))
+    error_at(tok->str, "duplicated defined lvar");
+
+  if (consume("[")) {
+    int array_len = expect_number();
+    expect("]");
+
+    type = new_array_type(type, array_len);
+  }
+
+  if (is_static) {
+    Var *var = new_gvar(tok, type);
+
+    Node *node = new_node(ND_GVAR);
+    node->ident = substring(var->name, var->len);
+    node->type = var->type;
+    if (consume("=")) {
+      var->init = gvar_init_val(var->type);
+    }
+    return node;
+  } else {
+    Var *var = new_lvar(tok, type);
+    Node *node = new_node(ND_LVAR);
+    node->ident = substring(var->name, var->len);
+    node->offset = var->offset;
+    node->type = var->type;
+    if (consume("=")) {
+      node = new_node_lr(ND_ASSIGN, node, assign());
+    }
+    return node;
+  }
 }
 
 Node *block_stmt() {
