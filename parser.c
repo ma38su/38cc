@@ -114,9 +114,20 @@ int is_pre_type(Token* tok) {
 
 Var *new_lvar(Token *tok, Type *type) {
   Var *lvar = calloc(1, sizeof(Var));
+
+  int size = sizeof_type(type);
+  if (locals) {
+    lvar->offset = locals->offset + size;
+  } else {
+    lvar->offset = size;
+  }
+  
   lvar->name = tok->str;
   lvar->len = tok->len; // strlen
   lvar->type = type;
+
+  lvar->next = locals;
+  locals = lvar;
   return lvar;
 }
 
@@ -771,26 +782,14 @@ Var *consume_lvar_define() {
   if (find_lvar(tok))
     error_at(tok->str, "duplicated defined lvar");
 
-  int new_size;
   if (consume("[")) {
     int array_len = expect_number();
     expect("]");
 
-    new_size = sizeof_type(type) * array_len;
     type = new_array_type(type, array_len);
-  } else {
-    new_size = sizeof_type(type);
   }
 
-  Var *lvar = new_lvar(tok, type);
-  if (locals) {
-    lvar->offset = locals->offset + new_size;
-  } else {
-    lvar->offset = new_size;
-  }
-  lvar->next = locals;
-  locals = lvar;
-  return lvar;
+  return new_lvar(tok, type);
 }
 
 int consume_void_args() {
@@ -858,14 +857,6 @@ Vector *expect_defined_args() {
 
     if (tok) {
       Var *lvar = new_lvar(tok, type);
-      int size_t = sizeof_type(type);
-      if (locals) {
-        lvar->offset = locals->offset + size_t;
-      } else {
-        lvar->offset = size_t;
-      }
-      lvar->next = locals;
-      locals = lvar;
       node->ident = substring(tok->str, tok->len);
       node->len = tok->len;
       node->offset = lvar->offset;
