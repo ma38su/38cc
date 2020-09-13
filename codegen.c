@@ -330,6 +330,73 @@ void gen_defined_function(Node *node) {
   printf("  ret           # return rax value\n");
 }
 
+void gen_assign(Node *node) {
+  if (node->kind == ND_ASSIGN_POST) {
+    gen(node->lhs);
+  }
+
+  int size = sizeof_type(node->type);
+  if (node->lhs->kind == ND_GVAR) {
+
+    gen(node->rhs);
+    char *name = substring(node->lhs->ident, node->lhs->len);
+    printf("  pop rax\n");
+
+    Node *lhs = node->lhs;
+    if (lhs->type == bool_type) {
+      printf("  cmp rax, 0\n");
+      printf("  setne al\n");
+      printf("  movzb rax, al\n");
+    }
+
+    if (lhs->type == char_type) {
+      printf("  movsx byte ptr %s[rip], rax\n", name);
+    } else if (lhs->type == short_type) {
+      printf("  movsx word ptr %s[rip], rax\n", name);
+    } else if (lhs->type == int_type) {
+      printf("  mov dword ptr %s[rip], eax\n", name);
+    } else if (lhs->type == long_type) {
+      printf("  mov %s[rip], rax\n", name);
+    } else {
+      printf("  # not support gvar %s, type: %s\n", name, lhs->type->name);
+    }
+    printf("  push rax\n");
+  } else {
+    gen_lval(node->lhs);
+    gen(node->rhs);
+
+    printf("  # assign\n");
+    printf("  pop rdi\n");
+    printf("  pop rax\n");
+    
+    if (node->lhs->type == bool_type) {
+      printf("  cmp rdi, 0\n");
+      printf("  setne dil\n");
+      printf("  movzb rdi, dil\n");
+    }
+    if (size == 1) {
+      printf("  mov [rax], dil\n");
+      //printf("  mov byte ptr [rax], dil\n");
+    } else if (size == 2) {
+      printf("  mov [rax], di\n");
+      //printf("  mov word ptr [rax], di\n");
+    } else if (size == 4) {
+      printf("  mov [rax], edi\n");
+      //printf("  mov dword ptr [rax], edi\n");
+    } else if (size == 8) {
+      printf("  mov [rax], rdi\n");
+      //printf("  mov qword ptr [rax], rdi\n");
+    } else {
+      char *type_name = substring(node->type->name, node->type->len);
+      error("illegal assign defref: sizeof(%s) = %d", type_name, size);
+    }
+
+    if (node->kind != ND_ASSIGN_POST) {
+      printf("  push rdi\n");
+    }
+  }
+}
+
 // self NG
 bool gen(Node *node) {
   if (!node) {
@@ -387,71 +454,7 @@ bool gen(Node *node) {
   }
 
   if (node->kind == ND_ASSIGN || node->kind == ND_ASSIGN_POST) {
-
-    if (node->kind == ND_ASSIGN_POST) {
-      gen(node->lhs);
-    }
-
-    int size = sizeof_type(node->type);
-    if (node->lhs->kind == ND_GVAR) {
-
-      gen(node->rhs);
-      char *name = substring(node->lhs->ident, node->lhs->len);
-      printf("  pop rax\n");
-
-      Node *lhs = node->lhs;
-      if (lhs->type == bool_type) {
-        printf("  cmp rax, 0\n");
-        printf("  setne al\n");
-        printf("  movzb rax, al\n");
-      }
-
-      if (lhs->type == char_type) {
-        printf("  movsx byte ptr %s[rip], rax\n", name);
-      } else if (lhs->type == short_type) {
-        printf("  movsx word ptr %s[rip], rax\n", name);
-      } else if (lhs->type == int_type) {
-        printf("  mov dword ptr %s[rip], eax\n", name);
-      } else if (lhs->type == long_type) {
-        printf("  mov %s[rip], rax\n", name);
-      } else {
-        printf("  # not support gvar %s, type: %s\n", name, lhs->type->name);
-      }
-      printf("  push rax\n");
-    } else {
-      gen_lval(node->lhs);
-      gen(node->rhs);
-
-      printf("  # assign\n");
-      printf("  pop rdi\n");
-      printf("  pop rax\n");
-      
-      if (node->lhs->type == bool_type) {
-        printf("  cmp rdi, 0\n");
-        printf("  setne dil\n");
-        printf("  movzb rdi, dil\n");
-      }
-      if (size == 1) {
-        printf("  mov [rax], dil\n");
-        //printf("  mov byte ptr [rax], dil\n");
-      } else if (size == 2) {
-        printf("  mov [rax], di\n");
-        //printf("  mov word ptr [rax], di\n");
-      } else if (size == 4) {
-        printf("  mov [rax], edi\n");
-        //printf("  mov dword ptr [rax], edi\n");
-      } else if (size == 8) {
-        printf("  mov [rax], rdi\n");
-        //printf("  mov qword ptr [rax], rdi\n");
-      } else {
-        char *type_name = substring(node->type->name, node->type->len);
-        error("illegal assign defref: sizeof(%s) = %d", type_name, size);
-      }
-
-      if (node->kind != ND_ASSIGN_POST) {
-        printf("  push rdi\n");
-      }
-    }
+    gen_assign(node);
     return true;
   }
 
