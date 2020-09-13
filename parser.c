@@ -112,8 +112,16 @@ int is_pre_type(Token* tok) {
       || (tok->len == 5 && memcmp(tok->str, "short", 5) == 0);
 }
 
+Var *new_var(Token *tok, Type *type) {
+  Var *var = calloc(1, sizeof(Var));
+  var->name = tok->str;
+  var->len = tok->len; // strlen
+  var->type = type;
+  return var;
+}
+
 Var *new_lvar(Token *tok, Type *type) {
-  Var *lvar = calloc(1, sizeof(Var));
+  Var *lvar = new_var(tok, type);
 
   int size = sizeof_type(type);
   if (locals) {
@@ -122,32 +130,28 @@ Var *new_lvar(Token *tok, Type *type) {
     lvar->offset = size;
   }
   
-  lvar->name = tok->str;
-  lvar->len = tok->len; // strlen
-  lvar->type = type;
-
   lvar->next = locals;
   locals = lvar;
   return lvar;
 }
 
-Var *new_function(Token *tok, Type* ret_type) {
-  Var *var = calloc(1, sizeof(Var));
-  var->name = substring(tok->str, tok->len);
-  var->len = tok->len;
-  var->type = new_fn_type(ret_type);
-
-  var->next = globals;
-  globals = var;
+Var *new_gvar(Token *tok, Type* type) {
+  Var *gvar = new_var(tok, type);
+  gvar->next = globals;
+  globals = gvar;
   if (gvar_has_circular()) error("gvar circuit");
-  return var;
+  return gvar;
+}
+
+Var *new_function_var(Token *tok, Type* type) {
+  return new_gvar(tok, new_fn_type(type));
 }
 
 void add_gvar_function(char *name, Type *ret_type) {
   Token *tok = calloc(1, sizeof(Token));
   tok->str = name;
   tok->len = strlen(name);
-  Var *func = new_function(tok, ret_type);
+  Var *func = new_function_var(tok, ret_type);
   func->extn = 1;
 }
 
@@ -1704,18 +1708,9 @@ Node *new_gvar_node(Token *tok, Type *type, int is_extern) {
       gvar->extn = 0;
     }
   } else {
-    gvar = calloc(1, sizeof(Var));
-    gvar->type = type;
+    gvar = new_gvar(tok, type);
     gvar->extn = is_extern;
-    gvar->next = globals;
-    globals = gvar;
-    if (gvar_has_circular()) {
-      error("gvar has circular 2");
-    }
   }
-
-  gvar->name = substring(tok->str, tok->len);
-  gvar->len = tok->len;
 
   if (consume("[")) {
     if (token->kind == TK_NUM) {
@@ -1939,7 +1934,7 @@ Node *global() {
 
   if (consume("(")) {
     // before parse function statement for recursive call
-    Var *func = new_function(tok, type);
+    Var *func = new_function_var(tok, type);
     func->extn = 1; // declare function
 
     Node *block = NULL;

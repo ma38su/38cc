@@ -187,7 +187,7 @@ void gen_gvars_uninit() {
     }
     int size = sizeof_type(var->type);
     // TODO alignment size
-    printf("  .comm   %s,%d,%d\n", var->name, size, size);
+    printf("  .comm   %s,%d,%d\n", substring(var->name, var->len), size, size);
   }
 }
 
@@ -205,30 +205,31 @@ void gen_gvars() {
   printf("  .data\n");
   for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->extn) continue;
+    char *name = substring(var->name, var->len);
     if (var->type == char_type) {
-      printf("%s:\n", var->name);
+      printf("%s:\n", name);
       printf("  .byte %d\n", var->init->n);
     } else if (var->type == short_type) {
-      printf("%s:\n", var->name);
+      printf("%s:\n", name);
       printf("  .word %d\n", var->init->n);
     } else if (var->type == int_type) {
-      printf("%s:\n", var->name);
+      printf("%s:\n", name);
       printf("  .long %d\n", var->init->n);
     } else if (var->type == long_type) {
-      printf("%s:\n", var->name);
+      printf("%s:\n", name);
       printf("  .quad %d\n", var->init->n);
-    } else if (*(var->name) == '.') {
-      printf("%s:\n", var->name);
-      if (!var->init || !var->init->str) error("char* null: %s", var->name);
+    } else if (*name == '.') {
+      printf("%s:\n", name);
+      if (!var->init || !var->init->str) error("char* null: %s", name);
       printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
     } else if (type_is_array(var->type)) {
       Type *t = var->type->to;
       if (t == char_type) {
-        printf("%s:\n", var->name);
-        if (!var->init || !var->init->str) error("char[] null: %s %s", var->name, var->init->ident);
+        printf("%s:\n", name);
+        if (!var->init || !var->init->str) error("char[] null: %s %s", name, var->init->ident);
         printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
       } else if (type_is_ptr(t)) {
-        printf("%s:\n", var->name);
+        printf("%s:\n", name);
         if (t->to == char_type) {
           for (InitVal *v = var->init; v; v = v->next) {
             if (!v->ident) error("illegal gvars");
@@ -238,7 +239,7 @@ void gen_gvars() {
           error("unsupported initialization");
         }
       } else {
-        printf("%s:\n", var->name);
+        printf("%s:\n", name);
         if (t == char_type) {
           for (InitVal *v = var->init; v; v = v->next) {
             printf("  .byte %d\n", v->n);
@@ -262,12 +263,12 @@ void gen_gvars() {
         }
       }
     } else if (type_is_ptr(var->type)) {
-      printf("%s:\n", var->name);
+      printf("%s:\n", name);
       if (!var->init || !var->init->ident)
-        error("char[] null: %s", var->name);
+        error("char[] null: %s", name);
       printf("  .quad %s\n", var->init->ident);
     } else {
-      printf("# unsupported type: %s: %s\n", var->name, var->type->name);
+      printf("# unsupported type: %s: %s\n", name, var->type->name);
     }
   }
 }
