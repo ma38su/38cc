@@ -758,6 +758,8 @@ Vector *consume_args() {
 
 // defined local variable
 Var *consume_lvar_define() {
+  consume("static");
+
   Type *type = consume_type();
   if (!type) {
     return NULL;

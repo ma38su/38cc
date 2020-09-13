@@ -142,8 +142,7 @@ Token *tokenize() {
     int l = lvar_len(p);
     if (l > 0) {
       // skip
-      if (starts_with(p, l, "static")
-          || starts_with(p, l, "signed")) {
+      if (starts_with(p, l, "signed")) {
         p += l;
         continue;
       }
@@ -153,6 +152,13 @@ Token *tokenize() {
           p += l;
           continue;
         }
+        // skip builtin
+        if (starts_with(p, l, "__builtin_bswap32")
+            || starts_with(p, l, "__builtin_bswap64")) {
+          p += l;
+          continue;
+        }
+
         if (starts_with(p, l, "__inline")) {
           cur = new_token(TK_RESERVED, cur, p);
           cur->len = l;
@@ -161,20 +167,13 @@ Token *tokenize() {
         }
       }
 
-      // skip builtin
-      if (starts_with(p, l, "__builtin_bswap32")
-          || starts_with(p, l, "__builtin_bswap64")) {
-        p += l;
-        continue;
-      }
-
       if (starts_with(p, l, "do") || starts_with(p, l, "while")
           || starts_with(p, l, "continue") || starts_with(p, l, "break")
           || starts_with(p, l, "for") || starts_with(p, l, "return")
           || starts_with(p, l, "if") || starts_with(p, l, "else")
           || starts_with(p, l, "struct") || starts_with(p, l, "enum")
-          || starts_with(p, l, "union")
-          || starts_with(p, l, "typedef") || starts_with(p, l, "const")
+          || starts_with(p, l, "union") || starts_with(p, l, "typedef")
+          || starts_with(p, l, "const") || starts_with(p, l, "static")
           || starts_with(p, l, "extern") || starts_with(p, l, "sizeof")) {
         cur = new_token(TK_RESERVED, cur, p);
       } else {
