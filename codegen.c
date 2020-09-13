@@ -337,7 +337,6 @@ void gen_assign(Node *node) {
 
   int size = sizeof_type(node->type);
   if (node->lhs->kind == ND_GVAR) {
-
     gen(node->rhs);
     char *name = substring(node->lhs->ident, node->lhs->len);
     printf("  pop rax\n");
@@ -360,12 +359,13 @@ void gen_assign(Node *node) {
     } else {
       printf("  # not support gvar %s, type: %s\n", name, lhs->type->name);
     }
-    printf("  push rax\n");
+    if (node->kind != ND_ASSIGN_POST) {
+      printf("  push rax\n");
+    }
   } else {
     gen_lval(node->lhs);
     gen(node->rhs);
 
-    printf("  # assign\n");
     printf("  pop rdi\n");
     printf("  pop rax\n");
     

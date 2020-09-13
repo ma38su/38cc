@@ -661,7 +661,7 @@ void test30() {
 
 int static_count() {
   static int count = 0;
-//  int a = count++;
+  int a = count++;
   return a;
 }
 
