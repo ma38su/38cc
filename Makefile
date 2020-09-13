@@ -169,8 +169,8 @@ test: 38cc test.s test_gcc.s vector.s
 	$(CC) test.s test_gcc.s vector.s -o test
 	./test
 
-test-gcc: test.c
-	$(CC) -o test_gcc test.c vector.c
+test-gcc: test.c test_gcc.c
+	$(CC) -o test_gcc test.c test_gcc.c vector.c
 	./test_gcc
 
 maptest:

@@ -659,6 +659,17 @@ void test30() {
   call_with_struct(val, p);
 }
 
+int static_count() {
+  static int count = 0;
+  return count++;
+}
+
+void test31() {
+  for (int i = 0; i < 10; ++i) {
+    assertInt("test31", i, static_count());
+  }
+}
+
 int main() {
   test1();
   test2();
@@ -690,6 +701,7 @@ int main() {
   test28();
   test29();
   test30();
+  test31();
   return 0;
 }
 
