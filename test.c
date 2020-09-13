@@ -671,13 +671,15 @@ void test31() {
   }
 }
 
-/*
+bool is_space(char p) {
+  return p == ' ' || p == '\n' || p == '\t' || p == '\0' || p == '\r';
+}
+
 void test32() {
   char *p = "   Hello   World";
-  while (isspace(*p)) ++p;
+  while (is_space(*p)) ++p;
   assertChar("test32", 'H', *p);
 }
-*/
 
 int main() {
   test1();
@@ -711,7 +713,7 @@ int main() {
   test29();
   test30();
   test31();
-  //test32();
+  test32();
   return 0;
 }
 

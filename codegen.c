@@ -27,65 +27,16 @@ void codegen();
 void gen_deref(Node *node);
 void gen_deref_type(Type *type);
 void gen_addr(Node* node);
-bool gen_return(Node *node);
+void gen_return(Node *node);
+void gen_if(Node *node);
+void gen_do_while(Node *node);
+void gen_while(Node *node);
+void gen_for(Node *node);
+void gen_assign(Node *node);
+void gen_block(Node *node);
+void gen_function_call(Node *node);
 
-void gen_function_call(Node *node) {
-  if (node->kind != ND_CALL) error("not function call");
-
-  if (node->list) {
-    for (int i = 0; i < node->list->size; ++i) {
-      Node *n = (Node *) vec_get(node->list, i);
-      gen(n);
-    }
-    for (int i = node->list->size - 1; i >= 0; --i) {
-      char *r = get_args_register(8, i);
-      printf("  pop %s  # arg %d\n", r, i);
-    }
-  }
-
-  int padding = 0;
-  if (padding) {
-    int lid = label_id++;
-    printf("  mov rax, rsp\n");
-    printf("  and rax, 15\n");
-    printf("  jnz .L.call.%d\n", lid);
-
-    // reset for return val
-    printf("  mov rax, 0\n");
-    if (node->val) {
-      printf("  call %s@PLT\n", node->ident);
-    } else {
-      printf("  call %s\n", node->ident);
-    }
-    printf("  jmp .L.end.%d\n", lid);
-
-    printf(".L.call.%d:\n", lid);
-    printf("  sub rsp, 8  # align rsb to 16 byte boundary\n");
-
-    // reset for return val
-    printf("  mov rax, 0\n");
-    if (node->val) {
-      printf("  call %s@PLT\n", node->ident);
-    } else {
-      printf("  call %s\n", node->ident);
-    }
-    printf("  add rsp, 8  # turn back rsb\n");
-
-    printf(".L.end.%d:\n", lid);
-  } else {
-    // reset for return val
-    printf("  mov rax, 0\n");
-    if (node->val) {
-      printf("  call %s@PLT\n", node->ident);
-    } else {
-      printf("  call %s\n", node->ident);
-    }
-  }
-
-  // after called, return value is stored rax
-  printf("  push rax\n");
-}
-
+// self NG
 void gen_block(Node *node) {
   if (node->kind != ND_BLOCK) {
     error("not block");
@@ -96,103 +47,6 @@ void gen_block(Node *node) {
     if (!gen(n)) continue;
     printf("  pop rax\n");
   }
-}
-
-bool gen_while(Node *node) {
-  if (node->kind != ND_WHILE) {
-    error("not while");
-  }
-
-  int prev_lid = current_lid;
-  int lid = current_lid = label_id++;
-  printf(".L.begin.%d:\n", lid);
-  gen(node->cnd);
-  printf("  pop rax # while\n");
-  printf("  cmp rax, 0\n");
-  printf("  je  .L.end.%d\n", lid);
-  if (gen(node->thn)) {
-    printf("  pop rax # skip\n");
-  }
-  printf("  jmp .L.begin.%d\n", lid);
-  printf(".L.end.%d:\n", lid);
-  current_lid = prev_lid;
-  return false;
-}
-
-bool gen_do_while(Node *node) {
-  if (node->kind != ND_DO) {
-    error("not do while");
-  }
-
-  int prev_lid = current_lid;
-  int lid = current_lid = label_id++;
-  printf(".L.begin.%d: # do while\n", lid);
-  if (gen(node->thn)) {
-    printf("  pop rax # skip\n");
-  }
-  gen(node->cnd);
-  printf("  pop rax\n");
-  printf("  cmp rax, 0\n");
-  printf("  je  .L.end.%d\n", lid);
-  printf("  jmp .L.begin.%d\n", lid);
-  printf(".L.end.%d:\n", lid);
-  current_lid = prev_lid;
-  return false;
-}
-
-bool gen_for(Node *node) {
-  if (node->kind != ND_FOR) {
-    error("not for");
-  }
-  if (node->ini) {
-    gen(node->ini);
-  }
-
-  int prev_lid = current_lid;
-  int lid = current_lid = label_id++;
-  printf(".L.begin.%d:\n", lid);
-  gen(node->cnd);
-  printf("  pop rax # while\n");
-  printf("  cmp rax, 0\n");
-  printf("  je  .L.end.%d\n", lid);
-  if (gen(node->thn)) {
-    printf("  pop rax # skip\n");
-  }
-  if (node->stp && gen(node->stp)) {
-    printf("  pop rax # skip\n");
-  }
-  printf("  jmp .L.begin.%d\n", lid);
-  printf(".L.end.%d:\n", lid);
-  current_lid = prev_lid;
-  return false;
-}
-
-bool gen_if(Node *node) {
-  if (node->kind != ND_IF) error("not if");
-
-  gen(node->cnd);
-  printf("  pop rax # if\n");
-  printf("  cmp rax, 0\n");
-  int lid = label_id++;
-  if (!node->els) {
-    printf("  je  .L.end.%d\n", lid);
-    if (gen(node->thn)) {
-      printf("  pop rax # skip\n");
-    }
-    printf(".L.end.%d:\n", lid);
-  } else {
-    printf("  je  .L.else.%d\n", lid);
-    if (gen(node->thn)) {
-      printf("  pop rax # skip\n");
-    }
-    printf("  jmp .L.end.%d\n", lid);
-    printf(".L.else.%d:\n", lid);
-    if (gen(node->els)) {
-      printf("  pop rax # skip\n");
-    }
-    printf(".L.end.%d:\n", lid);
-  }
-  return false;
 }
 
 void gen_gvars_uninit() {
@@ -288,7 +142,7 @@ void gen_gvars() {
   }
 }
 
-// self NG
+// self NG segv
 void gen_defined_function(Node *node) {
   if (node->kind != ND_FUNCTION) {
     error("node is not function");
@@ -345,6 +199,7 @@ void gen_defined_function(Node *node) {
   printf("  ret           # return rax value\n");
 }
 
+// self NG
 void gen_assign(Node *node) {
   if (node->kind == ND_ASSIGN_POST) {
     gen(node->lhs);

@@ -38,6 +38,31 @@ int is_alnum(char c) {
       || (c == '_');
 }
 
+bool is_space(char p) {
+  return p == ' ' || p == '\n' || p == '\t' || p == '\0' || p == '\r';
+}
+
+char *skip_brackets(char *p) {
+  // skip (*)
+  while (is_space(*p)) ++p;
+
+  if (*p != '(') {
+    return p;
+  }
+  ++p;
+
+  int brackets = 1;
+  while (brackets > 0) {
+    if (*p == ')') {
+      --brackets;
+    } else if (*p == '(') {
+      ++brackets;
+    }
+    ++p;
+  }
+  return p;
+}
+
 int lvar_len(char *p0) {
   char *p = p0;
   if (('a' <= *p && *p <= 'z')

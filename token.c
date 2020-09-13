@@ -16,26 +16,8 @@ char *skip_brackets(char *p);
 Token *read_char_literal(Token *cur, char *p);
 Token *read_str_literal(Token *cur, char *p);
 
-char *skip_brackets(char *p) {
-  // skip (*)
-  while (isspace(*p)) ++p;
-
-  if (*p != '(') {
-    return p;
-  }
-  ++p;
-
-  int brackets = 1;
-  while (brackets > 0) {
-    if (*p == ')') {
-      --brackets;
-    } else if (*p == '(') {
-      ++brackets;
-    }
-    ++p;
-  }
-  return p;
-}
+bool is_space(char p);
+char *skip_brackets(char *p);
 
 Token *tokenize() {
   char *p = user_input;
@@ -46,7 +28,7 @@ Token *tokenize() {
 
   while (*p) {
     // skip blank
-    if (isspace(*p)) {
+    if (is_space(*p)) {
       p++;
       continue;
     }

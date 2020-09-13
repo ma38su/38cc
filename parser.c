@@ -887,7 +887,6 @@ int sizeof_node(Node* node) {
   return sizeof_type(get_type(node));
 }
 
-
 InitVal *gvar_init_val(Type *type) {
 
   if (type->kind == TY_PTR) {
