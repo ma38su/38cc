@@ -34,7 +34,8 @@ void gen_function_call(Node *node) {
 
   if (node->list) {
     for (int i = 0; i < node->list->size; ++i) {
-      gen((Node *) vec_get(node->list, i));
+      Node *n = (Node *) vec_get(node->list, i);
+      gen(n);
     }
     for (int i = node->list->size - 1; i >= 0; --i) {
       char *r = get_args_register(8, i);
@@ -109,7 +110,9 @@ bool gen_while(Node *node) {
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
   printf("  je  .L.end.%d\n", lid);
-  gen(node->thn);
+  if (gen(node->thn)) {
+    printf("  pop rax # skip\n");
+  }
   printf("  jmp .L.begin.%d\n", lid);
   printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
@@ -124,7 +127,9 @@ bool gen_do_while(Node *node) {
   int prev_lid = current_lid;
   int lid = current_lid = label_id++;
   printf(".L.begin.%d: # do while\n", lid);
-  gen(node->thn);
+  if (gen(node->thn)) {
+    printf("  pop rax # skip\n");
+  }
   gen(node->cnd);
   printf("  pop rax\n");
   printf("  cmp rax, 0\n");
@@ -150,8 +155,12 @@ bool gen_for(Node *node) {
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
   printf("  je  .L.end.%d\n", lid);
-  gen(node->thn);
-  if (node->stp) gen(node->stp);
+  if (gen(node->thn)) {
+    printf("  pop rax # skip\n");
+  }
+  if (node->stp && gen(node->stp)) {
+    printf("  pop rax # skip\n");
+  }
   printf("  jmp .L.begin.%d\n", lid);
   printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
@@ -167,14 +176,20 @@ bool gen_if(Node *node) {
   int lid = label_id++;
   if (!node->els) {
     printf("  je  .L.end.%d\n", lid);
-    gen(node->thn);
+    if (gen(node->thn)) {
+      printf("  pop rax # skip\n");
+    }
     printf(".L.end.%d:\n", lid);
   } else {
     printf("  je  .L.else.%d\n", lid);
-    gen(node->thn);
+    if (gen(node->thn)) {
+      printf("  pop rax # skip\n");
+    }
     printf("  jmp .L.end.%d\n", lid);
     printf(".L.else.%d:\n", lid);
-    gen(node->els);
+    if (gen(node->els)) {
+      printf("  pop rax # skip\n");
+    }
     printf(".L.end.%d:\n", lid);
   }
   return false;
@@ -408,19 +423,24 @@ bool gen(Node *node) {
   }
 
   if (node->kind == ND_IF) {
-    return gen_if(node);
+    gen_if(node);
+    return false;
   }
   if (node->kind == ND_FOR) {
-    return gen_for(node);
+    gen_for(node);
+    return false;
   }
   if (node->kind == ND_WHILE) {
-    return gen_while(node);
+    gen_while(node);
+    return false;
   }
   if (node->kind == ND_DO) {
-    return gen_do_while(node);
+    gen_do_while(node);
+    return false;
   }
   if (node->kind == ND_RETURN) {
-    return gen_return(node);
+    gen_return(node);
+    return false;
   }
   if (node->kind == ND_CONTINUE) {
     printf("  # CONTINUE\n");
