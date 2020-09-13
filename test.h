@@ -7,14 +7,9 @@
 typedef enum {
   MAME_A,
   MAME_B,
-  MAME_C,
+  MAME_C = 5,
+  MAME_D,
 } Mame;
-
-typedef enum {
-  SAKE_1,
-  SAKE_2,
-  SAKE_3,
-} Sake;
 
 struct Char {
   char val;

@@ -1431,8 +1431,13 @@ Node *declaration(void) {
   }
 
   Token *tok = consume_ident();
-  if (!tok)
-    error_at(token->str, "illegal lvar name");
+  if (!tok) {
+    if (type) {
+      error_at(token->str, "illegal var name1 %d", type->kind);
+    } else {
+      error_at(token->str, "illegal var name2");
+    }
+  }
   if (find_lvar(tok))
     error_at(tok->str, "duplicated defined lvar");
 

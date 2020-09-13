@@ -53,7 +53,19 @@ $(OBJS): 38cc.h $(SRCS)
 self: 38cc2 .test.c .test_gcc.c
 	./38cc2 .test.c > test2.s
 	./38cc2 .test_gcc.c > test2_gcc.s
+
 	./38cc2 .vector.c > vector2.s
+	diff vector.s vector2.s
+
+	./38cc2 .subtoken.c > subtoken2.s
+	diff subtoken.s subtoken2.s
+
+	./38cc2 .subcodegen.c > subcodegen2.s
+	diff subcodegen.s subcodegen2.s
+
+	./38cc2 .reader.c > reader2.s
+	diff reader.s reader2.s
+
 	$(CC) test2.s test2_gcc.s vector2.s -o test2
 	./test2
 
@@ -108,6 +120,10 @@ vector.s: 38cc vector.c .vector.c
 	#$(CC) -S -masm=intel vector.c -o vector.s
 	./38cc .vector.c > vector.s
 
+subcodegen.s: 38cc subcodegen.c .subcodegen.c
+	#$(CC) -S -masm=intel subcodegen.c -o subcodegen.s
+	./38cc .subcodegen.c > subcodegen.s
+
 main.s: 38cc main.c .main.c
 	$(CC) -S -masm=intel main.c -o main.s
 	#./38cc .main.c > main.s
@@ -123,10 +139,6 @@ parser.s: 38cc parser.c .parser.c
 codegen.s: 38cc codegen.c .codegen.c
 	$(CC) -S -masm=intel codegen.c -o codegen.s
 	#./38cc .codegen.c > codegen.s
-
-subcodegen.s: 38cc subcodegen.c .subcodegen.c
-	#$(CC) -S -masm=intel subcodegen.c -o subcodegen.s
-	./38cc .subcodegen.c > subcodegen.s
 
 debug.s: 38cc debug.c .debug.c
 	$(CC) -S -masm=intel debug.c -o debug.s

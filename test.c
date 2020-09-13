@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include <string.h>
+#include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 
 #include "test.h"
@@ -162,10 +163,12 @@ void test6() {
   Mame a = MAME_A;
   Mame b = MAME_B;
   Mame c = MAME_C;
+  Mame d = MAME_D;
 
   assert("test5-1", MAME_A == 0);
   assert("test5-2", MAME_B == 1);
-  assert("test5-3", MAME_C == 2);
+  assert("test5-3", MAME_C == 5);
+  assert("test5-3", MAME_D == 6);
 
   assert("test5-4", MAME_A == MAME_A);
   assert("test5-5", MAME_A != MAME_B);
@@ -174,11 +177,8 @@ void test6() {
   assert("test5-7", a != b);
   assert("test5-8", b != a);
 
-  assert("test5-9", a + 2 == c);
-  assert("test5-10", b + 1 == c);
-
-  assert("test5-11", MAME_A == SAKE_1);
-  assert("test5-12", MAME_A != SAKE_2);
+  assert("test5-9", a + 1 == b);
+  assert("test5-10", c + 1 == d);
 }
 
 void test7() {
@@ -671,6 +671,14 @@ void test31() {
   }
 }
 
+/*
+void test32() {
+  char *p = "   Hello   World";
+  while (isspace(*p)) ++p;
+  assertChar("test32", 'H', *p);
+}
+*/
+
 int main() {
   test1();
   test2();
@@ -703,6 +711,7 @@ int main() {
   test29();
   test30();
   test31();
+  //test32();
   return 0;
 }
 
