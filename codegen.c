@@ -565,10 +565,12 @@ bool gen(Node *node) {
         error("no rhs ptr size: %s",
           substring(node->lhs->type->to->name, node->lhs->type->to->len));
       }
-      // for pointer calculation
-      printf("  pop rax\n");
-      printf("  imul rax, %d\n", rhs_size);
-      printf("  push rax\n");
+      if (rhs_size != 1) {
+        // for pointer calculation
+        printf("  pop rax\n");
+        printf("  imul rax, %d\n", rhs_size);
+        printf("  push rax\n");
+      }
     }
   }
 
@@ -581,10 +583,12 @@ bool gen(Node *node) {
         error("no lhs ptr size %s",
           substring(node->lhs->type->to->name, node->lhs->type->to->len));
       }
-      // for pointer calculation
-      printf("  pop rax\n");
-      printf("  imul rax, %d\n", lhs_size);
-      printf("  push rax\n");
+      if (lhs_size != 1) {
+        // for pointer calculation
+        printf("  pop rax\n");
+        printf("  imul rax, %d\n", lhs_size);
+        printf("  push rax\n");
+      }
     }
   }
 
