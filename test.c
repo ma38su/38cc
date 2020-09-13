@@ -3,17 +3,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "vector.h"
-
-#include "38cc.h"
+#include "test.h"
 
 //static int debug = 0;
 //extern int debug;
 int debug = 0;
-
-void assert(char* name, int ret);
-void assertInt(char *, int, int);
-void assertLong(char *, long, long);
 
 void assertChar(char *name, char expect, char actual) {
   if (actual == expect) {
@@ -44,18 +38,6 @@ void assertPtr(char *name, long expect, long actual) {
     printf("%s: NG, expect: 0x%lX, actual: 0x%lX\n", name, expect, actual);
   }
 }
-
-typedef enum {
-  MAME_A,
-  MAME_B,
-  MAME_C,
-} Mame;
-
-typedef enum {
-  SAKE_1,
-  SAKE_2,
-  SAKE_3,
-} Sake;
 
 int a;
 int b;
@@ -198,91 +180,6 @@ void test6() {
   assert("test5-11", MAME_A == SAKE_1);
   assert("test5-12", MAME_A != SAKE_2);
 }
-
-struct Char {
-  char val;
-};
-typedef struct Char Char;
-
-typedef struct {
-  short val;
-} Short;
-
-typedef struct {
-  int val;
-} Int;
-
-typedef struct {
-  short val1;
-  char val2;
-} ShortChar;
-
-typedef struct {
-  int val1;
-  char val2;
-} IntChar;
-
-typedef struct {
-  long val1;
-  char val2;
-} LongChar;
-
-typedef struct {
-  char val1;
-  long val2;
-  char val3;
-} CharLongChar;
-
-typedef struct {
-  char val1;
-  char val2;
-  long val3;
-} CharCharLong;
-
-typedef struct {
-  short val1;
-  int val2;
-  short val3;
-} ShortIntShort;
-
-typedef struct {
-  int val1;
-  short val2;
-  short val3;
-} IntShortShort;
-
-typedef struct {
-  long val1;
-  long val2;
-  long val3;
-} LongLongLong;
-
-typedef struct {
-  int val1;
-  int val2;
-  int val3;
-} IntIntInt;
-
-typedef struct {
-  char val1;
-  short val2;
-  int val3;
-  long val4;
-} CharShortIntLong;
-
-typedef struct {
-  long val1;
-  int val2;
-  short val3;
-  char val4;
-} LongIntShortChar;
-
-typedef struct {
-  char val1;
-  long val2;
-  int val3;
-  short val4;
-} CharLongIntShort;
 
 void test7() {
 
@@ -529,14 +426,6 @@ void test16() {
   assertInt("test15-4", 3, !1 ? 2 : 3);
 } 
 
-typedef struct Nest {
-  enum NestType {
-    A = 1,
-    B = 3,
-  } type;
-  char *name;
-} Nest;
-
 Nest *new_nest(enum NestType type) {
   Nest *nest = calloc(1, sizeof(Nest));
   nest->type = type;
@@ -617,19 +506,6 @@ void test23() {
   bool v3 = (bool) c;
   assertInt("test23-3", 1, v3);
 }
-
-typedef union {
-  char v1;
-  int v2;
-  short v3;
-} IntUnion;
-
-union LongUnion {
-  char v1;
-  int v2;
-  long v3;
-};
-typedef union LongUnion LongUnion;
 
 void test24() {
 
@@ -726,6 +602,10 @@ void test26() {
   assertInt("test26-6", 10, e->val1);
   assertInt("test26-7", 131, e->val2);
   assertInt("test26-8", -7, e->val3);
+
+  long p1 = (long) e;
+  long p2 = (long) &e->val1;
+  assertLong("test26-9", p1, p2);
 }
 
 char *ptr_str = "HeLlo"; // 0
@@ -766,8 +646,17 @@ void test28() {
 void test29() {
   int a = 7;
   int *p = &a;
-
   assertInt("test29", 7, *&*&*&a);
+}
+
+void test30() {
+  CharLongIntShort *val = calloc(1, sizeof(CharLongIntShort));
+  val->val1 = 'M';
+  val->val2 = 1024;
+  val->val3 = -131;
+  val->val4 = 253;
+  long p = (long) val;
+  call_with_struct(val, p);
 }
 
 int main() {
@@ -800,6 +689,7 @@ int main() {
   test27();
   test28();
   test29();
+  test30();
   return 0;
 }
 

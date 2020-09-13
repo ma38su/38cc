@@ -1,6 +1,6 @@
 CFLAGS=-Wall -std=c11 -g -static
-SRCS=main.c token.c subtoken.c parser.c codegen.c reader.c debug.c vector.c
-OBJS=main.o token.o subtoken.o parser.o codegen.o reader.o debug.o vector.o
+SRCS=main.c token.c subtoken.c parser.c codegen.c subcodegen.c reader.c debug.c vector.c
+OBJS=main.o token.o subtoken.o parser.o codegen.o subcodegen.o reader.o debug.o vector.o
 #SRCS=$(wildcard *.c)
 #OBJS=$(SRCS:.c=.o)
 
@@ -32,22 +32,29 @@ $(OBJS): 38cc.h $(SRCS)
 .codegen.c: codegen.c
 	cpp codegen.c -o .codegen.c
 
+.subcodegen.c: subcodegen.c
+	cpp subcodegen.c -o .subcodegen.c
+
 .debug.c: debug.c
 	cpp debug.c -o .debug.c
 
-.test.c: test.c
+.test.c: test.h test.c
 	cpp test.c -o .test.c
+
+.test_gcc.c: test.h test_gcc.c
+	cpp test_gcc.c -o .test_gcc.c
 
 .sample.c: sample.c
 	cpp sample.c -o .sample.c
 
-38cc2: main.s token.s subtoken.s parser.s codegen.s reader.s debug.s vector.s
-	$(CC) -o 38cc2 main.s token.s subtoken.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
+38cc2: main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s
+	$(CC) -o 38cc2 main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s $(LDFLAGS)
 
-self: 38cc2 .test.c
+self: 38cc2 .test.c .test_gcc.c
 	./38cc2 .test.c > test2.s
+	./38cc2 .test_gcc.c > test2_gcc.s
 	./38cc2 .vector.c > vector2.s
-	$(CC) test2.s vector2.s -o test2
+	$(CC) test2.s test2_gcc.s vector2.s -o test2
 	./test2
 
 #	./38cc2 .sample.c > sample2.s
@@ -117,6 +124,10 @@ codegen.s: 38cc codegen.c .codegen.c
 	$(CC) -S -masm=intel codegen.c -o codegen.s
 	#./38cc .codegen.c > codegen.s
 
+subcodegen.s: 38cc subcodegen.c .subcodegen.c
+	#$(CC) -S -masm=intel subcodegen.c -o subcodegen.s
+	./38cc .subcodegen.c > subcodegen.s
+
 debug.s: 38cc debug.c .debug.c
 	$(CC) -S -masm=intel debug.c -o debug.s
 	#./38cc .debug.c > debug.s
@@ -148,11 +159,14 @@ self-vector: 38cc vector.c
 test.s: 38cc .test.c
 	./38cc .test.c > test.s
 
+test_gcc.s: 38cc .test_gcc.c
+	$(CC) -S -masm=intel .test_gcc.c -o test_gcc.s
+
 shtest: 38cc test.sh
 	./test.sh
 
-test: 38cc test.s vector.s
-	$(CC) test.s vector.s -o test
+test: 38cc test.s test_gcc.s vector.s
+	$(CC) test.s test_gcc.s vector.s -o test
 	./test
 
 test-gcc: test.c
