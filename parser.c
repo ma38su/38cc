@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -162,7 +161,7 @@ void add_gvar_function(char *name, Type *ret_type) {
   tok->str = name;
   tok->len = strlen(name);
   Var *func = new_function_var(tok, ret_type);
-  func->extn = 1;
+  func->is_extern = true;
 }
 
 void init_builtin() {
@@ -1027,7 +1026,7 @@ Node *primary() {
     if (gvar) {
       node = new_node(ND_CALL);
       node->type = gvar->type->ret;
-      node->val = gvar->extn;
+      node->val = gvar->is_extern;
     } else {
       Var *lvar = find_lvar(tok);
       if (lvar) {
@@ -1755,15 +1754,15 @@ Node *new_gvar_node(Token *tok, Type *t, int is_extern) {
   Type *type = t;
   if (gvar) {
     if (!is_extern) {
-      if (!gvar->extn) {
+      if (!gvar->is_extern) {
         error_at(tok->str, "duplicated defined gvar");
       }
-      gvar->extn = 0;
-      gvar->is_static = 1;
+      gvar->is_extern = false;
+      gvar->is_static = true;
     }
   } else {
     gvar = new_gvar(tok, type);
-    gvar->extn = is_extern;
+    gvar->is_extern = is_extern;
     if (!is_extern) {
       gvar->is_static = 1;
     }
@@ -1955,8 +1954,8 @@ Node *global() {
     return NULL;
   }
 
-  int is_extern = consume("extern") ? 1 : 0;
-
+  int is_extern = consume("extern");
+  
   Node *node;
   node = consume_struct_node();
   if (node) {
@@ -2000,7 +1999,7 @@ Node *global() {
   if (consume("(")) {
     // before parse function statement for recursive call
     Var *func = new_function_var(tok, type);
-    func->extn = 1; // declare function
+    func->is_extern = true; // declare function
 
     Node *block = NULL;
     Vector *args;

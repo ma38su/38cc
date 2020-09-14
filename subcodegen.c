@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include "38cc.h"
 
 extern int label_id;
@@ -445,7 +444,7 @@ void gen_gvar_declaration(Var *var) {
       printf("%s:\n", name);
       if (t) {
         if (t->name) {
-          printf(" # DEBUG3 %d\n", t->kind);
+          printf(" # DEBUG3 %d %s\n", t->kind);
         } else {
           printf(" # DEBUG4 %d\n", t->kind);
         }

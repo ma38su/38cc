@@ -92,17 +92,19 @@ self: 38cc2 .test.c .test_gcc.c
 #	./test2
 
 
-sample: 38cc sample.c
-	$(CC) -O0 -S -masm=intel sample2.c -o sample2.s
-
+sample: 38cc 38cc2 sample.c
 	$(CC) -O0 -S -masm=intel sample.c -o sample-gcc.s
-	gcc -o sample-gcc sample-gcc.s sample2.s
+	gcc -o sample-gcc sample-gcc.s
 	./sample-gcc
-	
-	cpp sample.c .sample.c
-	./38cc .sample.c > sample-38cc.s
-	gcc -o sample-38cc sample-38cc.s sample2.s
+
+	cpp sample.c sample_.c
+	./38cc sample_.c > sample-38cc.s
+	gcc -o sample-38cc sample-38cc.s
 	./sample-38cc
+
+	./38cc2 sample_.c > sample-38cc2.s
+	gcc -o sample-38cc2 sample-38cc2.s
+	./sample-38cc2
 
 sample-s: sample-gcc.s sample-38cc.s sample2.s
 	gcc -o sample-gcc sample-gcc.s sample2.s
@@ -134,8 +136,8 @@ main.s: 38cc main.c .main.c
 	#./38cc .main.c > main.s
 
 token.s: 38cc token.c .token.c
-	#$(CC) -S -masm=intel token.c -o token.s
-	./38cc .token.c > token.s
+	$(CC) -S -masm=intel token.c -o token.s
+	#./38cc .token.c > token.s
 
 parser.s: 38cc parser.c .parser.c
 	$(CC) -S -masm=intel parser.c -o parser.s

@@ -2,6 +2,7 @@
 #ifndef MCC_H
 #define MCC_H
 
+#include <stdbool.h>
 #include "vector.h"
 
 typedef enum {
@@ -146,8 +147,8 @@ struct Var {
 
   int offset; // local variable
 
-  int extn;
-  int is_static;
+  bool is_extern;
+  bool is_static;
 
   InitVal *init;  // <InitVal>
 };
@@ -184,7 +185,7 @@ struct Function {
   Type *ret_type;
   char *name;
   int len;
-  int extn;
+  int is_extern;
 };
 
 // global vars

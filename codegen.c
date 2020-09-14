@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include <string.h>
 #include "38cc.h"
 
@@ -53,7 +52,7 @@ void gen_block(Node *node) {
 
 void gen_gvars_uninit() {
   for (Var *var = globals; var; var = var->next) {
-    if (var->init || var->extn || var->type->kind == TY_FUNCTION) {
+    if (var->init || var->is_extern || var->type->kind == TY_FUNCTION) {
       continue;
     }
     int size = sizeof_type(var->type);
@@ -69,7 +68,7 @@ void gen_gvars_uninit() {
 int n_gvars() {
   int data_count = 0;
   for (Var *var = globals; var; var = var->next) {
-    if (!var->init || var->extn) continue;
+    if (!var->init || var->is_extern) continue;
     data_count++;
   }
   return data_count;
@@ -84,7 +83,7 @@ void gen_gvar_declarations() {
 
   printf("  .data\n");
   for (Var *var = globals; var; var = var->next) {
-    if (!var->init || var->extn) continue;
+    if (!var->init || var->is_extern) continue;
     gen_gvar_declaration(var);
   }
 }
