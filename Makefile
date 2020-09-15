@@ -38,21 +38,22 @@ $(OBJS): 38cc.h $(SRCS)
 .debug.c: debug.c
 	cpp debug.c -o .debug.c
 
-.test.c: test.h test.c
-	cpp test.c -o .test.c
+test_.c: test.h test.c
+	cpp test.c -o test_.c
 
-.test_gcc.c: test.h test_gcc.c
-	cpp test_gcc.c -o .test_gcc.c
+test_gcc_.c: test.h test_gcc.c
+	cpp test_gcc.c -o test_gcc_.c
 
-.sample.c: sample.c
-	cpp sample.c -o .sample.c
+sample_.c: sample.c
+	cpp sample.c -o _sample.c
 
 38cc2: main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s
 	$(CC) -o 38cc2 main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s $(LDFLAGS)
 
-self: 38cc2 .test.c .test_gcc.c
-	./38cc2 .test.c > test2.s
-	./38cc2 .test_gcc.c > test2_gcc.s
+self: 38cc2 test_.c test_gcc_.c
+
+	./38cc2 test_.c > test2.s
+	./38cc2 test_gcc_.c > test2_gcc.s
 
 	./38cc2 .vector.c > vector2.s
 	diff vector.s vector2.s
@@ -60,11 +61,11 @@ self: 38cc2 .test.c .test_gcc.c
 	./38cc2 .reader.c > reader2.s
 	diff reader.s reader2.s
 
-	#./38cc2 .subtoken.c > subtoken2.s
-	#diff subtoken.s subtoken2.s
+	./38cc2 .subtoken.c > subtoken2.s
+	diff subtoken.s subtoken2.s
 
-	#./38cc2 .subcodegen.c > subcodegen2.s
-	#diff subcodegen.s subcodegen2.s
+	./38cc2 .subcodegen.c > subcodegen2.s
+	diff subcodegen.s subcodegen2.s
 
 	#./38cc2 .token.c > token2.s
 	#diff token.s token2.s
@@ -175,11 +176,11 @@ self-vector: 38cc vector.c
 	cpp vector.c -o .vector.c
 	./38cc .vector.c > vector.s
 
-test.s: 38cc .test.c
-	./38cc .test.c > test.s
+test.s: 38cc test_.c
+	./38cc test_.c > test.s
 
-test_gcc.s: 38cc .test_gcc.c
-	$(CC) -S -masm=intel .test_gcc.c -o test_gcc.s
+test_gcc.s: 38cc test_gcc_.c
+	$(CC) -S -masm=intel test_gcc_.c -o test_gcc.s
 
 shtest: 38cc test.sh
 	./test.sh

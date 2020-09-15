@@ -10,7 +10,7 @@ int sizeof_lvars();
 int gvar_has_circular();
 int align(int offset, int size);
 int eval_node(Node* node);
-int is_alnum(char c);
+bool is_alpbar(char c);
 
 Type *consume_type();
 Member *consume_member();
@@ -446,7 +446,7 @@ Type *consume_type() {
     if (!type && !is_pre_type(token)) return NULL;
 
     while (token->next) {
-      if (!is_alnum(*token->next->str)) {
+      if (!is_alpbar(*token->next->str)) {
         token = token->next;
         break;
       }
@@ -898,9 +898,10 @@ int sizeof_node(Node* node) {
 }
 
 InitVal *gvar_init_val(Type *type) {
-
+  type = raw_type(type);
   if (type->kind == TY_PTR) {
-    if (raw_type(type)->to != char_type) {
+    Type *type_to = raw_type(type->to);
+    if (type_to != char_type) {
       error("unsupported init. (1)");
     }
 
@@ -916,7 +917,8 @@ InitVal *gvar_init_val(Type *type) {
     return v;
   }
   if (type->kind == TY_ARRAY) {
-    if (raw_type(type->to) == char_type) {
+    Type *type_to = raw_type(type->to);
+    if (type_to == char_type) {
       // char*[]
       if (token->kind != TK_STR) {
         error("TODO unsupported init. (2)");
@@ -934,7 +936,7 @@ InitVal *gvar_init_val(Type *type) {
 
     if (consume("}")) error("TODO !!");
 
-    if (raw_type(type->to)->kind == TY_PTR) {
+    if (type_to->kind == TY_PTR) {
       InitVal head;
       head.next = NULL;
       InitVal *cur = &head;
@@ -960,7 +962,7 @@ InitVal *gvar_init_val(Type *type) {
         expect(",");
       }
       return head.next;
-    } else if (raw_type(type->to)->kind == TY_PRM) {
+    } else if (type_to->kind == TY_PRM) {
       InitVal head;
       head.next = NULL;
       InitVal *cur = &head;
@@ -1118,7 +1120,8 @@ Node *postfix() {
   for (;;) {
     // post ++ or --
     if (consume("++")) {
-      if (node->type->to) {
+      Type *type = raw_type(node->type);
+      if (type->to) {
         node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_PTR_ADD, node, new_int_node(1)));
       } else {
         node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_ADD, node, new_int_node(1)));
@@ -1126,7 +1129,8 @@ Node *postfix() {
       continue;
     }
     if (consume("--")) {
-      if (node->type->to) {
+      Type *type = raw_type(node->type);
+      if (type->to) {
         node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_PTR_SUB, node, new_int_node(1)));
       } else {
         node = new_node_lr(ND_ASSIGN_POST, node, new_node_lr(ND_SUB, node, new_int_node(1)));
@@ -1184,20 +1188,18 @@ Node *unary() {
   // pre ++
   if (consume("++")) {
     Node *node = primary();
-    if (node->type->to) {
-      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_ADD, node, new_int_node(1)));
-    } else {
-      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_int_node(1)));
-    }
+    Type *type = raw_type(node->type);
+
+    int size = type->to ? sizeof_type(type->to) : 1;
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, new_long_node(size)));
   }
   // pre -- 
   if (consume("--")) {
     Node *node = primary();
-    if (node->type->to) {
-      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_SUB, node, new_int_node(1)));
-    } else {
-      return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_int_node(1)));
-    }
+    Type *type = raw_type(node->type);
+
+    int size = type->to ? sizeof_type(type->to) : 1;
+    return new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, new_long_node(size)));
   }
   if (consume("-")) {
     Node *node = primary();
@@ -1277,21 +1279,26 @@ Node *add() {
   for (;;) {
     if (consume("+")) {
       Node *node2 = mul();
-      if (node->type->to) {
-        if (node2->type->to) error("illegal");
+
+      Type *type = raw_type(node->type);
+      Type *type2 = raw_type(node2->type);
+      if (type->to) {
+        if (type2->to) error("illegal");
         node = new_node_lr(ND_PTR_ADD, node, node2);
-      } else if (node2->type->to) {
+      } else if (type2->to) {
         node = new_node_lr(ND_PTR_ADD, node2, node);
       } else {
         node = new_node_lr(ND_ADD, node, node2);
       }
     } else if (consume("-")) {
       Node *node2 = mul();
-      if (node->type->to && node2->type->to) {
+      Type *type = raw_type(node->type);
+      Type *type2 = raw_type(node2->type);
+      if (type->to && type2->to) {
         node = new_node_lr(ND_PTR_DIFF, node, node2);
-      } else if (node->type->to) {
+      } else if (type->to) {
         node = new_node_lr(ND_PTR_SUB, node, node2);
-      } else if (node2->type->to) {
+      } else if (type2->to) {
         node = new_node_lr(ND_SUB, new_long_node(0), new_node_lr(ND_PTR_SUB, node2, node));
       } else {
         node = new_node_lr(ND_SUB, node, node2);
@@ -1433,13 +1440,15 @@ Node *ternay() {
 Node *assign() {
   Node *node = ternay();
   if (consume("+=")) {
-    if (node->type->to) {
+    Type *type = raw_type(node->type);
+    if (type->to) {
       node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_ADD, node, assign()));
     } else {
       node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_ADD, node, assign()));
     }
   } else if (consume("-=")) {
-    if (node->type->to) {
+    Type *type = raw_type(node->type);
+    if (type->to) {
       node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_PTR_SUB, node, assign()));
     } else {
       node = new_node_lr(ND_ASSIGN, node, new_node_lr(ND_SUB, node, assign()));
@@ -1751,7 +1760,7 @@ int eval_node(Node* node) {
 
 Node *new_gvar_node(Token *tok, Type *t, int is_extern) {
   Var *gvar = find_gvar(tok);
-  Type *type = t;
+  Type *type = raw_type(t);
   if (gvar) {
     if (!is_extern) {
       if (!gvar->is_extern) {
@@ -1779,13 +1788,6 @@ Node *new_gvar_node(Token *tok, Type *t, int is_extern) {
       type = new_array_type(type, sizeof_type(type));
       expect("]");
     }
-
-    if (type->to->kind == TY_PTR) {
-      fprintf(stderr, "type3: %s\n", type->to->to->name);
-    }
-  }
-  if (type->to && type->to->kind == TY_PTR) {
-    fprintf(stderr, "type4: %s\n", type->to->to->name);
   }
 
   gvar->type = type;

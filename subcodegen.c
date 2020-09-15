@@ -403,27 +403,28 @@ void gen_ternary(Node *node) {
 void gen_gvar_declaration(Var *var) {
   char *name = substring(var->name, var->len);
 
+  Type *type = raw_type(var->type);
   if (var->is_static) {
     printf("  .global %s\n", name);
   }
-  if (var->type == char_type) {
+  if (type == char_type) {
     printf("%s:\n", name);
     printf("  .byte %d\n", var->init->n);
-  } else if (var->type == short_type) {
+  } else if (type == short_type) {
     printf("%s:\n", name);
     printf("  .word %d\n", var->init->n);
-  } else if (var->type == int_type) {
+  } else if (type == int_type) {
     printf("%s:\n", name);
     printf("  .long %d\n", var->init->n);
-  } else if (var->type == long_type) {
+  } else if (type == long_type) {
     printf("%s:\n", name);
     printf("  .quad %d\n", var->init->n);
   } else if (*name == '.') {
     printf("%s:\n", name);
     if (!var->init || !var->init->str) error("char* null: %s", name);
     printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
-  } else if (type_is_array(var->type)) {
-    Type *t = var->type->to;
+  } else if (type_is_array(type)) {
+    Type *t = raw_type(type->to);
 
     if (t == char_type) {
       printf("%s:\n", name);
@@ -431,7 +432,6 @@ void gen_gvar_declaration(Var *var) {
       printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
     } else if (type_is_ptr(t)) {
       printf("%s:\n", name);
-      printf(" # DEBUG1\n");
       if (t->to == char_type) {
         for (InitVal *v = var->init; v; v = v->next) {
           if (!v->ident) error("illegal gvars");
@@ -442,15 +442,6 @@ void gen_gvar_declaration(Var *var) {
       }
     } else {
       printf("%s:\n", name);
-      if (t) {
-        if (t->name) {
-          printf(" # DEBUG3 %d %s\n", t->kind);
-        } else {
-          printf(" # DEBUG4 %d\n", t->kind);
-        }
-      } else {
-        printf(" # DEBUG2\n");
-      }
       if (t == char_type) {
         for (InitVal *v = var->init; v; v = v->next) {
           printf("  .byte %d\n", v->n);
@@ -473,7 +464,7 @@ void gen_gvar_declaration(Var *var) {
         }
       }
     }
-  } else if (type_is_ptr(var->type)) {
+  } else if (type_is_ptr(type)) {
     printf("%s:\n", name);
     if (!var->init || !var->init->ident)
       error("char[] null: %s", name);

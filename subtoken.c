@@ -6,7 +6,8 @@
 #include "38cc.h"
 
 
-int is_alnum(char c);
+bool is_alpbar(char c);
+bool is_alpbarn(char c);
 int lvar_len(char *p0);
 int starts_with(char *p, int pl, char *string);
 
@@ -31,11 +32,8 @@ char *next_ptr(char *p0, char c) {
   return p;
 }
 
-int is_alnum(char c) {
-  return ('a' <= c && c <= 'z')
-      || ('A' <= c && c <= 'Z')
-      || ('0' <= c && c <= '9')
-      || (c == '_');
+bool is_alpbarn(char c) {
+  return is_alpbar(c) || ('0' <= c && c <= '9');
 }
 
 bool is_space(char p) {

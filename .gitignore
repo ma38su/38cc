@@ -2,6 +2,7 @@ core
 .*
 *.o
 *.s
+*_.c
 tmp
 38cc
 38cc2
@@ -9,5 +10,6 @@ tmp
 test
 test2
 test3
+test_gcc
 *.code-workspace
 sample**

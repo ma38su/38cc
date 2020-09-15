@@ -5,7 +5,7 @@
 
 #include "38cc.h"
 
-int is_alnum(char c);
+bool is_alpbarn(char c);
 int lvar_len(char *p0);
 int starts_with(char *p, int pl, char *string);
 
@@ -19,14 +19,16 @@ Token *read_str_literal(Token *cur, char *p);
 bool is_space(char p);
 char *skip_brackets(char *p);
 
+bool is_alpbar(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
+}
+
 int lvar_len(char *p0) {
   char *p = p0;
-  if (('a' <= *p && *p <= 'z')
-      || ('A' <= *p && *p <= 'Z')
-      || *p == '_') {
+  if (is_alpbar(*p)) {
     do {
       p++;
-    } while (is_alnum(*p));
+    } while (is_alpbarn(*p));
   }
   return p - p0;
 }
