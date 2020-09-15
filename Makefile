@@ -35,7 +35,7 @@ $(OBJS): 38cc.h $(SRCS)
 .codegen.c: codegen.c
 	cpp codegen.c -o .codegen.c
 
-.codegen.c: codegen_sub.c
+.codegen_sub.c: codegen_sub.c
 	cpp codegen_sub.c -o .codegen_sub.c
 
 .debug.c: debug.c
@@ -121,16 +121,13 @@ self-token: 38cc token.c .token.c
 self-parser: 38cc .parser.c
 	./38cc .parser.c > parser.s
 
-self-codegen: 38cc codegen.c
-	cpp codegen.c -o .codegen.c
+self-codegen: 38cc .codegen.c
 	./38cc .codegen.c > codegen.s
 
-self-debug: 38cc debug.c
-	cpp debug.c -o .debug.c
+self-debug: 38cc .debug.c
 	./38cc .debug.c > debug.s
 
-self-vector: 38cc vector.c
-	cpp vector.c -o .vector.c
+self-vector: 38cc .vector.c
 	./38cc .vector.c > vector.s
 
 test.s: 38cc test_.c

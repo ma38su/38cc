@@ -54,12 +54,11 @@ Vector *types;  // Type*
 Vector *inlines;
 
 Type *bool_type;
+
 Type *char_type;
 Type *short_type;
 Type *int_type;
 Type *long_type;
-Type *float_type;
-Type *double_type;
 
 Type *unsigned_char_type;
 Type *unsigned_short_type;
@@ -68,6 +67,9 @@ Type *unsigned_long_type;
 
 Type *void_type;
 Type *ptr_char_type;
+
+Type *float_type;
+Type *double_type;
 
 int gstr_len = 0; // number of global string variable
 
@@ -168,8 +170,8 @@ void add_gvar_function(char *name, Type *ret_type) {
 
 void init_builtin() {
   add_gvar_function("__builtin_va_start", void_type);
-  add_gvar_function("__builtin_bswap64", long_type); // unsigned long
-  add_gvar_function("__builtin_bswap32", int_type); // unsigned long
+  add_gvar_function("__builtin_bswap64", unsigned_long_type); // unsigned long
+  add_gvar_function("__builtin_bswap32", unsigned_int_type); // unsigned long
 }
 
 void init_types() {
@@ -1285,7 +1287,6 @@ Node *add() {
       Type *type = raw_type(node->type);
       Type *type2 = raw_type(node2->type);
       if (type->to && type2->to) {
-        fprintf(stderr, "DEBUG ptr-diff\n");
         node = new_node_lr(ND_PTR_DIFF, node, node2);
       } else if (type->to) {
         node = new_node_lr(ND_PTR_SUB, node, node2);
@@ -1659,19 +1660,29 @@ int eval_node(Node* node) {
   int lhs_val = eval_node(node->lhs);
 
   if (node->kind == ND_CAST) {
-    if (node->type == bool_type) {
+    Type *t = raw_type(node->type);
+    if (t == bool_type) {
       return lhs_val ? 1 : 0;
     }
-    if (node->type == char_type) {
+    if (t == char_type) {
       return (char) lhs_val;
     }
-    if (node->type == short_type) {
-      return (char) lhs_val;
+    if (t == short_type) {
+      return (short) lhs_val;
     }
-    if (node->type == int_type) {
+    if (t == int_type) {
       return (int) lhs_val;
     }
-    if (node->type == float_type || node->type == double_type) {
+    if (t == unsigned_char_type) {
+      return (unsigned char) lhs_val;
+    }
+    if (t == unsigned_short_type) {
+      return (unsigned short) lhs_val;
+    }
+    if (t == unsigned_int_type) {
+      return (unsigned int) lhs_val;
+    }
+    if (t == float_type || t == double_type) {
       // TODO cast operation, ex. float, double
       error("unsupported float/double cast");
     }

@@ -152,23 +152,24 @@ void gen_assign(Node *node) {
   int size = sizeof_type(node->type);
   if (node->lhs->kind == ND_GVAR) {
     gen(node->rhs);
-    char *name = substring(node->lhs->ident, node->lhs->len);
     printf("  pop rax\n");
 
     Node *lhs = node->lhs;
-    if (lhs->type == bool_type) {
+    Type *lhs_type = lhs->type;
+    if (lhs_type == bool_type) {
       printf("  cmp rax, 0\n");
       printf("  setne al\n");
       printf("  movzb rax, al\n");
     }
 
-    if (lhs->type == char_type) {
+    char *name = substring(lhs->ident, lhs->len);
+    if (lhs_type == char_type || lhs_type == unsigned_char_type) {
       printf("  movsx byte ptr %s[rip], rax\n", name);
-    } else if (lhs->type == short_type) {
+    } else if (lhs_type == short_type || lhs_type == unsigned_short_type) {
       printf("  movsx word ptr %s[rip], rax\n", name);
-    } else if (lhs->type == int_type) {
+    } else if (lhs_type == int_type || lhs_type == unsigned_int_type) {
       printf("  mov dword ptr %s[rip], eax\n", name);
-    } else if (lhs->type == long_type) {
+    } else if (lhs_type == long_type || lhs_type == unsigned_long_type) {
       printf("  mov %s[rip], rax\n", name);
     } else {
       printf("  # not support gvar %s, type: %s\n", name, lhs->type->name);
@@ -391,8 +392,8 @@ bool gen(Node *node) {
   } else if (node->kind == ND_PTR_DIFF) {
     int ptr_size = sizeof_type(node->lhs->type->to);
     printf("  sub rax, rdi\n");
-    printf("  mov rdi, %d\n", ptr_size);
     printf("  cqo\n");
+    printf("  mov rdi, %d\n", ptr_size);
     printf("  idiv rdi\n");
   } else if (node->kind == ND_ADD) {
     printf("  add rax, rdi\n");

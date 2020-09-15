@@ -201,6 +201,11 @@ extern Type *char_type;
 extern Type *short_type;
 extern Type *int_type;
 extern Type *long_type;
+extern Type *unsigned_char_type;
+extern Type *unsigned_short_type;
+extern Type *unsigned_int_type;
+extern Type *unsigned_long_type;
+
 extern Type *float_type;
 extern Type *double_type;
 
