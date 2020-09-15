@@ -170,8 +170,8 @@ void add_gvar_function(char *name, Type *ret_type) {
 
 void init_builtin() {
   add_gvar_function("__builtin_va_start", void_type);
-  add_gvar_function("__builtin_bswap64", unsigned_long_type); // unsigned long
-  add_gvar_function("__builtin_bswap32", unsigned_int_type); // unsigned long
+  add_gvar_function("__builtin_bswap64", unsigned_long_type);
+  add_gvar_function("__builtin_bswap32", unsigned_int_type);
 }
 
 void init_types() {
@@ -303,7 +303,7 @@ Type *to_type(Type *lhs_type, Type *rhs_type) {
   int lhs_ptr = type_is_ptr_or_array(lhs_type);
   int rhs_ptr = type_is_ptr_or_array(rhs_type);
   if (lhs_ptr && rhs_ptr) {
-    return int_type;
+    return unsigned_long_type;
   } else if (lhs_ptr) {
     return lhs_type; 
   } else if (rhs_ptr) {
@@ -1673,6 +1673,9 @@ int eval_node(Node* node) {
     if (t == int_type) {
       return (int) lhs_val;
     }
+    if (t == long_type) {
+      return (long) lhs_val;
+    }
     if (t == unsigned_char_type) {
       return (unsigned char) lhs_val;
     }
@@ -1681,6 +1684,9 @@ int eval_node(Node* node) {
     }
     if (t == unsigned_int_type) {
       return (unsigned int) lhs_val;
+    }
+    if (t == unsigned_long_type) {
+      return (unsigned long) lhs_val;
     }
     if (t == float_type || t == double_type) {
       // TODO cast operation, ex. float, double

@@ -450,11 +450,11 @@ void gen_gvar_declaration(Var *var) {
           for (InitVal *v = var->init; v; v = v->next) {
             printf("  .word %d\n", v->n);
           }
-        } else if (t == int_type) {
+        } else if (t->size == 4) {
           for (InitVal *v = var->init; v; v = v->next) {
             printf("  .long %d\n", v->n);
           }
-        } else if (t == long_type) {
+        } else if (t->size == 8) {
           for (InitVal *v = var->init; v; v = v->next) {
             printf("  .quad %d\n", v->n);
           }
