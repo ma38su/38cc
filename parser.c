@@ -94,6 +94,7 @@ Type *new_ptr_type(Type* type) {
   Type *ptr_type = new_type("*", 8);
   ptr_type->kind = TY_PTR;
   ptr_type->to = type;
+  ptr_type->is_unsigned = 1;
   return ptr_type;
 }
 
@@ -101,6 +102,7 @@ Type *new_array_type(Type* type, int len) {
   Type *ary_type = new_type("[]", sizeof_type(type) * len);
   ary_type->kind = TY_ARRAY;
   ary_type->to = type;
+  ary_type->is_unsigned = 1;
   return ary_type;
 }
 
@@ -262,7 +264,7 @@ int type_is_ptr(Type *type) {
 
 bool type_is_func(Type *type) {
   type = raw_type(type);
-  return type->ret && !type_is_ptr_or_array(type);
+  return type->ret;
 }
 
 Node *new_node(NodeKind kind) {
@@ -839,6 +841,7 @@ Vector *expect_defined_args() {
       }
       type = new_type("fn", 8);
       type->kind = TY_PTR;
+      type->is_unsigned = 1;
     }
 
     Node *node = new_node(ND_LVAR);
@@ -1087,10 +1090,7 @@ Node *primary() {
 }
 
 Member *get_member(Type *type, Token *ident) {
-  Type *ty = type;
-  while (ty->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
-    ty = ty->def;
-  }
+  Type *ty = raw_type(type);
   if (!ty) error_at(token->str, "no type");
 
   Vector *members = ty->members;
@@ -1159,14 +1159,6 @@ Node *postfix() {
       node->ident = substring(ident->str, ident->len);
       node->offset = new_offset;
       node->type = member->type;
-
-      /*
-      node = new_comment(node, node->ident);
-      char* buf = calloc(10, sizeof(char));
-      sprintf(buf, "offset: %d, member: %d", node->offset, member->offset);
-      node = new_comment(node, buf);
-      */
-
       continue;
     }
 
@@ -1295,6 +1287,7 @@ Node *add() {
       Type *type = raw_type(node->type);
       Type *type2 = raw_type(node2->type);
       if (type->to && type2->to) {
+        fprintf(stderr, "DEBUG ptr-diff\n");
         node = new_node_lr(ND_PTR_DIFF, node, node2);
       } else if (type->to) {
         node = new_node_lr(ND_PTR_SUB, node, node2);

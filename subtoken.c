@@ -8,7 +8,7 @@
 
 bool is_alpbar(char c);
 bool is_alpbarn(char c);
-int lvar_len(char *p0);
+int word_len(char *p0);
 int starts_with(char *p, int pl, char *string);
 
 Token *new_token(TokenKind kind, Token *cur, char *str);
@@ -32,12 +32,26 @@ char *next_ptr(char *p0, char c) {
   return p;
 }
 
+bool is_alpbar(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
+}
+
 bool is_alpbarn(char c) {
   return is_alpbar(c) || ('0' <= c && c <= '9');
 }
 
 bool is_space(char p) {
   return p == ' ' || p == '\n' || p == '\t' || p == '\0' || p == '\r';
+}
+
+int word_len(char *p0) {
+  char *p = p0;
+  if (is_alpbar(*p)) {
+    do {
+      p++;
+    } while (is_alpbarn(*p));
+  }
+  return p - p0;
 }
 
 char *skip_brackets(char *p) {
@@ -61,7 +75,39 @@ char *skip_brackets(char *p) {
   return p;
 }
 
+char *skip(char *p) {
+  if (is_space(*p)) {
+    p++;
+    return p;
+  }
 
+  // skip line comment
+  if (memcmp(p, "//", 2) == 0) {
+    p += 2;
+    p = next_ptr(p, '\n');
+    p++;
+    return p;
+  }
+
+  // skip block comment
+  if (memcmp(p, "/*", 2) == 0) {
+    p += 2;
+    while (*p != '*' || *(p+1) != '/') {
+      p++;
+    }
+    p += 2;
+    return p;
+  }
+
+  // skip preprocessor
+  if (*p == '#') {
+    p++;
+    p = next_ptr(p, '\n');
+    p++;
+    return p;
+  }
+  return NULL;
+}
 
 int starts_with(char *p, int pl, char *string) {
   int l = strlen(string);
@@ -88,6 +134,17 @@ char to_escape_char(char v) {
   }
 }
 
+Token *read_literal(Token *cur, char *p) {
+  Token *tok;
+
+  tok = read_char_literal(cur, p);
+  if (tok) return tok;
+
+  tok = read_str_literal(cur, p);
+  if (tok) return tok;
+
+  return NULL;
+}
 
 Token *read_char_literal(Token *cur, char *p) {
   // character literal
@@ -123,4 +180,5 @@ Token *read_str_literal(Token *cur, char *p) {
 
   return tok;
 }
+
 

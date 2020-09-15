@@ -9,6 +9,9 @@ FILE = test
 38cc: $(OBJS)
 	$(CC) -o 38cc $(OBJS) $(LDFLAGS)
 
+38cc2: main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s
+	$(CC) -o 38cc2 main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s $(LDFLAGS)
+
 $(OBJS): 38cc.h $(SRCS)
 
 .vector.c: vector.c
@@ -46,52 +49,6 @@ test_gcc_.c: test.h test_gcc.c
 
 sample_.c: sample.c
 	cpp sample.c -o _sample.c
-
-38cc2: main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s
-	$(CC) -o 38cc2 main.s token.s subtoken.s parser.s codegen.s subcodegen.s reader.s debug.s vector.s $(LDFLAGS)
-
-self: 38cc2 test_.c test_gcc_.c
-
-	./38cc2 test_.c > test2.s
-	./38cc2 test_gcc_.c > test2_gcc.s
-
-	./38cc2 .vector.c > vector2.s
-	diff vector.s vector2.s
-
-	./38cc2 .reader.c > reader2.s
-	diff reader.s reader2.s
-
-	./38cc2 .subtoken.c > subtoken2.s
-	diff subtoken.s subtoken2.s
-
-	./38cc2 .subcodegen.c > subcodegen2.s
-	diff subcodegen.s subcodegen2.s
-
-	#./38cc2 .token.c > token2.s
-	#diff token.s token2.s
-
-	$(CC) test2.s test2_gcc.s vector2.s -o test2
-	./test2
-
-#	./38cc2 .sample.c > sample2.s
-#	./38cc2 .main.c > main2.s
-#	./38cc2 .test.c > test2.s
-#	./38cc2 .vector.c > vector2.s
-#	./38cc2 .reader.c > reader2.s
-#	./38cc2 .subtoken.c > subtoken2.s
-
-#	$(CC) -o 38cc3 main.s token.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
-
-#	./38cc3 .vector.c > vector3.s
-#	./38cc3 .reader.c > reader3.s
-#	./38cc3 .subtoken.c > subtoken3.s
-#	diff reader2.s reader3.s
-#	diff subtoken2.s subtoken3.s
-#	diff vector2.s vector3.s
-
-#	$(CC) test2.s vector2.s -o test2
-#	./test2
-
 
 sample: 38cc 38cc2 sample.c
 	$(CC) -O0 -S -masm=intel sample.c -o sample-gcc.s
@@ -192,6 +149,48 @@ test: 38cc test.s test_gcc.s vector.s
 test-gcc: test.c test_gcc.c
 	$(CC) -o test_gcc test.c test_gcc.c vector.c
 	./test_gcc
+
+self: 38cc2 test test_.c test_gcc_.c
+
+	./38cc2 test_.c > test2.s
+	./38cc2 test_gcc_.c > test2_gcc.s
+
+	./38cc2 .vector.c > vector2.s
+	diff vector.s vector2.s
+
+	./38cc2 .reader.c > reader2.s
+	diff reader.s reader2.s
+
+	./38cc2 .subtoken.c > subtoken2.s
+	diff subtoken.s subtoken2.s
+
+	./38cc2 .subcodegen.c > subcodegen2.s
+	diff subcodegen.s subcodegen2.s
+
+	#./38cc2 .token.c > token2.s
+	#diff token.s token2.s
+
+	$(CC) test2.s test2_gcc.s vector2.s -o test2
+	./test2
+
+#	./38cc2 .sample.c > sample2.s
+#	./38cc2 .main.c > main2.s
+#	./38cc2 .test.c > test2.s
+#	./38cc2 .vector.c > vector2.s
+#	./38cc2 .reader.c > reader2.s
+#	./38cc2 .subtoken.c > subtoken2.s
+
+#	$(CC) -o 38cc3 main.s token.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
+
+#	./38cc3 .vector.c > vector3.s
+#	./38cc3 .reader.c > reader3.s
+#	./38cc3 .subtoken.c > subtoken3.s
+#	diff reader2.s reader3.s
+#	diff subtoken2.s subtoken3.s
+#	diff vector2.s vector3.s
+
+#	$(CC) test2.s vector2.s -o test2
+#	./test2
 
 maptest:
 	gcc map_test.c map.c -o map_test

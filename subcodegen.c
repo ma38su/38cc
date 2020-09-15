@@ -335,12 +335,9 @@ void gen_deref(Node *node) {
 }
 
 void gen_deref_type(Type *type) {
+  type = raw_type(type);
   if (type->kind == TY_STRUCT) {
     printf("  # deref struct\n");
-    return;
-  }
-  if (type->kind == TY_TYPEDEF || type->kind == TY_ENUM) {
-    gen_deref_type(type->def);
     return;
   }
 

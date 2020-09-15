@@ -5,35 +5,54 @@
 
 #include "38cc.h"
 
+bool is_alpbar(char c);
 bool is_alpbarn(char c);
-int lvar_len(char *p0);
+int word_len(char *p0);
 int starts_with(char *p, int pl, char *string);
 
 Token *new_token(TokenKind kind, Token *cur, char *str);
+Token *read_literal(Token *cur, char *p);
+Token *consume_reserved_token(Token *cur, char *p);
+
 char *next_ptr(char *p0, char c);
 char to_escape_char(char v);
 char *skip_brackets(char *p);
-Token *read_char_literal(Token *cur, char *p);
-Token *read_str_literal(Token *cur, char *p);
-
 bool is_space(char p);
 char *skip_brackets(char *p);
+char *skip(char *p);
 
-bool is_alpbar(char c) {
-  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
-}
-
-int lvar_len(char *p0) {
-  char *p = p0;
-  if (is_alpbar(*p)) {
-    do {
-      p++;
-    } while (is_alpbarn(*p));
+Token *consume_reserved_token(Token *cur, char *p) {
+  if (memcmp(p, ">>=", 3) == 0 || memcmp(p, "<<=", 3) == 0 || memcmp(p, "...", 3) == 0) {
+    Token *tok = new_token(TK_RESERVED, cur, p);
+    tok->len = 3;
+    return tok;
   }
-  return p - p0;
+
+  if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0
+      || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0
+      || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
+      || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
+      || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
+      || memcmp(p, "^=", 2) == 0 || memcmp(p, "~=", 2) == 0
+      || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0
+      || memcmp(p, "&&", 2) == 0 || memcmp(p, "||", 2) == 0
+      || memcmp(p, ">>", 2) == 0 || memcmp(p, "<<", 2) == 0
+      || memcmp(p, "->", 2) == 0) {
+    Token *tok = new_token(TK_RESERVED, cur, p);
+    tok->len = 2;
+    return tok;
+  }
+
+  if (strchr("=,.(){}[]<>+-*/%^;&^|~!?:", *p)) {
+    Token *tok = new_token(TK_RESERVED, cur, p);
+    tok->len = 1;
+    return tok;
+  }
+  return NULL;
 }
 
 Token *tokenize() {
+
   char *p = user_input;
 
   Token head;
@@ -42,78 +61,24 @@ Token *tokenize() {
 
   while (*p) {
     // skip blank
-    if (is_space(*p)) {
-      p++;
-      continue;
-    }
-
-    // skip line comment
-    if (memcmp(p, "//", 2) == 0) {
-      p += 2;
-      p = next_ptr(p, '\n');
-      p++;
-      continue;
-    }
-
-    // skip block comment
-    if (memcmp(p, "/*", 2) == 0) {
-      p += 2;
-      while (*p != '*' || *(p+1) != '/') {
-        p++;
-      }
-      p += 2;
-      continue;
-    }
-
-    // skip preprocessor
-    if (*p == '#') {
-      p++;
-      p = next_ptr(p, '\n');
-      p++;
+    char* p1 = skip(p);
+    if (p1) {
+      p = p1;
       continue;
     }
 
     Token *tok;
-    tok = read_char_literal(cur, p);
+    tok = read_literal(cur, p);
     if (tok) {
       p += tok->len + 2;
       cur = tok;
       continue;
     }
 
-    tok = read_str_literal(cur, p);
+    tok = consume_reserved_token(cur, p);
     if (tok) {
-      p += tok->len + 2;
+      p += tok->len;
       cur = tok;
-      continue;
-    }
-
-    if (memcmp(p, ">>=", 3) == 0 || memcmp(p, "<<=", 3) == 0 || memcmp(p, "...", 3) == 0) {
-      cur = new_token(TK_RESERVED, cur, p);
-      cur->len = 3;
-      p += 3;
-      continue;
-    }
-
-    if (memcmp(p, "==", 2) == 0 || memcmp(p, "!=", 2) == 0
-        || memcmp(p, "<=", 2) == 0 || memcmp(p, ">=", 2) == 0
-        || memcmp(p, "+=", 2) == 0 || memcmp(p, "-=", 2) == 0
-        || memcmp(p, "*=", 2) == 0 || memcmp(p, "/=", 2) == 0
-        || memcmp(p, "&=", 2) == 0 || memcmp(p, "|=", 2) == 0
-        || memcmp(p, "^=", 2) == 0 || memcmp(p, "~=", 2) == 0
-        || memcmp(p, "++", 2) == 0 || memcmp(p, "--", 2) == 0
-        || memcmp(p, "&&", 2) == 0 || memcmp(p, "||", 2) == 0
-        || memcmp(p, ">>", 2) == 0 || memcmp(p, "<<", 2) == 0
-        || memcmp(p, "->", 2) == 0) {
-      cur = new_token(TK_RESERVED, cur, p);
-      cur->len = 2;
-      p += 2;
-      continue;
-    }
-
-    if (strchr("=,.(){}[]<>+-*/%^;&^|~!?:", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++);
-      cur->len = 1;
       continue;
     }
 
@@ -135,7 +100,8 @@ Token *tokenize() {
       continue;
     }
 
-    int l = lvar_len(p);
+    int l = word_len(p);
+
     if (l > 0) {
       // skip
       if (starts_with(p, l, "signed") || starts_with(p, l, "volatile")) {
