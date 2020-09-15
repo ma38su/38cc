@@ -621,7 +621,7 @@ Node *consume_struct_node() {
     if (node->type->size != 0) error("override struct type");
     node->type->size = size_struct;
   } else {
-    node->type = new_type("_", size_struct); // TODO
+    node->type = new_type("_", size_struct); // no tag
     node->type->kind = TY_STRUCT;
     // 検索できないので追加もしない
   }
@@ -660,7 +660,7 @@ Node *consume_union_node() {
     if (node->type->size != 0) error("override union type");
     node->type->size = size_union;
   } else {
-    node->type = new_type("_", size_union); // TODO
+    node->type = new_type("_", size_union); // TODO no tag
     node->type->kind = TY_UNION;
   }
   node->type->members = members;
@@ -690,8 +690,6 @@ Node *consume_member_node() {
     node->type = int_type;
   } else if (peek("union")) {
     node = consume_union_node();
-    // TODO union type
-    //error_at(token->str, "TODO to support union type");
     Token *ident = consume_ident();
     if (ident) {
       node->ident = ident->str;

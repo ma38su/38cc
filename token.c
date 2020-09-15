@@ -21,8 +21,10 @@ bool is_space(char p);
 char *skip_brackets(char *p);
 char *skip(char *p);
 
+
 Token *consume_reserved_token(Token *cur, char *p) {
-  if (memcmp(p, ">>=", 3) == 0 || memcmp(p, "<<=", 3) == 0 || memcmp(p, "...", 3) == 0) {
+  if (memcmp(p, ">>=", 3) == 0 || memcmp(p, "<<=", 3) == 0
+      || memcmp(p, "...", 3) == 0) {
     Token *tok = new_token(TK_RESERVED, cur, p);
     tok->len = 3;
     return tok;
