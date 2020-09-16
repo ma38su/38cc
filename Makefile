@@ -196,6 +196,10 @@ self: 38cc2 test test_.c test_gcc_.c
 #	$(CC) test2.s vector2.s -o test2
 #	./test2
 
+asm:
+	gcc -o .asm asm.s
+	./.asm
+
 maptest:
 	gcc map_test.c map.c -o map_test
 	./map_test

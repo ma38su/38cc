@@ -24,7 +24,7 @@ void gen_deref_type(Type *type);
 void gen_ternary(Node *node);
 void truncate(Type *type);
 int type_is_struct_ref(Type* type);
-char* get_args_register(int size, int index);
+char* args_register(int size, int index);
 
 void codegen();
 void gen_addr(Node* node);
@@ -118,21 +118,8 @@ void gen_defined_function(Node *node) {
 
       --index;
       int size = sizeof_type(arg->type);
-      if (size == 1) {
-        char *r = get_args_register(size, index);
-        printf("  mov [rax], %s\n", r);
-      } else if (size == 2) {
-        char *r = get_args_register(size, index);
-        printf("  mov [rax], %s\n", r);
-      } else if (size == 4) {
-        char *r = get_args_register(size, index);
-        printf("  mov [rax], %s\n", r);
-      } else if (size == 8) {
-        char *r = get_args_register(size, index);
-        printf("  mov [rax], %s\n", r);
-      } else {
-        error("unsupported arg - sizeof(%s) = %d", substring(arg->ident, arg->len), size);
-      }
+      char *r = args_register(size, index);
+      printf("  mov [rax], %s\n", r);
     }
   }
 
@@ -210,6 +197,85 @@ void gen_assign(Node *node) {
       printf("  push rdi\n");
     }
   }
+}
+
+void gen_binary(Node *node) {
+  gen_to_stack(node->lhs);
+  gen_to_stack(node->rhs);
+
+  if (node->kind == ND_SHL) {
+    printf("  pop rcx\n");
+    printf("  pop rax\n");
+    printf("  shl rax, cl\n");
+    printf("  push rax\n");
+    return;
+  } else if (node->kind == ND_SAR) {
+    printf("  pop rcx\n");
+    printf("  pop rax\n");
+    printf("  sar rax, cl\n");
+    printf("  push rax\n");
+    return;
+  }  
+
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  if (node->kind == ND_PTR_ADD) {
+    int ptr_size = sizeof_type(node->lhs->type->to);
+    printf("  imul rdi, %d\n", ptr_size);
+    printf("  add rax, rdi\n");
+  } else if (node->kind == ND_PTR_SUB) {
+    int ptr_size = sizeof_type(node->lhs->type->to);
+    printf("  imul rdi, %d\n", ptr_size);
+    printf("  sub rax, rdi\n");
+  } else if (node->kind == ND_PTR_DIFF) {
+    int ptr_size = sizeof_type(node->lhs->type->to);
+    printf("  sub rax, rdi\n");
+    printf("  cqo\n");
+    printf("  mov rdi, %d\n", ptr_size);
+    printf("  idiv rdi\n");
+  } else if (node->kind == ND_ADD) {
+    printf("  add rax, rdi\n");
+  } else if (node->kind == ND_SUB) {
+    printf("  sub rax, rdi\n");
+  } else if (node->kind == ND_MUL) {
+    printf("  imul rax, rdi\n");
+  } else if (node->kind == ND_DIV) {
+    printf("  cqo\n");
+    printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
+  } else if (node->kind == ND_MOD) {
+    printf("  cqo\n");
+    printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
+    printf("  mov rax, rdx\n");
+  } else if (node->kind == ND_EQ) {
+    printf("  cmp rax, rdi\n");
+    printf("  sete al\n");  // al: under 8bit of rax
+    printf("  movzb rax, al\n");
+  } else if (node->kind == ND_NE) {
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");  // al: under 8bit of rax
+    printf("  movzb rax, al\n");
+  } else if (node->kind == ND_LE) {
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");  // al: under 8bit of rax
+    printf("  movzb rax, al\n");
+  } else if (node->kind == ND_LT) {
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");  // al: under 8bit of rax
+    printf("  movzb rax, al\n");
+  } else if (node->kind == ND_BITAND) {
+    printf("  and rax, rdi\n");
+  } else if (node->kind == ND_BITXOR) {
+    printf("  xor rax, rdi\n");
+  } else if (node->kind == ND_BITOR) {
+    printf("  or rax, rdi\n");
+  } else {
+    if (node->ident) {
+      error_at(node->ident, "Unsupported operator");
+    } else {
+      error("Not calculatable: %d", node->kind);
+    }
+  }
+  printf("  push rax\n");
 }
 
 // self NG
@@ -356,82 +422,8 @@ bool gen(Node *node) {
     }
   }
 
-  gen_to_stack(node->lhs);
-  gen_to_stack(node->rhs);
+  gen_binary(node);
 
-  if (node->kind == ND_SHL) {
-    printf("  pop rcx\n");
-    printf("  pop rax\n");
-    printf("  shl rax, cl\n");
-    printf("  push rax\n");
-    return true;
-  } else if (node->kind == ND_SAR) {
-    printf("  pop rcx\n");
-    printf("  pop rax\n");
-    printf("  sar rax, cl\n");
-    printf("  push rax\n");
-    return true;
-  }  
-
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
-  if (node->kind == ND_PTR_ADD) {
-    int ptr_size = sizeof_type(node->lhs->type->to);
-    printf("  imul rdi, %d\n", ptr_size);
-    printf("  add rax, rdi\n");
-  } else if (node->kind == ND_PTR_SUB) {
-    int ptr_size = sizeof_type(node->lhs->type->to);
-    printf("  imul rdi, %d\n", ptr_size);
-    printf("  sub rax, rdi\n");
-  } else if (node->kind == ND_PTR_DIFF) {
-    int ptr_size = sizeof_type(node->lhs->type->to);
-    printf("  sub rax, rdi\n");
-    printf("  cqo\n");
-    printf("  mov rdi, %d\n", ptr_size);
-    printf("  idiv rdi\n");
-  } else if (node->kind == ND_ADD) {
-    printf("  add rax, rdi\n");
-  } else if (node->kind == ND_SUB) {
-    printf("  sub rax, rdi\n");
-  } else if (node->kind == ND_MUL) {
-    printf("  imul rax, rdi\n");
-  } else if (node->kind == ND_DIV) {
-    printf("  cqo\n");
-    printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
-  } else if (node->kind == ND_MOD) {
-    printf("  cqo\n");
-    printf("  idiv rdi\n");  // divide by (rdx << 64 | rax) / rdi => rax, rdx
-    printf("  mov rax, rdx\n");
-  } else if (node->kind == ND_EQ) {
-    printf("  cmp rax, rdi\n");
-    printf("  sete al\n");  // al: under 8bit of rax
-    printf("  movzb rax, al\n");
-  } else if (node->kind == ND_NE) {
-    printf("  cmp rax, rdi\n");
-    printf("  setne al\n");  // al: under 8bit of rax
-    printf("  movzb rax, al\n");
-  } else if (node->kind == ND_LE) {
-    printf("  cmp rax, rdi\n");
-    printf("  setle al\n");  // al: under 8bit of rax
-    printf("  movzb rax, al\n");
-  } else if (node->kind == ND_LT) {
-    printf("  cmp rax, rdi\n");
-    printf("  setl al\n");  // al: under 8bit of rax
-    printf("  movzb rax, al\n");
-  } else if (node->kind == ND_BITAND) {
-    printf("  and rax, rdi\n");
-  } else if (node->kind == ND_BITXOR) {
-    printf("  xor rax, rdi\n");
-  } else if (node->kind == ND_BITOR) {
-    printf("  or rax, rdi\n");
-  } else {
-    if (node->ident) {
-      error_at(node->ident, "Unsupported operator");
-    } else {
-      error("Not calculatable: %d", node->kind);
-    }
-  }
-  printf("  push rax\n");
   return true;
 }
 

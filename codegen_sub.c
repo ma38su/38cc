@@ -60,7 +60,7 @@ void gen_to_stack(Node *node) {
   if (!gen(node)) error("illegal gen");
 }
 
-char* get_args_register(int size, int index) {
+char* args_register(int size, int index) {
   if (index > 5) {
     error("not supported +6 args. if args > 6 then args are stacked.");
   }
@@ -103,7 +103,7 @@ void gen_function_call(Node *node) {
       gen_to_stack(n);
     }
     for (int i = node->list->size - 1; i >= 0; --i) {
-      char *r = get_args_register(8, i);
+      char *r = args_register(8, i);
       printf("  pop %s  # arg %d\n", r, i);
     }
   }
@@ -196,7 +196,9 @@ void truncate(Type *type) {
     if (size == 1) {
       printf("  movzx rax, al\n");
     } else if (size == 2) {
-      printf("  movzx eax, ax\n");
+      printf("  movzx rax, ax\n");
+    } else if (size == 4) {
+      printf("  mov eax, eax\n");
     }
   }
   printf("  push rax\n");
