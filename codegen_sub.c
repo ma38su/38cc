@@ -5,6 +5,8 @@ extern int label_id;
 extern int current_lid;
 
 bool gen(Node *node);
+void gen_to_stack(Node *node);
+
 int sizeof_type(Type *type);
 void gen_addr(Node *node);
 void gen_gvars_uninit();
@@ -19,6 +21,7 @@ void gen_for(Node *node);
 void gen_do_while(Node *node);
 void gen_block(Node *node);
 void gen_for(Node *node);
+
 
 char *reg64s[] = {
   "rdi", // 0
@@ -53,6 +56,10 @@ char *reg8s[] = {
   "r9b"  // 5
 };
 
+void gen_to_stack(Node *node) {
+  if (!gen(node)) error("illegal gen");
+}
+
 char* get_args_register(int size, int index) {
   if (index > 5) {
     error("not supported +6 args. if args > 6 then args are stacked.");
@@ -77,7 +84,7 @@ void gen_return(Node *node) {
   }
   if (node->lhs) {
     // set return value to rax
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     printf("  pop rax\n");
   } else {
     printf("  mov rax, 0 # no return\n");
@@ -93,7 +100,7 @@ void gen_function_call(Node *node) {
   if (node->list) {
     for (int i = 0; i < node->list->size; ++i) {
       Node *n = (Node *) vec_get(node->list, i);
-      gen(n);
+      gen_to_stack(n);
     }
     for (int i = node->list->size - 1; i >= 0; --i) {
       char *r = get_args_register(8, i);
@@ -198,7 +205,7 @@ void truncate(Type *type) {
 void gen_if(Node *node) {
   if (node->kind != ND_IF) error("not if");
 
-  gen(node->cnd);
+  gen_to_stack(node->cnd);
   printf("  pop rax # if\n");
   printf("  cmp rax, 0\n");
   int lid = label_id++;
@@ -230,7 +237,7 @@ void gen_while(Node *node) {
   int prev_lid = current_lid;
   int lid = current_lid = label_id++;
   printf(".L.continue.%d:\n", lid);
-  gen(node->cnd);
+  gen_to_stack(node->cnd);
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
   printf("  je  .L.end.%d\n", lid);
@@ -254,7 +261,7 @@ void gen_do_while(Node *node) {
     printf("  pop rax # skip\n");
   }
   printf(".L.continue.%d: # do while\n", lid);
-  gen(node->cnd);
+  gen_to_stack(node->cnd);
   printf("  pop rax\n");
   printf("  cmp rax, 0\n");
   printf("  je  .L.end.%d\n", lid);
@@ -274,7 +281,7 @@ void gen_for(Node *node) {
   int prev_lid = current_lid;
   int lid = current_lid = label_id++;
   printf(".L.begin.%d:\n", lid);
-  gen(node->cnd);
+  gen_to_stack(node->cnd);
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
   printf("  je  .L.end.%d\n", lid);
@@ -326,10 +333,10 @@ void gen_lval(Node *node) {
 
 void gen_deref(Node *node) {
   if (node->kind == ND_ADDR) {
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     return;
   }
-  gen(node);
+  gen_to_stack(node);
   gen_deref_type(raw_type(node->type)->to);
 }
 
@@ -337,7 +344,8 @@ void gen_deref_type(Type *type) {
   type = raw_type(type);
 
   if (type->kind == TY_STRUCT) {
-    printf("  # deref struct\n");
+    //printf("  # deref struct\n");
+    error("TODO deref struct: %s %s", substring(type->name, type->len));
     return;
   }
 
@@ -360,7 +368,7 @@ void gen_deref_type(Type *type) {
 
 void gen_addr(Node* node) {
   if (node->kind == ND_DEREF) {
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     return;
   }
   if (node->offset != 0) {
@@ -385,14 +393,14 @@ int max_size(Node* lhs, Node* rhs) {
 void gen_ternary(Node *node) {
   int lid = label_id++;
   printf("  # TERNAY (?:)\n");
-  gen(node->cnd);
+  gen_to_stack(node->cnd);
   printf("  pop rax\n");
   printf("  cmp rax, 0\n");
   printf("  je  .L.false.%d\n", lid);
-  gen(node->thn);
+  gen_to_stack(node->thn);
   printf("  jmp .L.end.%d\n", lid);
   printf(".L.false.%d:\n", lid);
-  gen(node->els);
+  gen_to_stack(node->els);
   printf(".L.end.%d:\n", lid);
 }
 
@@ -401,10 +409,15 @@ void gen_gvar_declaration(Var *var) {
   char *name = substring(var->name, var->len);
 
   Type *type = raw_type(var->type);
+
   if (var->is_static) {
     printf("  .global %s\n", name);
   }
-  if (type->kind == TY_PRM) {
+  if (*name == '.') {
+    printf("%s:\n", name);
+    if (!var->init || !var->init->str) error("char* null: %s", name);
+    printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
+  } else if (type->kind == TY_PRM) {
     if (type->size == 1) {
       printf("%s:\n", name);
       printf("  .byte %d\n", var->init->n);
@@ -420,12 +433,10 @@ void gen_gvar_declaration(Var *var) {
     } else {
       error("unsupported type");
     }
-  } else if (*name == '.') {
-    printf("%s:\n", name);
-    if (!var->init || !var->init->str) error("char* null: %s", name);
-    printf("  .string \"%s\"\n", substring(var->init->str, var->init->strlen));
   } else if (type_is_array(type)) {
     Type *t = raw_type(type->to);
+
+    if (is_debug) fprintf(stderr, "      type %s %s\n", substring(t->name, t->len), substring(type->name, type->len));
 
     if (t == char_type) {
       printf("%s:\n", name);
@@ -442,6 +453,7 @@ void gen_gvar_declaration(Var *var) {
         error("unsupported initialization");
       }
     } else {
+
       printf("%s:\n", name);
       if (t->kind == TY_PRM) {
         if (t->size == 1) {
@@ -465,6 +477,8 @@ void gen_gvar_declaration(Var *var) {
         }
       } else if (type_is_ptr(t)) {
         for (InitVal *v = var->init; v; v = v->next) {
+          if (is_debug) fprintf(stderr, "      type ptr %s %s\n", substring(t->name, t->len), substring(type->name, type->len));
+
           printf("  .quad %s\n", v->ident);
         }
       }
@@ -480,13 +494,18 @@ void gen_gvar_declaration(Var *var) {
 }
 
 void codegen() {
+  if (is_debug) fprintf(stderr, "call codegen...\n");
   printf("  .intel_syntax noprefix\n");
+
   gen_gvars_uninit();
+
+  if (is_debug) fprintf(stderr, "  gvar declarations\n");
   gen_gvar_declarations();
 
   printf("\n");
   printf("  .text\n");
   for (int i = 0; code[i]; ++i) {
+    if (is_debug) fprintf(stderr, "  %d\n", i);
     gen_defined(code[i]);
   }
 }

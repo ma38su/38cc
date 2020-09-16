@@ -53,9 +53,7 @@ Token *consume_reserved_token(Token *cur, char *p) {
   return NULL;
 }
 
-Token *tokenize() {
-
-  char *p = user_input;
+Token *tokenize(char *p) {
 
   Token head;
   head.next = NULL;

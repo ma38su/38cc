@@ -6,7 +6,7 @@
 #include "38cc.h"
 
 char *read_file(char *path) {
-  // oepn file
+// oepn file
   FILE *fp = fopen(path, "r"); 
   if (!fp) {
     error("cannot open %s: %s",

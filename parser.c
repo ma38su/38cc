@@ -1880,6 +1880,11 @@ Node *global() {
       struct_type->def = type;
       vec_add(types, struct_type);
 
+      if (memcmp(type->name, "_", 1) == 0) {
+        type->name = struct_type->name;
+        type->len = struct_type->len;
+      }
+
       expect(";");
       return NULL;
     }

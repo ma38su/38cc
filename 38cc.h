@@ -211,6 +211,8 @@ extern Type *double_type;
 
 extern Type *str_type;
 
+extern bool is_debug;
+
 int type_is_array(Type *type);
 int type_is_ptr(Type *type);
 int sizeof_node(Node* node);
@@ -219,12 +221,11 @@ Type *raw_type(Type *type);
 char *substring(char *str, int len);
 char *line(char *p0);
 
-char *read_file(char *path);
-
 Var *find_var(Token *tok);
 Var *find_lvar(Token *tok);
 
-Token *tokenize();
+char *read_file(char *path);
+Token *tokenize(char *input);
 void program();
 void codegen();
 

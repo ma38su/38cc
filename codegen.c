@@ -9,6 +9,8 @@ int sizeof_type(Type *type);
 int max_size(Node* lhs, Node* rhs);
 
 bool gen(Node *node);
+void gen_to_stack(Node *node);
+
 void gen_lval(Node *node);
 bool gen_gvar(Node *node);
 void gen_gvar_declarations();
@@ -82,6 +84,7 @@ void gen_gvar_declarations() {
   printf("  .data\n");
   for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->is_extern) continue;
+    if (is_debug) fprintf(stderr, "    gvar %s\n", substring(var->name, var->len));
     gen_gvar_declaration(var);
   }
 }
@@ -124,7 +127,6 @@ void gen_defined_function(Node *node) {
       } else if (size == 4) {
         char *r = get_args_register(size, index);
         printf("  mov [rax], %s\n", r);
-        //printf("  mov dword ptr [rax], %s\n", r);
       } else if (size == 8) {
         char *r = get_args_register(size, index);
         printf("  mov [rax], %s\n", r);
@@ -144,12 +146,12 @@ void gen_defined_function(Node *node) {
 // self NG
 void gen_assign(Node *node) {
   if (node->kind == ND_ASSIGN_POST) {
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
   }
 
   int size = sizeof_type(node->type);
   if (node->lhs->kind == ND_GVAR) {
-    gen(node->rhs);
+    gen_to_stack(node->rhs);
     printf("  pop rax\n");
 
     Node *lhs = node->lhs;
@@ -177,7 +179,7 @@ void gen_assign(Node *node) {
     }
   } else {
     gen_lval(node->lhs);
-    gen(node->rhs);
+    gen_to_stack(node->rhs);
 
     printf("  pop rdi\n");
     printf("  pop rax\n");
@@ -215,10 +217,6 @@ bool gen(Node *node) {
   if (!node) {
     error("node is NULL");
   }
-  if (node->kind == ND_COMMENT) {
-    printf("  ### %s\n", node->ident);
-    return gen(node->lhs);
-  }
 
   if (node->kind == ND_IF) {
     gen_if(node);
@@ -249,7 +247,7 @@ bool gen(Node *node) {
     return false;
   }
   if (node->kind == ND_CAST) {
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     truncate(node->type);
     return true;
   }
@@ -259,7 +257,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_addr(node);
-    if (!type_is_array(node->type)) {
+    if (!type_is_array(node->type) && raw_type(node->type)->kind != TY_STRUCT) {
       gen_deref_type(node->type);
     }
     return true;
@@ -298,11 +296,11 @@ bool gen(Node *node) {
   if (node->kind == ND_AND) {
     int lid = label_id++;
     printf("  # AND (&&)\n");
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  je  .L.false.%d\n", lid);
-    gen(node->rhs);
+    gen_to_stack(node->rhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  je  .L.false.%d\n", lid);
@@ -316,11 +314,11 @@ bool gen(Node *node) {
   if (node->kind == ND_OR) {
     int lid = label_id++;
     printf("  # OR (||)\n");
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  jne .L.true.%d\n", lid);
-    gen(node->rhs);
+    gen_to_stack(node->rhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  jne .L.true.%d\n", lid);
@@ -333,7 +331,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_NOT) {
     printf("  # NOT (!)\n");
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  sete al\n");
@@ -343,7 +341,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_BITNOT) {
     printf("  # BITNOT (~)\n");
-    gen(node->lhs);
+    gen_to_stack(node->lhs);
     printf("  pop rax\n");
     printf("  not rax\n");
     printf("  push rax\n");
@@ -358,8 +356,8 @@ bool gen(Node *node) {
     }
   }
 
-  gen(node->lhs);
-  gen(node->rhs);
+  gen_to_stack(node->lhs);
+  gen_to_stack(node->rhs);
 
   if (node->kind == ND_SHL) {
     printf("  pop rcx\n");

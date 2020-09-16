@@ -4,33 +4,24 @@
 
 char *filename;
 
+bool is_debug = false;
+
+void _main();
+
 int main(int argc, char *argv[]) {
+  fprintf(stderr, "call main: %d\n", argc);
   if (argc != 2) {
     fprintf(stderr, "Illegal num of argmuments.\n");
     return 1;
   }
 
   filename = argv[1];
+  fprintf(stderr, "argv[1]: %s\n", argv[0]);
   if (filename == NULL) {
     printf("  illegal argments.\n");
     return 1;
   }
-  //printf("  .file \"%s\"\n", filename);
-
-  //fprintf(stderr, "read file: %s\n", filename);
-  user_input = read_file(filename);
-
-  //fprintf(stderr, "tokenize...\n");
-  token = tokenize();
-  if (!token) {
-    error("No tokens!");
-    return 0;
-  }
-
-  //fprintf(stderr, "program...\n");
-  program();
-  //fprintf(stderr, "codegen...\n");
-  codegen();
-  //fprintf(stderr, "end...\n");
+  fprintf(stderr, "arg file: %s\n", filename);
+  _main();
   return 0;
 }
