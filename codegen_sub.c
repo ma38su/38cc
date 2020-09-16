@@ -185,20 +185,22 @@ void truncate(Type *type) {
 
   int size = sizeof_type(type);
   if (type->kind == TY_PRM) {
-    if (size == 1) {
-      printf("  movsx rax, al\n");
-    } else if (size == 2) {
-      printf("  movsx rax, ax\n");
-    } else if (size == 4) {
-      printf("  movsxd rax, eax\n");
-    }
-  } else if (type->is_unsigned) {
-    if (size == 1) {
-      printf("  movzx rax, al\n");
-    } else if (size == 2) {
-      printf("  movzx rax, ax\n");
-    } else if (size == 4) {
-      printf("  mov eax, eax\n");
+    if (type->is_unsigned) {
+      if (size == 1) {
+        printf("  movzx rax, al\n");
+      } else if (size == 2) {
+        printf("  movzx rax, ax\n");
+      } else if (size == 4) {
+        printf("  mov eax, eax\n");
+      }
+    } else {
+      if (size == 1) {
+        printf("  movsx rax, al\n");
+      } else if (size == 2) {
+        printf("  movsx rax, ax\n");
+      } else if (size == 4) {
+        printf("  movsxd rax, eax\n");
+      }
     }
   }
   printf("  push rax\n");
@@ -353,18 +355,34 @@ void gen_deref_type(Type *type) {
 
   printf("  pop rax\n");
   int size = sizeof_type(type);
-  if (size == 1) {
-    printf("  movsx rax, byte ptr [rax]\n");
-  } else if (size == 2) {
-    printf("  movsx rax, word ptr [rax]\n");
-  } else if (size == 4) {
-    printf("  movsxd rax, dword ptr [rax]\n");
-  } else if (size == 8) {
-    printf("  mov rax, [rax]\n");
+  if (type->is_unsigned) {
+    if (size == 1) {
+      printf("  movzx eax, byte ptr [rax]\n");
+    } else if (size == 2) {
+      printf("  movzx eax, word ptr [rax]\n");
+    } else if (size == 4) {
+      printf("  mov eax, [rax]\n");
+    } else if (size == 8) {
+      printf("  mov rax, [rax]\n");
+    } else {
+      char *type_name = substring(type->name, type->len);
+      error("illegal defref size: sizeof(%s) = %d %d", type_name, size, type->kind);
+    }
   } else {
-    char *type_name = substring(type->name, type->len);
-    error("illegal defref size: sizeof(%s) = %d %d", type_name, size, type->kind);
+    if (size == 1) {
+      printf("  movsx rax, byte ptr [rax]\n");
+    } else if (size == 2) {
+      printf("  movsx rax, word ptr [rax]\n");
+    } else if (size == 4) {
+      printf("  movsxd rax, dword ptr [rax]\n");
+    } else if (size == 8) {
+      printf("  mov rax, [rax]\n");
+    } else {
+      char *type_name = substring(type->name, type->len);
+      error("illegal defref size: sizeof(%s) = %d %d", type_name, size, type->kind);
+    }
   }
+
   printf("  push rax\n");
 }
 
@@ -405,7 +423,6 @@ void gen_ternary(Node *node) {
   gen_to_stack(node->els);
   printf(".L.end.%d:\n", lid);
 }
-
 
 void gen_gvar_declaration(Var *var) {
   char *name = substring(var->name, var->len);
@@ -492,23 +509,6 @@ void gen_gvar_declaration(Var *var) {
     printf("  .quad %s\n", var->init->ident);
   } else {
     error("unsupported type");
-  }
-}
-
-void codegen() {
-  if (is_debug) fprintf(stderr, "call codegen...\n");
-  printf("  .intel_syntax noprefix\n");
-
-  gen_gvars_uninit();
-
-  if (is_debug) fprintf(stderr, "  gvar declarations\n");
-  gen_gvar_declarations();
-
-  printf("\n");
-  printf("  .text\n");
-  for (int i = 0; code[i]; ++i) {
-    if (is_debug) fprintf(stderr, "  %d\n", i);
-    gen_defined(code[i]);
   }
 }
 

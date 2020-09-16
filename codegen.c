@@ -427,3 +427,19 @@ bool gen(Node *node) {
   return true;
 }
 
+void codegen() {
+  if (is_debug) fprintf(stderr, "call codegen...\n");
+  printf("  .intel_syntax noprefix\n");
+
+  gen_gvars_uninit();
+
+  if (is_debug) fprintf(stderr, "  gvar declarations\n");
+  gen_gvar_declarations();
+
+  printf("\n");
+  printf("  .text\n");
+  for (int i = 0; code[i]; ++i) {
+    if (is_debug) fprintf(stderr, "  %d\n", i);
+    gen_defined(code[i]);
+  }
+}
