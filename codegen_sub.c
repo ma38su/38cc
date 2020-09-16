@@ -71,42 +71,6 @@ char* get_args_register(int size, int index) {
   }
 }
 
-// push store address
-void gen_lval(Node *node) {
-  if (node->kind == ND_DEREF) {
-    gen(node->lhs);
-  } else {
-    gen_addr(node);
-  }
-}
-
-void gen_gvar(Node *node) {
-  if (node->kind != ND_GVAR) {
-    error("node is not gvar");
-  }
-
-  // for 64bit
-  Type *type = raw_type(node->type);
-  if (type->kind == TY_PRM) {
-    if (type->size == 1) {
-      printf("  movsx rax, byte ptr %s[rip]\n", node->ident);
-    } else if (type->size == 2) {
-      printf("  movsx rax, word ptr %s[rip]\n", node->ident);
-    } else if (type->size == 4) {
-      printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
-    } else if (type->size == 8) {
-      printf("  mov rax, %s[rip]\n", node->ident);
-    }
-  } else if (type_is_array(type)) {
-    printf("  lea rax, %s[rip]\n", node->ident);
-  } else if (type_is_ptr(type)) {
-    printf("  mov rax, qword ptr %s[rip]\n", node->ident);
-  } else {
-    printf("  # not support gvar %s, type: %s\n", node->ident, type->name);
-  }
-  printf("  push rax\n");
-}
-
 void gen_return(Node *node) {
   if (node->kind != ND_RETURN) {
     error("not return");
@@ -115,12 +79,13 @@ void gen_return(Node *node) {
     // set return value to rax
     gen(node->lhs);
     printf("  pop rax\n");
+  } else {
+    printf("  mov rax, 0 # no return\n");
   }
   printf("  mov rsp, rbp  # epilogue\n");
   printf("  pop rbp\n");
   printf("  ret           # return rax value\n");
 }
-
 
 void gen_function_call(Node *node) {
   if (node->kind != ND_CALL) error("not function call");
@@ -193,8 +158,8 @@ void gen_defined(Node *node) {
   }
 }
 
-void gen_num(int num) {
-  printf("  push %d  # num %d\n", num, num);
+void gen_num(long num) {
+  printf("  push %ld  # num %ld\n", num, num);
 }
 
 // cast
@@ -264,7 +229,7 @@ void gen_while(Node *node) {
 
   int prev_lid = current_lid;
   int lid = current_lid = label_id++;
-  printf(".L.begin.%d:\n", lid);
+  printf(".L.continue.%d:\n", lid);
   gen(node->cnd);
   printf("  pop rax # while\n");
   printf("  cmp rax, 0\n");
@@ -272,7 +237,7 @@ void gen_while(Node *node) {
   if (gen(node->thn)) {
     printf("  pop rax # skip\n");
   }
-  printf("  jmp .L.begin.%d\n", lid);
+  printf("  jmp .L.continue.%d\n", lid);
   printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
 }
@@ -288,6 +253,7 @@ void gen_do_while(Node *node) {
   if (gen(node->thn)) {
     printf("  pop rax # skip\n");
   }
+  printf(".L.continue.%d: # do while\n", lid);
   gen(node->cnd);
   printf("  pop rax\n");
   printf("  cmp rax, 0\n");
@@ -301,8 +267,8 @@ void gen_for(Node *node) {
   if (node->kind != ND_FOR) {
     error("not for");
   }
-  if (node->ini) {
-    gen(node->ini);
+  if (node->ini && gen(node->ini)) {
+    printf("  pop rax # skip\n");
   }
 
   int prev_lid = current_lid;
@@ -315,12 +281,47 @@ void gen_for(Node *node) {
   if (gen(node->thn)) {
     printf("  pop rax # skip\n");
   }
+  printf(".L.continue.%d:\n", lid);
   if (node->stp && gen(node->stp)) {
     printf("  pop rax # skip\n");
   }
   printf("  jmp .L.begin.%d\n", lid);
   printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
+}
+
+void gen_gvar(Node *node) {
+  if (node->kind != ND_GVAR) {
+    error("node is not gvar");
+  }
+
+  // for 64bit
+  Type *type = raw_type(node->type);
+  if (type->kind == TY_PRM) {
+    if (type->size == 1) {
+      printf("  movsx rax, byte ptr %s[rip]\n", node->ident);
+    } else if (type->size == 2) {
+      printf("  movsx rax, word ptr %s[rip]\n", node->ident);
+    } else if (type->size == 4) {
+      printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
+    } else if (type->size == 8) {
+      printf("  mov rax, %s[rip]\n", node->ident);
+    } else {
+      error("unsupported");
+    }
+  } else if (type_is_array(type)) {
+    printf("  lea rax, %s[rip]\n", node->ident);
+  } else if (type_is_ptr(type)) {
+    printf("  mov rax, qword ptr %s[rip]\n", node->ident);
+  } else {
+    printf("  # not support gvar %s, type: %s\n", node->ident, type->name);
+  }
+  printf("  push rax\n");
+}
+
+// push store address
+void gen_lval(Node *node) {
+  gen_addr(node);
 }
 
 void gen_deref(Node *node) {
@@ -334,6 +335,7 @@ void gen_deref(Node *node) {
 
 void gen_deref_type(Type *type) {
   type = raw_type(type);
+
   if (type->kind == TY_STRUCT) {
     printf("  # deref struct\n");
     return;
@@ -489,14 +491,10 @@ void codegen() {
   }
 }
 
-int type_is_struct_ref(Type* type) {
+bool type_is_struct_ref(Type* type) {
   type = raw_type(type);
   if (type->kind == TY_PTR) {
     return type_is_struct_ref(type->to);
   }
-  if (type->kind == TY_STRUCT) {
-    return 1;
-  } else {
-    return 0;
-  }
+  return type->kind == TY_STRUCT;
 }

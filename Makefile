@@ -94,8 +94,8 @@ main.s: 38cc main.c .main.c
 	#./38cc .main.c > main.s
 
 token.s: 38cc token.c .token.c
-	#$(CC) -S -masm=intel token.c -o token.s
-	./38cc .token.c > token.s
+	$(CC) -S -masm=intel token.c -o token.s
+	#./38cc .token.c > token.s
 
 parser.s: 38cc parser.c .parser.c
 	$(CC) -S -masm=intel parser.c -o parser.s

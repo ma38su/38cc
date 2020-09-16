@@ -16,7 +16,7 @@ void gen_gvar_declaration(Var *var);
 void gen_gvars_uninit();
 void gen_defined(Node *node);
 void gen_defined_function(Node *node);
-void gen_num(int num);
+void gen_num(long num);
 void gen_deref(Node *node);
 void gen_deref_type(Type *type);
 void gen_ternary(Node *node);
@@ -25,8 +25,6 @@ int type_is_struct_ref(Type* type);
 char* get_args_register(int size, int index);
 
 void codegen();
-void gen_deref(Node *node);
-void gen_deref_type(Type *type);
 void gen_addr(Node* node);
 void gen_return(Node *node);
 void gen_if(Node *node);
@@ -243,13 +241,11 @@ bool gen(Node *node) {
     return false;
   }
   if (node->kind == ND_CONTINUE) {
-    printf("  # CONTINUE\n");
-    printf("  jmp .L.begin.%d\n", current_lid);
+    printf("  jmp .L.continue.%d # CONTINUE\n", current_lid);
     return false;
   }
   if (node->kind == ND_BREAK) {
-    printf("  # BREAK\n");
-    printf("  jmp .L.end.%d\n", current_lid);
+    printf("  jmp .L.end.%d # BREAK\n", current_lid);
     return false;
   }
   if (node->kind == ND_CAST) {
