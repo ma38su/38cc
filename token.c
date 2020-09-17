@@ -115,15 +115,6 @@ Token *tokenize(char *p) {
           continue;
         }
 
-        // skip builtin
-        /*
-        if (starts_with(p, l, "__builtin_bswap32")
-            || starts_with(p, l, "__builtin_bswap64")) {
-          p += l;
-          continue;
-        }
-        */
-
         if (starts_with(p, l, "__inline")) {
           cur = new_token(TK_RESERVED, cur, p);
           cur->len = l;

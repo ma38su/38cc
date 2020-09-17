@@ -5,7 +5,7 @@
 #include "38cc.h"
 #include "vector.h"
 
-size_t sizeof_type(Type *type);
+long sizeof_type(Type *type);
 int sizeof_lvars();
 int gvar_has_circular();
 int align(int offset, int size);
@@ -73,7 +73,7 @@ Type *double_type;
 
 int gstr_len = 0; // number of global string variable
 
-Type *new_type(char* name, int size) {
+Type *new_type(char* name, long size) {
   Type *type;
   type = calloc(1, sizeof(Type));
   type->name = name;
@@ -82,7 +82,7 @@ Type *new_type(char* name, int size) {
   return type;
 }
 
-Type *new_prm_type(char* name, int size) {
+Type *new_prm_type(char* name, long size) {
   Type *type;
   type = calloc(1, sizeof(Type));
   type->kind = TY_PRM;
@@ -136,7 +136,7 @@ Var *new_var(Token *tok, Type *type) {
 Var *new_lvar(Token *tok, Type *type) {
   Var *lvar = new_var(tok, type);
 
-  size_t size = sizeof_type(type);
+  long size = sizeof_type(type);
   if (locals) {
     lvar->offset = locals->offset + size;
   } else {
@@ -589,7 +589,7 @@ int fixed_members_offset(Vector *members) {
   int offset = 0;
   for (int i = 0; i < members->size; ++i) {
     Member *mem = vec_get(members, i);
-    int size_mem = sizeof_type(mem->type);
+    long size_mem = sizeof_type(mem->type);
     if (unit < size_mem) unit = size_mem;
     mem->offset = offset = align(offset, size_mem);
     offset += size_mem;
@@ -676,7 +676,7 @@ Type *raw_type(Type *type) {
   return type;
 }
 
-size_t sizeof_type(Type *type) {
+long sizeof_type(Type *type) {
   return raw_type(type)->size;
 }
 
@@ -1874,7 +1874,7 @@ Node *global() {
       if (!ident || ident->kind != TK_IDENT)
         error_at(token->str, "Illegal typedef struct");
 
-      int size_t = sizeof_type(type);
+      long size_t = sizeof_type(type);
       Type *struct_type = new_type(substring(ident->str, ident->len), size_t);
       struct_type->kind = TY_TYPEDEF;
       struct_type->def = type;
@@ -1898,7 +1898,7 @@ Node *global() {
       if (!ident || ident->kind != TK_IDENT)
         error_at(token->str, "Illegal typedef union");
 
-      int size_t = sizeof_type(type);
+      long size_t = sizeof_type(type);
       Type *union_type = new_type(substring(ident->str, ident->len), size_t);
       union_type->kind = TY_TYPEDEF;
       union_type->def = type;

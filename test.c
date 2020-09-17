@@ -705,7 +705,7 @@ void test32() {
   assertChar("test32", 'H', *p);
 }
 
-int main() {
+int test_all() {
   test1();
   test2();
   test3();

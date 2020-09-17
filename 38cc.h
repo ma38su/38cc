@@ -2,6 +2,7 @@
 #ifndef MCC_H
 #define MCC_H
 
+#include <stdlib.h>
 #include <stdbool.h>
 #include "vector.h"
 
@@ -94,7 +95,7 @@ struct Type {
 
   char *name;
   int len;  // length of string
-  size_t size; // size of type
+  long size; // size of type
 
   int is_unsigned;
   // ptr or array. *char = * -> char,
