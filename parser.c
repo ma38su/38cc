@@ -53,7 +53,7 @@ int max_locals_size;
 Var *globals;
 
 Vector *enums;
-Vector *types;  // Type*
+Vector *types;
 Vector *inlines;
 
 Type *bool_type;
@@ -184,8 +184,9 @@ void init_types() {
   enums = new_vector();
   types = new_vector();
   inlines = new_vector();
-  
+
   bool_type = new_prm_type("_Bool", 1);
+
   vec_add(types, bool_type);
 
   char_type = new_prm_type("char", sizeof(char));
@@ -253,7 +254,7 @@ void init_types() {
   void_type->kind = TY_VOID;
   vec_add(types, void_type);
 
-  Type *builtin_va_list_type = new_type("__builtin_va_list", 24);
+  Type *builtin_va_list_type = new_type("__builtin_va_list", sizeof(__builtin_va_list));
   //sizeof(__builtin_va_list));
   builtin_va_list_type->kind = TY_VOID;
   vec_add(types, builtin_va_list_type);

@@ -1,5 +1,5 @@
 #include <stdlib.h>
-
+#include <stdio.h>
 #include "vector.h"
 
 Vector *new_vector() {
@@ -27,8 +27,12 @@ void _ensure_array(Vector *vector) {
 }
 
 void vec_add(Vector *vector, void *value) {
-  if (vector->size >= vector->_len)
+  if (!vector) {
+    fprintf(stderr, "no vec2 %ld\n", sizeof(Vector));
+  }
+  if (vector->size >= vector->_len) {
     _ensure_array(vector);
+  }
   vector->_array[vector->size++] = value;
 }
 

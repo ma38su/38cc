@@ -21,6 +21,10 @@ void assertChar(char *name, char expect, char actual) {
 }
 
 void assertStr(char *name, char *expect, char *actual) {
+  if (actual == NULL) {
+    printf("%s: NG, expect: %s, actual: NULL\n", name, expect);
+    return;
+  }
   if (strcmp(actual, expect) == 0) {
     if (debug) {
       printf("%s: OK, expect: %s, actual: %s\n", name, expect, actual);
@@ -727,6 +731,13 @@ void test33() {
   assertInt("test33-2", 101, val.next->val);
 }
 
+char *gpath;
+
+void test34() {
+  gpath = "hEllo, wOrld!";
+  assertStr("test34", "hEllo, wOrld!", gpath);
+}
+
 int test_all() {
   test1();
   test2();
@@ -760,6 +771,7 @@ int test_all() {
   test30();
   test31();
   test32();
+  test34();
   return 0;
 }
 
