@@ -93,6 +93,28 @@ int sum() {
   return sum;
 }
 
+int sum2() {
+  int sum = 0;
+  for (int i = 5 - 1; i >= 0; --i) {
+    sum = sum + i;
+  }
+  for (int i = 10 - 1; i >= 5; --i) {
+    sum += i;
+  }
+  return sum;
+}
+
+int sum_neg() {
+  int sum = 0;
+  for (int i = 0; i > -5; --i) {
+    sum = sum + i;
+  }
+  for (int i = -5; i > -10; --i) {
+    sum += i;
+  }
+  return sum;
+}
+
 int fib(int a) {                                                                                                                                                               
   if (a <= 0) {
     return 0;
@@ -107,7 +129,9 @@ int fib(int a) {
 void test3() {
   assert("test3-1", test_func(1, 2));
   assertInt("test3-2", 45, sum());
-  assertInt("test3-3", 55, fib(10));
+  assertInt("test3-3", 45, sum2());
+  assertInt("test3-4", -45, sum_neg());
+  assertInt("test3-5", 55, fib(10));
 }
 
 void test4() {

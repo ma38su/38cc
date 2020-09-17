@@ -89,8 +89,8 @@ vector.s: 38cc vector.c .vector.c
 	./38cc .vector.c > vector.s
 
 codegen_sub.s: 38cc codegen_sub.c .codegen_sub.c
-	#$(CC) -S -masm=intel codegen_sub.c -o codegen_sub.s
-	./38cc .codegen_sub.c > codegen_sub.s
+	$(CC) -S -masm=intel codegen_sub.c -o codegen_sub.s
+	#./38cc .codegen_sub.c > codegen_sub.s
 
 main.s: 38cc main.c .main.c
 	$(CC) -S -masm=intel main.c -o main.s

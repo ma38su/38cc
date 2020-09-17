@@ -117,7 +117,8 @@ void gen_defined_function(Node *node) {
       printf("  pop rax\n");
 
       --index;
-      int size = sizeof_type(arg->type);
+      Type *type = raw_type(arg->type);
+      int size = sizeof_type(type);
       char *r = args_register(size, index);
       printf("  mov [rax], %s\n", r);
     }
@@ -150,14 +151,18 @@ void gen_assign(Node *node) {
     }
 
     char *name = substring(lhs->ident, lhs->len);
-    if (lhs_type == char_type || lhs_type == unsigned_char_type) {
-      printf("  movsx byte ptr %s[rip], rax\n", name);
-    } else if (lhs_type == short_type || lhs_type == unsigned_short_type) {
-      printf("  movsx word ptr %s[rip], rax\n", name);
-    } else if (lhs_type == int_type || lhs_type == unsigned_int_type) {
-      printf("  mov dword ptr %s[rip], eax\n", name);
-    } else if (lhs_type == long_type || lhs_type == unsigned_long_type) {
-      printf("  mov %s[rip], rax\n", name);
+    if (lhs_type->kind == TY_PRM) {
+      if (lhs_type->size == 1) {
+        printf("  mov %s[rip], al\n", name);
+      } else if (lhs_type->size == 2) {
+        printf("  mov %s[rip], ax\n", name);
+      } else if (lhs_type->size == 4) {
+        printf("  mov %s[rip], eax\n", name);
+      } else if (lhs_type->size == 8) {
+        printf("  mov %s[rip], rax\n", name);
+      } else {
+        printf("  # not support gvar");
+      }
     } else {
       printf("  # not support gvar %s, type: %s\n", name, lhs->type->name);
     }
@@ -178,16 +183,12 @@ void gen_assign(Node *node) {
     }
     if (size == 1) {
       printf("  mov [rax], dil\n");
-      //printf("  mov byte ptr [rax], dil\n");
     } else if (size == 2) {
       printf("  mov [rax], di\n");
-      //printf("  mov word ptr [rax], di\n");
     } else if (size == 4) {
       printf("  mov [rax], edi\n");
-      //printf("  mov dword ptr [rax], edi\n");
     } else if (size == 8) {
       printf("  mov [rax], rdi\n");
-      //printf("  mov qword ptr [rax], rdi\n");
     } else {
       char *type_name = substring(node->type->name, node->type->len);
       error("illegal assign defref: sizeof(%s) = %d", type_name, size);

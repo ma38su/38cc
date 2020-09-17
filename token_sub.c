@@ -151,13 +151,15 @@ Token *read_char_literal(Token *cur, char *p) {
   if (*p != '\'') return NULL;
 
   Token *tok = new_token(TK_CHAR, cur, ++p);
+  char c;
   if (*p == '\\') {
+    c = to_escape_char(*(++p));
     tok->len = 2;
-    tok->val = to_escape_char(*(++p));
   } else {
+    c = *p;
     tok->len = 1;
-    tok->val = *p;
   }
+  tok->val = c;
   if (*(++p) != '\'') {
     error_at(tok->str, "unexpected token. expected token is \"'\"");
   }

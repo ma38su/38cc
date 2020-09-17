@@ -7,7 +7,7 @@ extern int current_lid;
 bool gen(Node *node);
 void gen_to_stack(Node *node);
 
-int sizeof_type(Type *type);
+size_t sizeof_type(Type *type);
 void gen_addr(Node *node);
 void gen_gvars_uninit();
 void gen_gvar_declarations();
@@ -309,16 +309,30 @@ void gen_gvar(Node *node) {
   // for 64bit
   Type *type = raw_type(node->type);
   if (type->kind == TY_PRM) {
-    if (type->size == 1) {
-      printf("  movsx rax, byte ptr %s[rip]\n", node->ident);
-    } else if (type->size == 2) {
-      printf("  movsx rax, word ptr %s[rip]\n", node->ident);
-    } else if (type->size == 4) {
-      printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
-    } else if (type->size == 8) {
-      printf("  mov rax, %s[rip]\n", node->ident);
+    if (type->is_unsigned) {
+      if (type->size == 1) {
+        printf("  movzx eax, byte ptr %s[rip]\n", node->ident);
+      } else if (type->size == 2) {
+        printf("  movzx eax, word ptr %s[rip]\n", node->ident);
+      } else if (type->size == 4) {
+        printf("  mov eax, dword ptr %s[rip]\n", node->ident);
+      } else if (type->size == 8) {
+        printf("  mov rax, %s[rip]\n", node->ident);
+      } else {
+        error("unsupported");
+      }
     } else {
-      error("unsupported");
+      if (type->size == 1) {
+        printf("  movsx rax, byte ptr %s[rip]\n", node->ident);
+      } else if (type->size == 2) {
+        printf("  movsx rax, word ptr %s[rip]\n", node->ident);
+      } else if (type->size == 4) {
+        printf("  movsxd rax, dword ptr %s[rip]\n", node->ident);
+      } else if (type->size == 8) {
+        printf("  mov rax, %s[rip]\n", node->ident);
+      } else {
+        error("unsupported");
+      }
     }
   } else if (type_is_array(type)) {
     printf("  lea rax, %s[rip]\n", node->ident);
@@ -439,16 +453,16 @@ void gen_gvar_declaration(Var *var) {
   } else if (type->kind == TY_PRM) {
     if (type->size == 1) {
       printf("%s:\n", name);
-      printf("  .byte %d\n", var->init->n);
+      printf("  .byte %ld\n", var->init->n);
     } else if (type->size == 2) {
       printf("%s:\n", name);
-      printf("  .word %d\n", var->init->n);
+      printf("  .word %ld\n", var->init->n);
     } else if (type->size == 4) {
       printf("%s:\n", name);
-      printf("  .long %d\n", var->init->n);
+      printf("  .long %ld\n", var->init->n);
     } else if (type->size == 8) {
       printf("%s:\n", name);
-      printf("  .quad %d\n", var->init->n);
+      printf("  .quad %ld\n", var->init->n);
     } else {
       error("unsupported type");
     }
@@ -477,19 +491,19 @@ void gen_gvar_declaration(Var *var) {
       if (t->kind == TY_PRM) {
         if (t->size == 1) {
           for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .byte %d\n", v->n);
+            printf("  .byte %ld\n", v->n);
           }
         } else if (t->size == 2) {
           for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .word %d\n", v->n);
+            printf("  .word %ld\n", v->n);
           }
         } else if (t->size == 4) {
           for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .long %d\n", v->n);
+            printf("  .long %ld\n", v->n);
           }
         } else if (t->size == 8) {
           for (InitVal *v = var->init; v; v = v->next) {
-            printf("  .quad %d\n", v->n);
+            printf("  .quad %ld\n", v->n);
           }
         } else {
           error("unsupported type");

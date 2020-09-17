@@ -94,7 +94,7 @@ struct Type {
 
   char *name;
   int len;  // length of string
-  int size; // size of type
+  size_t size; // size of type
 
   int is_unsigned;
   // ptr or array. *char = * -> char,
@@ -111,7 +111,7 @@ struct Type {
 struct Token {
   TokenKind kind;
   Token *next;
-  int val;    // integer value if kind == TK_NUM
+  long val;    // integer value if kind == TK_NUM
   char *str;  // string of token
   int len;    // length of token
 };
@@ -154,7 +154,7 @@ struct Var {
 };
 
 struct InitVal {
-  int n;
+  long n;
 
   char *str;
   int strlen;

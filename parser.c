@@ -5,7 +5,7 @@
 #include "38cc.h"
 #include "vector.h"
 
-int sizeof_type(Type *type);
+size_t sizeof_type(Type *type);
 int sizeof_lvars();
 int gvar_has_circular();
 int align(int offset, int size);
@@ -39,7 +39,7 @@ Node *mul();
 Node *shift();
 Node *unary();
 Node *ternay();
-int expect_number();
+long expect_number();
 
 // current token
 Token *token;
@@ -136,7 +136,7 @@ Var *new_var(Token *tok, Type *type) {
 Var *new_lvar(Token *tok, Type *type) {
   Var *lvar = new_var(tok, type);
 
-  int size = sizeof_type(type);
+  size_t size = sizeof_type(type);
   if (locals) {
     lvar->offset = locals->offset + size;
   } else {
@@ -676,7 +676,7 @@ Type *raw_type(Type *type) {
   return type;
 }
 
-int sizeof_type(Type *type) {
+size_t sizeof_type(Type *type) {
   return raw_type(type)->size;
 }
 
@@ -744,11 +744,11 @@ Member *consume_member() {
 }
 
 // read reserved integer number
-int expect_number() {
+long expect_number() {
   if (token->kind != TK_NUM) {
     error_at(token->str, "token is not number. (tk-kind: %d)", token->kind);
   }
-  int val = token->val;
+  long val = token->val;
   token = token->next;
   return val;
 }
@@ -828,7 +828,7 @@ Vector *expect_defined_args() {
         if (consume("]")) {
           type = new_ptr_type(type);
         } else {
-          int array_len = expect_number();
+          int array_len = (int) expect_number();
           expect("]");
           type = new_array_type(type, array_len);
         }
