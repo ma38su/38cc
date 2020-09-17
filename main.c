@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   fprintf(stderr, "arg file: %s\n", filename);
+  fprintf(stderr, "%ld", globals);
   _main();
   return 0;
 }

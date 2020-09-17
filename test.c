@@ -705,6 +705,28 @@ void test32() {
   assertChar("test32", 'H', *p);
 }
 
+typedef struct LinkEntry LinkEntry;
+
+struct LinkEntry {
+  LinkEntry *next;
+  int val;
+};
+
+void calc(LinkEntry *e) {
+  LinkEntry *next = calloc(1, sizeof(LinkEntry));
+  next->val = 101;
+  e->next = next;
+}
+
+void test33() {
+  LinkEntry val;
+  val.val = 7;
+  calc(&val);
+
+  assertLong("test33-1", 7, val.val);
+  assertInt("test33-2", 101, val.next->val);
+}
+
 int test_all() {
   test1();
   test2();

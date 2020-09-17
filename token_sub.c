@@ -183,3 +183,9 @@ Token *read_str_literal(Token *cur, char *p) {
   return tok;
 }
 
+void tokenize_test(char *p) {
+  while (*p) {
+    printf("%c", *p);
+    p++;
+  }
+}

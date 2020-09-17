@@ -122,7 +122,7 @@ void assertInt(char *, int, int);
 void assertLong(char *, long, long);
 void assertChar(char *name, char expect, char actual);
 
-void test_all();
+int test_all();
 
 void call_with_struct(CharLongIntShort *obj, long p);
 

@@ -23,8 +23,8 @@ $(OBJS): 38cc.h $(SRCS)
 .main_sub.c: main_sub.c
 	cpp main_sub.c -o .main_sub.c
 
-.reader.c: reader.c
-	cpp reader.c -o .reader.c
+reader_.c: reader.c
+	cpp reader.c -o reader_.c
 
 token_.c: token.c
 	cpp token.c -o token_.c
@@ -51,20 +51,22 @@ test_gcc_.c: test.h test_gcc.c
 	cpp test_gcc.c -o test_gcc_.c
 
 sample_.c: sample.c
-	cpp sample.c -o _sample.c
+	cpp sample.c -o sample_.c
 
-sample: 38cc 38cc2 sample.c
+sample: 38cc 38cc2 sample_.c reader_.c
 	$(CC) -O0 -S -masm=intel sample.c -o sample-gcc.s
-	gcc -o sample-gcc sample-gcc.s
+	$(CC) -O0 -S -masm=intel reader.c -o reader-gcc.s
+	gcc -o sample-gcc sample-gcc.s reader-gcc.s
 	./sample-gcc Hello
 
-	cpp sample.c sample_.c
 	./38cc sample_.c > sample-38cc.s
-	gcc -o sample-38cc sample-38cc.s
+	./38cc reader_.c > reader-38cc.s
+	gcc -o sample-38cc sample-38cc.s reader-38cc.s
 	./sample-38cc Hello
 
 	./38cc2 sample_.c > sample-38cc2.s
-	gcc -o sample-38cc2 sample-38cc2.s
+	./38cc2 reader_.c > reader-38cc2.s
+	gcc -o sample-38cc2 sample-38cc2.s reader-38cc2.s
 	./sample-38cc2 Hello
 
 sample-s: sample-gcc.s sample-38cc.s sample2.s
@@ -76,9 +78,9 @@ sample-s: sample-gcc.s sample-38cc.s sample2.s
 sample.s: 38cc sample.c .sample.c
 	./38cc .sample.c > sample.s
 
-reader.s: 38cc reader.c .reader.c
+reader.s: 38cc reader.c reader_.c
 	#$(CC) -S -masm=intel reader.c -o reader.s
-	./38cc .reader.c > reader.s
+	./38cc reader_.c > reader.s
 
 token_sub.s: 38cc token_sub.c token_sub_.c
 	#$(CC) -S -masm=intel token_sub.c -o token_sub.s
@@ -116,27 +118,6 @@ debug.s: 38cc debug.c .debug.c
 	$(CC) -S -masm=intel debug.c -o debug.s
 	#./38cc .debug.c > debug.s
 
-self-main: 38cc .main.c
-	./38cc .main.c > main.s
-
-self-reader: 38cc .reader.c
-	./38cc .reader.c > reader.s
-
-self-token: 38cc token.c token_.c
-	./38cc token_.c > token.s
-
-self-parser: 38cc .parser.c
-	./38cc .parser.c > parser.s
-
-self-codegen: 38cc codegen_.c
-	./38cc codegen_.c > codegen.s
-
-self-debug: 38cc .debug.c
-	./38cc .debug.c > debug.s
-
-self-vector: 38cc .vector.c
-	./38cc .vector.c > vector.s
-
 test.s: 38cc test_.c
 	./38cc test_.c > test.s
 
@@ -156,8 +137,8 @@ test: 38cc test_main.s test.s test_gcc.s vector.s
 	$(CC) test.s test_main.s test_gcc.s vector.s -o test
 	./test
 
-test-gcc: test.c test_gcc.c
-	$(CC) -o test_gcc test.c test_gcc.c vector.c
+test-gcc: test_main.c test.c test_gcc.c
+	$(CC) -o test_gcc test_main.c test.c test_gcc.c vector.c
 	./test_gcc
 
 self: 38cc2 test test_.c test_gcc_.c
@@ -169,7 +150,7 @@ self: 38cc2 test test_.c test_gcc_.c
 	./38cc2 .vector.c > vector2.s
 	diff vector.s vector2.s
 
-	./38cc2 .reader.c > reader2.s
+	./38cc2 reader_.c > reader2.s
 	diff reader.s reader2.s
 
 	./38cc2 token_sub_.c > token_sub2.s

@@ -49,8 +49,25 @@ void gen_block(Node *node) {
   }
 }
 
+void dump_gvars() {
+  Var *var;
+  for (var = globals; var; var = var->next) {
+    if (is_debug) {
+      fprintf(stderr, "ptr %x\n", var);
+      fprintf(stderr, " ptr %.*s\n", var->len, var->name);
+    }
+    if (is_debug) fprintf(stderr, "call dump_gvars() %.*s\n", var->len, var->name);
+  }
+}
+
 void gen_gvars_uninit() {
-  for (Var *var = globals; var; var = var->next) {
+
+  if (is_debug) fprintf(stderr, "call gen_gvars_uninit()\n");
+  dump_gvars();
+  if (is_debug) fprintf(stderr, "call gen_gvars_uninit() 2\n");
+
+  Var *var;
+  for (var = globals; var; var = var->next) {
     if (var->init || var->is_extern || var->type->kind == TY_FUNCTION) {
       continue;
     }
@@ -62,6 +79,7 @@ void gen_gvars_uninit() {
     // TODO alignment size
     printf("  .comm   %s,%d,%d\n", name, size, size);
   }
+  if (is_debug) fprintf(stderr, "call gen_gvars_uninit() end\n");
 }
 
 int n_gvars() {
@@ -421,6 +439,7 @@ bool gen(Node *node) {
 
 void codegen() {
   if (is_debug) fprintf(stderr, "call codegen...\n");
+
   printf("  .intel_syntax noprefix\n");
 
   gen_gvars_uninit();

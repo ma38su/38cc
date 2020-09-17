@@ -47,6 +47,9 @@ Token *token;
 char *user_input;
 Node *code[1000];
 Var *locals;
+int locals_size;
+int max_locals_size;
+
 Var *globals;
 
 Vector *enums;
@@ -145,6 +148,10 @@ Var *new_lvar(Token *tok, Type *type) {
 
   lvar->next = locals;
   locals = lvar;
+  locals_size += size;
+  if (max_locals_size < locals_size) {
+    max_locals_size = locals_size;
+  }
   return lvar;
 }
 
@@ -518,12 +525,9 @@ Token *consume_string() {
 }
 
 Node *consume_string_node() {
-  if (token->kind != TK_STR) {
-    return NULL;
-  }
-
-  Var *gvar = find_gstr_or_gen(token);
-  token = token->next;
+  Token *tok = consume_string();
+  if (!tok) return NULL;
+  Var *gvar = find_gstr_or_gen(tok);
 
   Node *node = new_node(ND_GVAR);
   node->type = gvar->type;
@@ -1528,11 +1532,14 @@ Node *block_stmt() {
 Node *stmt() {
   // scope in
   Var *tmp_locals = locals;
+  int tmp_locals_size = locals_size;
 
   Node *node = block_stmt();
   if (node) {
     // scope out
     locals = tmp_locals;
+    locals_size = tmp_locals_size;
+
     return node;
   }
   if (consume("return")) {
@@ -1614,7 +1621,11 @@ Node *stmt() {
     }
 
     // scope out
+    locals_size = sizeof_lvars();
+
     locals = tmp_locals;
+    locals_size = tmp_locals_size;
+
     return node;
   }
 
@@ -1931,6 +1942,7 @@ Node *global() {
     if (ident) {
       if (consume("(")) {
         expect_defined_args();
+        locals = NULL;
       } else {
         Type *def_type = new_type(substring(ident->str, ident->len), sizeof_type(type));
         def_type->kind = TY_TYPEDEF;
@@ -2009,8 +2021,11 @@ Node *global() {
     Node *block = NULL;
     Vector *args;
 
+    if (locals) error("locals: %.*s", locals->len, locals->name);
     Var *tmp_locals = locals;
     locals = NULL;
+    locals_size = 0;
+    max_locals_size = 0;
 
     args = expect_defined_args();
     block = block_stmt();
@@ -2022,7 +2037,8 @@ Node *global() {
       }
     }
 
-    int size_lvars = sizeof_lvars();
+    int size_lvars = align(max_locals_size, 16);
+
     node = new_node(ND_FUNCTION);
     node->list = args;
     node->ident = substring(tok->str, tok->len);
@@ -2057,7 +2073,6 @@ void dump_types() {
 void program() {
   init_types();
   init_builtin();
-  //dump_types();
 
   int i = 0;
   while (!at_eof()) {
@@ -2269,13 +2284,8 @@ Var *find_gstr_or_gen(Token *tok) {
 
 int sizeof_lvars() {
   int size = 0;
-  //int offset = 0;
   for (Var *var = locals; var; var = var->next) {
     size += sizeof_type(var->type);
-    /*
-    int size = sizeof_type(var->type);
-    offset = align(offset, size);
-    */
   }
   return align(size, 16);
 }
