@@ -853,8 +853,8 @@ Vector *expect_defined_args() {
       node->len = tok->len;
       node->offset = lvar->offset;
     } else {
-      node->ident = "";
-      node->len = 0;
+      node->ident = "_";
+      node->len = 1;
     }
 
     vec_add(args, node);
@@ -1105,14 +1105,6 @@ Member *get_member(Type *type, Token *ident) {
   return member;
 }
 
-Node *new_comment(Node *node, char *comment) {
-  Node *n = new_node(ND_COMMENT);
-  n->lhs = node;
-  n->type = node->type;
-  n->ident = comment;
-  return n;
-}
-
 Node *postfix() {
 
   Node *node = primary();
@@ -1157,6 +1149,7 @@ Node *postfix() {
 
       node = new_node(ND_LVAR);
       node->ident = substring(ident->str, ident->len);
+      node->len = ident->len;
       node->offset = new_offset;
       node->type = member->type;
       continue;

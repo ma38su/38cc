@@ -65,21 +65,16 @@ void gen_gvars_uninit() {
 }
 
 int n_gvars() {
-  int data_count = 0;
+  int count = 0;
   for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->is_extern) continue;
-    data_count++;
+    count++;
   }
-  return data_count;
+  return count;
 }
 
 // self NG
 void gen_gvar_declarations() {
-  int data_count = n_gvars();
-  if (data_count == 0) {
-    return;
-  }
-
   printf("  .data\n");
   for (Var *var = globals; var; var = var->next) {
     if (!var->init || var->is_extern) continue;
