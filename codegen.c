@@ -248,23 +248,9 @@ void gen_assign(Node *node) {
 void gen_binary(Node *node) {
   gen_to_stack(node->lhs);
   gen_to_stack(node->rhs);
-
-  if (node->kind == ND_SHL) {
-    printf("  pop rcx\n");
-    printf("  pop rax\n");
-    printf("  shl rax, cl\n");
-    printf("  push rax\n");
-    return;
-  } else if (node->kind == ND_SAR) {
-    printf("  pop rcx\n");
-    printf("  pop rax\n");
-    printf("  sar rax, cl\n");
-    printf("  push rax\n");
-    return;
-  }  
-
   printf("  pop rdi\n");
   printf("  pop rax\n");
+
   if (node->kind == ND_PTR_ADD) {
     int ptr_size = sizeof_type(node->lhs->type->to);
     printf("  imul rdi, %d\n", ptr_size);
@@ -314,6 +300,12 @@ void gen_binary(Node *node) {
     printf("  xor rax, rdi\n");
   } else if (node->kind == ND_BITOR) {
     printf("  or rax, rdi\n");
+  } else if (node->kind == ND_SAR) {
+    printf("  mov cl, dil\n");
+    printf("  sar rax, cl\n");
+  } else if (node->kind == ND_SHL) {
+    printf("  mov cl, dil\n");
+    printf("  shl rax, cl\n");
   } else {
     if (node->ident) {
       error_at(node->ident, "Unsupported operator");
