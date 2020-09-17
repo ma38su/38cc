@@ -1482,13 +1482,8 @@ Node *declaration(void) {
   }
 
   Token *tok = consume_ident();
-  if (!tok) {
-    if (type) {
-      error_at(token->str, "illegal var name1 %d", type->kind);
-    } else {
-      error_at(token->str, "illegal var name2");
-    }
-  }
+  if (!tok)
+    error_at(token->str, "illegal var name");
   if (find_lvar(tok))
     error_at(tok->str, "duplicated defined lvar");
 
@@ -1504,6 +1499,7 @@ Node *declaration(void) {
 
     Node *node = new_node(ND_GVAR);
     node->ident = substring(var->name, var->len);
+    node->len = var->len;
     node->type = var->type;
     if (consume("=")) {
       var->init = gvar_init_val(var->type);
@@ -1513,6 +1509,7 @@ Node *declaration(void) {
     Var *var = new_lvar(tok, type);
     Node *node = new_node(ND_LVAR);
     node->ident = substring(var->name, var->len);
+    node->len = var->len;
     node->offset = var->offset;
     node->type = var->type;
     if (consume("=")) {
