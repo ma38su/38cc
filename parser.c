@@ -69,7 +69,6 @@ Type *unsigned_int_type;
 Type *unsigned_long_type;
 
 Type *void_type;
-Type *ptr_char_type;
 
 Type *float_type;
 Type *double_type;
@@ -187,26 +186,35 @@ void init_types() {
   inlines = new_vector();
   
   bool_type = new_prm_type("_Bool", 1);
+  vec_add(types, bool_type);
+
   char_type = new_prm_type("char", sizeof(char));
+  vec_add(types, char_type);
+
   short_type = new_prm_type("short", sizeof(short));
+  vec_add(types, short_type);
+
   int_type = new_prm_type("int", sizeof(int));
+  vec_add(types, int_type);
+
   long_type = new_prm_type("long", sizeof(long));
-  float_type = new_prm_type("float", sizeof(float));
-  double_type = new_prm_type("double", sizeof(double));
+  vec_add(types, long_type);
 
   unsigned_char_type = new_prm_type("unsigned char", sizeof(unsigned char));
   unsigned_char_type->is_unsigned = 1;
+  vec_add(types, unsigned_char_type);
 
   unsigned_short_type = new_prm_type("unsigned short", sizeof(unsigned short));
   unsigned_short_type->is_unsigned = 1;
+  vec_add(types, unsigned_short_type);
 
   unsigned_int_type = new_prm_type("unsigned int", sizeof(unsigned int));
   unsigned_int_type->is_unsigned = 1;
+  vec_add(types, unsigned_int_type);
 
   unsigned_long_type = new_prm_type("unsigned long", sizeof(unsigned long));
   unsigned_long_type->is_unsigned = 1;
-
-  ptr_char_type = new_ptr_type(char_type);
+  vec_add(types, unsigned_long_type);
 
   Type *long_int_type = new_prm_type("long int", sizeof(long int));
   vec_add(types, long_int_type);
@@ -229,30 +237,24 @@ void init_types() {
   unsigned_short_int_type->is_unsigned = 1;
   vec_add(types, unsigned_short_int_type);
 
-  Type *long_double_type = new_prm_type("long double", sizeof(long double));
-  vec_add(types, long_double_type);
-
   Type *unsigned_long_long_int_type = new_prm_type("unsigned long long int", sizeof(unsigned long long int));
   vec_add(types, unsigned_long_long_int_type);
 
-  vec_add(types, bool_type);
-  vec_add(types, char_type);
-  vec_add(types, short_type);
-  vec_add(types, int_type);
-  vec_add(types, long_type);
+  float_type = new_prm_type("float", sizeof(float));
   vec_add(types, float_type);
+
+  double_type = new_prm_type("double", sizeof(double));
   vec_add(types, double_type);
 
-  vec_add(types, unsigned_char_type);
-  vec_add(types, unsigned_short_type);
-  vec_add(types, unsigned_int_type);
-  vec_add(types, unsigned_long_type);
+  Type *long_double_type = new_prm_type("long double", sizeof(long double));
+  vec_add(types, long_double_type);
 
   void_type = new_type("void", sizeof(void));
   void_type->kind = TY_VOID;
   vec_add(types, void_type);
 
-  Type *builtin_va_list_type = new_type("__builtin_va_list", sizeof(__builtin_va_list));
+  Type *builtin_va_list_type = new_type("__builtin_va_list", 24);
+  //sizeof(__builtin_va_list));
   builtin_va_list_type->kind = TY_VOID;
   vec_add(types, builtin_va_list_type);
 }
@@ -2037,14 +2039,14 @@ Node *global() {
       }
     }
 
-    int size_lvars = align(max_locals_size, 16);
+    int frame_offset = align(max_locals_size, 16);
 
     node = new_node(ND_FUNCTION);
     node->list = args;
     node->ident = substring(tok->str, tok->len);
     node->len = tok->len;
     node->lhs = block;
-    node->offset = size_lvars;
+    node->offset = frame_offset;
     node->type = func->type->ret;
     
     locals = tmp_locals;
