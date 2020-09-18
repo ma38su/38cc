@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+
 #include "vector.h"
 
 Vector *new_vector() {
@@ -48,11 +49,11 @@ void *vec_get(Vector *vector, int index) {
   return vector->_array[index];
 }
 
-int vec_contains(Vector *vector, void *value) {
+bool vec_contains(Vector *vector, void *value) {
   for (int i = 0; i < vector->size; ++i) {
     if (vector->_array[i] == value) {
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 }

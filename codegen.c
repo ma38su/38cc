@@ -555,6 +555,7 @@ bool gen(Node *node) {
 void codegen() {
   if (is_debug) fprintf(stderr, "call codegen...\n");
 
+  printf("  .file \"%s\"\n", filename);
   printf("  .intel_syntax noprefix\n");
 
   gen_gvars_uninit();

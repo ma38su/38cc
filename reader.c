@@ -6,7 +6,12 @@
 #include "38cc.h"
 
 char *read_file(char *path) {
-// oepn file
+  if (!path) error("no file\n");
+
+  if (is_debug)
+    fprintf(stderr, "read file: %s\n", filename);
+
+  // open file
   FILE *fp = fopen(path, "r"); 
   if (!fp) {
     error("cannot open %s: %s",
@@ -17,6 +22,7 @@ char *read_file(char *path) {
   if (fseek(fp, 0, SEEK_END) == -1) {
     error("%s: fseek: %s", path, strerror(errno));
   }
+
   long size = ftell(fp);
   if (fseek(fp, 0, SEEK_SET) == -1) {
     error("%s: fseek: %s", path, strerror(errno));

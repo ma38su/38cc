@@ -6,8 +6,7 @@
 #include "vector.h"
 
 long sizeof_type(Type *type);
-int sizeof_lvars();
-int gvar_has_circular();
+bool gvar_has_circular();
 int align(int offset, int size);
 int eval_node(Node* node);
 bool is_alpbar(char c);
@@ -794,17 +793,17 @@ Vector *consume_args() {
   return args;
 }
 
-int consume_void_args() {
+bool consume_void_args() {
   if (consume(")")) {
-    return 1;
+    return true;
   }
   if (token->kind == TK_IDENT
       && token->len == 4 && memcmp(token->str, "void", 4) == 0
       && token_is_reserved(token->next, ")")) {
     token = token->next->next;
-    return 1;
+    return true;
   }
-  return 0;
+  return false;
 }
 
 Vector *expect_defined_args() {
@@ -1628,8 +1627,6 @@ Node *stmt() {
     }
 
     // scope out
-    locals_size = sizeof_lvars();
-
     locals = tmp_locals;
     locals_size = tmp_locals_size;
 
@@ -2006,11 +2003,9 @@ Node *global() {
     return NULL;
   }
 
-
   consume("static");
   int is_inline = consume("__inline") ? 1 : 0;
 
-  //consume("const");
   Type *type = consume_type();
   if (!type) error_at(token->str, "type is not found");
 
@@ -2064,17 +2059,6 @@ Node *global() {
   } else {
     return new_gvar_node(tok, type, is_extern);
   }
-}
-
-
-
-void dump_types() {
-  fprintf(stderr, "-- dump types begin --\n");
-  for (int i = 0; i < types->size; ++i) {
-    Type *type = vec_get(types, i);
-    fprintf(stderr, "  find %s\n", substring(type->name, type->len));
-  }
-  fprintf(stderr, "-- dump types end --\n");
 }
 
 void program() {
@@ -2203,7 +2187,8 @@ void dump_gvar_circular() {
   }
 }
 
-int gvar_has_circular() {
+bool gvar_has_circular() {
+  if (!is_debug) return false;
   Vector *vec = new_vector();
   Var *var = globals;
   int i = 0;
@@ -2212,12 +2197,12 @@ int gvar_has_circular() {
     if (vec_contains(vec, var)) {
       fprintf(stderr, "gvar: %d\n", i);
       dump_gvar_circular();
-      return 1;
+      return true;
     }
     vec_add(vec, var);
     var = var->next;
   }
-  return 0;
+  return false;
 }
 
 Var *find_gvar(Token *tok) {
@@ -2284,12 +2269,3 @@ Var *find_gstr_or_gen(Token *tok) {
 
   return gvar;
 }
-
-int sizeof_lvars() {
-  int size = 0;
-  for (Var *var = locals; var; var = var->next) {
-    size += sizeof_type(var->type);
-  }
-  return align(size, 16);
-}
-
