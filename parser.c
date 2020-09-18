@@ -408,8 +408,8 @@ bool peek(char *op) {
 // read reserved symbol
 void expect(char *op) {
   if (!consume(op)) {
-    error_at(token->str, "token is '%s' not '%s'. tk-kind: %d",
-        substring(token->str, token->len), op, token->kind);
+    error_at(token->str, "'%.*s' is not '%s'. tk-kind: %d",
+        token->len, token->str, op, token->kind);
   }
 }
 
@@ -474,21 +474,19 @@ Type *consume_type() {
 
       Type *type1 = find_type(token);
       if (type1) {
-        //fprintf(stderr, "found %s\n", substring(token->str, token->len));
         type = type1;
         token->next = token->next->next;
       } else if (is_pre_type(token->next)) {
         type = NULL;
         token->next = token->next->next;
       } else {
-        //fprintf(stderr, "break: %s\n", substring(token->str, token->len));
         token->len = len; // rollback
         token = token->next;
         break;
       }
     }
     if (p0 == token) return NULL;
-    if (!type) error_at(token->str, "type is not set(null) %s", substring(token->str, token->len));
+    if (!type) error_at(token->str, "type is not set(null) %.*s", token->len, token->str);
   }
 
   while (consume("*")) {
@@ -559,7 +557,7 @@ Node *consume_enum_node() {
       error_at(tok->str, "duplicated defined gvar");
     }
     evar = calloc(1, sizeof(Enum));
-    evar->name = substring(tok->str, tok->len);
+    evar->name = tok->str;
     evar->len = tok->len;
 
     if (consume("=")) {
@@ -577,7 +575,7 @@ Node *consume_enum_node() {
   }
 
   if (tag) {
-    node->ident = substring(tag->str, tag->len);
+    node->ident = tag->str;
     node->len = tag->len;
     if (find_enum_type(tag)) error("override enum type");
     node->type = find_enum_type_or_gen(tag);
@@ -859,7 +857,7 @@ Vector *expect_defined_args() {
 
     if (tok) {
       Var *lvar = new_lvar(tok, type);
-      node->ident = substring(tok->str, tok->len);
+      node->ident = tok->str;
       node->len = tok->len;
       node->offset = lvar->offset;
     } else {
@@ -1048,21 +1046,18 @@ Node *primary() {
         node = new_node(ND_CALL);
         node->type = lvar->type->ret;
         node->val = 0;
-      } else {
-        error_at(tok->str, "function is not found");
       }
     }
-
     if (!node) {
-      error_at(tok->str, "function(%s): not found", substring(tok->str, tok->len));
+      error_at(tok->str, "function %s is not found", tok->len, tok->str);
     }
 
     node->list = consume_args();
-    node->ident = substring(tok->str, tok->len);
+    node->ident = tok->str;
     node->len = tok->len;
 
     if (!node->type) {
-      error_at(tok->str, "function(%s): not found return type", substring(tok->str, tok->len));
+      error_at(tok->str, "function %.*s: return type is not found.", tok->len, tok->str);
     }
     return node;
   }
@@ -1072,7 +1067,7 @@ Node *primary() {
     node = new_node(ND_LVAR);
     node->type = lvar->type;
 
-    node->ident = substring(tok->str, tok->len);
+    node->ident = tok->str;
     node->len = tok->len;
 
     node->offset = lvar->offset;
@@ -1081,17 +1076,17 @@ Node *primary() {
     if (evar) {
       node = new_node(ND_NUM); // ENUM
       node->type = int_type;
-      node->ident = substring(tok->str, tok->len);
+      node->ident = tok->str;
       node->len = tok->len;
       node->val = evar->val;
     } else {
       Var *gvar = find_gvar(tok);
       if (!gvar) {
-        error_at(tok->str, "undefined ident: %s", substring(tok->str, tok->len));
+        error_at(tok->str, "undefined ident: %.*s", tok->len, tok->str);
       }
       node = new_node(ND_GVAR);
       node->type = gvar->type;
-      node->ident = substring(tok->str, tok->len);
+      node->ident = tok->str;
       node->len = tok->len;
     }
   }
@@ -1105,12 +1100,12 @@ Member *get_member(Type *type, Token *ident) {
 
   Vector *members = ty->members;
   if (!members)
-    error_at(token->str, "no members: %s",
-        substring(ty->name, ty->len));
+    error_at(token->str, "no members: %.*s",
+        ty->len, ty->name);
 
   Member *member = find_member(members, ident);
   if (!member) {
-    error_at(ident->str, "no members (type: %s)", substring(ty->name, ty->len));
+    error_at(ident->str, "no members (type: %.*s)", ty->len, ty->name);
   }
   return member;
 }
@@ -1158,7 +1153,7 @@ Node *postfix() {
       int new_offset = node->offset - member->offset;
 
       node = new_node(ND_LVAR);
-      node->ident = substring(ident->str, ident->len);
+      node->ident = ident->str;
       node->len = ident->len;
       node->offset = new_offset;
       node->type = member->type;
@@ -1501,7 +1496,7 @@ Node *declaration(void) {
     Var *var = new_gvar(tok, type);
 
     Node *node = new_node(ND_GVAR);
-    node->ident = substring(var->name, var->len);
+    node->ident = var->name;
     node->len = var->len;
     node->type = var->type;
     if (consume("=")) {
@@ -1511,7 +1506,7 @@ Node *declaration(void) {
   } else {
     Var *var = new_lvar(tok, type);
     Node *node = new_node(ND_LVAR);
-    node->ident = substring(var->name, var->len);
+    node->ident = var->name;
     node->len = var->len;
     node->offset = var->offset;
     node->type = var->type;
@@ -1806,7 +1801,7 @@ Node *new_gvar_node(Token *tok, Type *t, int is_extern) {
   gvar->type = type;
 
   Node *node = new_node(ND_GVAR);
-  node->ident = substring(tok->str, tok->len);
+  node->ident = tok->str;
   node->len = tok->len;
   node->type = gvar->type;
 
@@ -1817,49 +1812,6 @@ Node *new_gvar_node(Token *tok, Type *t, int is_extern) {
   }
   expect(";");
   return node;
-}
-
-void fixed_lvar_offset(Node *node, int frame_size) {
-  if (!node) return;
-  if (node->kind == ND_LVAR) {
-    char *node_ident = substring(node->ident, node->len);
-    fprintf(stderr, "%s offset1: %ld\n", node_ident, node->offset);
-    node->offset = frame_size - node->offset;
-    fprintf(stderr, "%s offset2: %ld\n", node_ident, node->offset);
-
-    Token t;
-    t.str = node->ident;
-    t.len = node->len;
-    Var *var = find_lvar(&t);
-    if (var) {
-      fprintf(stderr, "offset1: %ld\n", node->offset);
-      var->offset = frame_size - var->offset;
-      fprintf(stderr, "offset2: %ld\n", node->offset);
-    }
-  } else if (node->kind == ND_FUNCTION) {
-    Vector *list = node->list;
-    if (list) {
-      for (int i = 0; i < list->size; ++i) {
-        Node *n = vec_get(list, i);
-        fixed_lvar_offset(n, frame_size);
-      }
-    }
-    fixed_lvar_offset(node->lhs, frame_size);
-  } else if (node->kind == ND_BLOCK) {
-    Vector *list = node->list;
-    for (int i = 0; i < list->size; ++i) {
-      Node *n = vec_get(list, i);
-      fixed_lvar_offset(n, frame_size);
-    }
-  } else if (node->kind == ND_IF) {
-    fixed_lvar_offset(node->thn, frame_size);
-    fixed_lvar_offset(node->els, frame_size);
-  } else if (node->kind == ND_DO || node->kind == ND_WHILE) {
-    fixed_lvar_offset(node->thn, frame_size);
-  } else if (node->kind == ND_FOR) {
-    fixed_lvar_offset(node->ini, frame_size);
-    fixed_lvar_offset(node->thn, frame_size);
-  }
 }
 
 Node *global() {
@@ -1916,7 +1868,7 @@ Node *global() {
       Node *node = consume_enum_node();
       Type *type = node->type;
       if (!type || (type != int_type && type->kind != TY_ENUM))
-        error_at(token->str, "No defined enum type: %s", substring(type->name, type->len));
+        error_at(token->str, "No defined enum type: %.*s", type->len, type->name);
 
       Token *ident = consume_ident();
       if (!ident) {
@@ -1933,7 +1885,7 @@ Node *global() {
 
     Type *type = consume_type();
     if (!type) {
-      fprintf(stderr, "NOT FOUND: %s\n", substring(token->str, token->len));
+      fprintf(stderr, "NOT FOUND: %.*s\n", token->len, token->str);
       while (!consume(";")) {
         token = token->next;
       }
@@ -2043,7 +1995,7 @@ Node *global() {
 
     node = new_node(ND_FUNCTION);
     node->list = args;
-    node->ident = substring(tok->str, tok->len);
+    node->ident = tok->str;
     node->len = tok->len;
     node->lhs = block;
     node->offset = frame_offset;
@@ -2178,7 +2130,7 @@ void dump_gvar_circular() {
   Vector *vec = new_vector();
   Var *var = globals;
   while (var) {
-    fprintf(stderr, "gvar: %s\n", var->name);
+    fprintf(stderr, "gvar: %.*s\n", var->len, var->name);
     if (vec_contains(vec, var)) {
       return;
     }
