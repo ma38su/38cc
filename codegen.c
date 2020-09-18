@@ -721,42 +721,43 @@ void gen_deref(Node *node) {
 
 void gen_deref_type(Type *type) {
   type = raw_type(type);
-
-  if (type->kind == TY_STRUCT) {
-    error("TODO deref struct: %s %s", substring(type->name, type->len));
-    return;
+  if (type->kind == TY_ARRAY || type->kind == TY_STRUCT) {
+    error("illegal state");
   }
 
   printf("  pop rax\n");
   long size = sizeof_type(type);
-  if (type->is_unsigned) {
-    if (size == 1) {
-      printf("  movzx eax, byte ptr [rax]\n");
-    } else if (size == 2) {
-      printf("  movzx eax, word ptr [rax]\n");
-    } else if (size == 4) {
-      printf("  mov eax, [rax]\n");
-    } else if (size == 8) {
-      printf("  mov rax, [rax]\n");
+  if (type->kind == TY_PRM) {
+    if (type->is_unsigned) {
+      if (size == 1) {
+        printf("  movzx eax, byte ptr [rax]\n");
+      } else if (size == 2) {
+        printf("  movzx eax, word ptr [rax]\n");
+      } else if (size == 4) {
+        printf("  mov eax, [rax]\n");
+      } else if (size == 8) {
+        printf("  mov rax, [rax]\n");
+      } else {
+        char *type_name = substring(type->name, type->len);
+        error("illegal deref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
+      }
     } else {
-      char *type_name = substring(type->name, type->len);
-      error("illegal deref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
+      if (size == 1) {
+        printf("  movsx rax, byte ptr [rax]\n");
+      } else if (size == 2) {
+        printf("  movsx rax, word ptr [rax]\n");
+      } else if (size == 4) {
+        printf("  movsxd rax, dword ptr [rax]\n");
+      } else if (size == 8) {
+        printf("  mov rax, [rax]\n");
+      } else {
+        char *type_name = substring(type->name, type->len);
+        error("illegal deref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
+      }
     }
   } else {
-    if (size == 1) {
-      printf("  movsx rax, byte ptr [rax]\n");
-    } else if (size == 2) {
-      printf("  movsx rax, word ptr [rax]\n");
-    } else if (size == 4) {
-      printf("  movsxd rax, dword ptr [rax]\n");
-    } else if (size == 8) {
-      printf("  mov rax, [rax]\n");
-    } else {
-      char *type_name = substring(type->name, type->len);
-      error("illegal deref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
-    }
+    printf("  mov rax, [rax]\n");
   }
-
   printf("  push rax\n");
 }
 
