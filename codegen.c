@@ -321,7 +321,7 @@ void gen_assign(Node *node) {
       printf("  mov [rax], rdi\n");
     } else {
       char *type_name = substring(node->type->name, node->type->len);
-      error("illegal assign defref: sizeof(%s) = %d", type_name, size);
+      error("illegal assign deref: sizeof(%s) = %d", type_name, size);
     }
   }
   if (node->kind != ND_ASSIGN_POST) {
@@ -448,7 +448,7 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_LVAR) {
     gen_addr(node);
-    if (!type_is_array(node->type) && raw_type(node->type)->kind != TY_STRUCT) {
+    if (!type_is_array(node->type) && !type_is_struct(node->type)) {
       gen_deref_type(node->type);
     }
     return true;
@@ -583,6 +583,16 @@ int max_size(Node* lhs, Node* rhs) {
 void gen_function_call(Node *node) {
   if (node->kind != ND_CALL) error("not function call");
 
+  if (memcmp(node->ident, "__builtin_va_start", 18) == 0) {
+    printf("  pop rax\n");
+    printf("  mov edi, dword ptr [rbp-8]\n");
+    printf("  mov dword ptr [rax], 0\n");
+    printf("  mov dword ptr [rax+4], 0\n");
+    printf("  mov qword ptr [rax+8], rdi\n");
+    printf("  mov qword ptr [rax+16], 0\n");
+    return;
+  }
+
   if (node->list) {
     for (int i = 0; i < node->list->size; ++i) {
       Node *n = (Node *) vec_get(node->list, i);
@@ -713,7 +723,6 @@ void gen_deref_type(Type *type) {
   type = raw_type(type);
 
   if (type->kind == TY_STRUCT) {
-    //printf("  # deref struct\n");
     error("TODO deref struct: %s %s", substring(type->name, type->len));
     return;
   }
@@ -731,7 +740,7 @@ void gen_deref_type(Type *type) {
       printf("  mov rax, [rax]\n");
     } else {
       char *type_name = substring(type->name, type->len);
-      error("illegal defref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
+      error("illegal deref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
     }
   } else {
     if (size == 1) {
@@ -744,7 +753,7 @@ void gen_deref_type(Type *type) {
       printf("  mov rax, [rax]\n");
     } else {
       char *type_name = substring(type->name, type->len);
-      error("illegal defref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
+      error("illegal deref size: sizeof(%s) = %ld %d", type_name, size, type->kind);
     }
   }
 

@@ -166,7 +166,7 @@ Var *new_function_var(Token *tok, Type* type) {
   return new_gvar(tok, new_fn_type(type));
 }
 
-void add_gvar_function(char *name, Type *ret_type) {
+void define_function(char *name, Type *ret_type) {
   Token *tok = calloc(1, sizeof(Token));
   tok->str = name;
   tok->len = strlen(name);
@@ -174,10 +174,10 @@ void add_gvar_function(char *name, Type *ret_type) {
   func->is_extern = true;
 }
 
-void init_builtin() {
-  add_gvar_function("__builtin_va_start", void_type);
-  add_gvar_function("__builtin_bswap64", unsigned_long_type);
-  add_gvar_function("__builtin_bswap32", unsigned_int_type);
+void init_builtins() {
+  define_function("__builtin_va_start", void_type);
+  define_function("__builtin_bswap64", unsigned_long_type);
+  define_function("__builtin_bswap32", unsigned_int_type);
 }
 
 void init_types() {
@@ -254,24 +254,28 @@ void init_types() {
   void_type->kind = TY_VOID;
   vec_add(types, void_type);
 
+  // TODO
+  //typedef struct __va_list_tag __builtin_va_list[1]
   Type *builtin_va_list_type = new_type("__builtin_va_list", sizeof(__builtin_va_list));
-  //sizeof(__builtin_va_list));
-  builtin_va_list_type->kind = TY_VOID;
+  builtin_va_list_type->kind = TY_ARRAY;
   vec_add(types, builtin_va_list_type);
 }
 
-int type_is_ptr_or_array(Type *type) {
+bool type_is_ptr_or_array(Type *type) {
+  type = raw_type(type);
   return type_is_ptr(type) || type_is_array(type);
 }
 
-int type_is_array(Type *type) {
-  type = raw_type(type);
-  return type->len == 2 && memcmp(type->name, "[]", 2) == 0;
+bool type_is_array(Type *type) {
+  return raw_type(type)->kind == TY_ARRAY;
 }
 
-int type_is_ptr(Type *type) {
-  type = raw_type(type);
-  return type->len == 1 && memcmp(type->name, "*", 1) == 0;
+bool type_is_struct(Type *type) {
+  return raw_type(type)->kind == TY_STRUCT;
+}
+
+bool type_is_ptr(Type *type) {
+  return raw_type(type)->kind == TY_PTR;
 }
 
 bool type_is_func(Type *type) {
@@ -2075,7 +2079,7 @@ void dump_types() {
 
 void program() {
   init_types();
-  init_builtin();
+  init_builtins();
 
   int i = 0;
   while (!at_eof()) {
@@ -2094,10 +2098,6 @@ Type *find_type(Token *tok) {
     if (type->kind == TY_UNION) continue;
     if (type->kind == TY_ENUM) continue;
     if (type->len == tok->len && memcmp(tok->str, type->name, type->len) == 0) {
-
-      if (type->kind != TY_PRM && type->kind != TY_VOID && type->kind != TY_TYPEDEF) {
-        error("illegal init types %d", type->kind);
-      }
       return type;
     }
   }

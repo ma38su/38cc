@@ -214,8 +214,9 @@ extern Type *str_type;
 
 extern bool is_debug;
 
-int type_is_array(Type *type);
-int type_is_ptr(Type *type);
+bool type_is_array(Type *type);
+bool type_is_ptr(Type *type);
+bool type_is_struct(Type *type);
 int sizeof_node(Node* node);
 Type *raw_type(Type *type);
 

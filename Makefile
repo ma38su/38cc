@@ -12,8 +12,8 @@ FILE = test
 38cc2: main.s reader.s token.s parser.s codegen.s debug.s vector.s
 	$(CC) main.s reader.s token.s parser.s codegen.s debug.s vector.s -o 38cc2 $(LDFLAGS)
 
-38cc3: main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s
-	$(CC) main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s -o 38cc3 $(LDFLAGS)
+38cc3: main2.s reader2.s token2.s parser2.s codegen2.s debug2.s vector2.s
+	$(CC) main2.s reader2.s token2.s parser2.s codegen2.s debug2.s vector2.s -o 38cc3 $(LDFLAGS)
 
 $(OBJS): 38cc.h $(SRCS)
 
@@ -130,9 +130,12 @@ codegen2.s: 38cc2 codegen_.c codegen.s
 	./38cc2 codegen_.c > codegen2.s
 	diff codegen.s codegen2.s
 
-debug.s: 38cc debug.c debug_.c
-	$(CC) -S -masm=intel debug.c -o debug.s
-	#./38cc debug_.c > debug.s
+debug.s: 38cc debug_.c
+	./38cc debug_.c > debug.s
+
+debug2.s: 38cc2 debug_.c debug.s
+	./38cc2 debug_.c > debug2.s
+	diff debug.s debug2.s
 
 test.s: 38cc test_.c
 	./38cc test_.c > test.s
