@@ -330,7 +330,7 @@ int main() {
 }
 '
 
-try 4 '
+try 8 '
 int main() {
   return sizeof(sizeof(1));
 }

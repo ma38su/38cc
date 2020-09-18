@@ -1,6 +1,6 @@
 # 38cc
 
-38cc is a compiler for the C programming language. The compiler supports only limited features.
+38cc is a compiler for the C programming language. The compiler is able to compile itself. 
 
 The compiler supports x86-64 Linux only. It's tested on Ubuntu-18.04(WSL2).
 
@@ -11,10 +11,9 @@ Run make to build:
 make
 ```
 
-Run make to build and test:
-
+To build and test:
 ```
-make test3
+make test
 ```
 or
 ```
@@ -22,26 +21,26 @@ mkdir tmp
 make shtest
 ```
 
-Run 38cc to compile:
+To test up to 2nd generation 38cc:
+```
+make test2
+```
+
+To test up to 3nd generation 38cc:
+```
+make test3
+```
+
+To compile by 38cc:
 ```
 cpp source.c -o tmp.c
 ./38cc tmp.c > tmp.s
 gcc tmp.s -o tmp
 ```
 
-
-Note: It doesn't include preprocessor. It requires preprocessor 'cpp' to compile a following code that includes stdio.h.
-
-```
-#include <stdio.h>
-
-int main() {
-  printf("Hello, World!!\n");
-}
-```
-
-### Author
-ma38su
+Note:
+- It requires preprocessor 'cpp' to compile codes.
+- It also requires libc.
 
 ### Reference
 

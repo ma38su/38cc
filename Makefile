@@ -6,6 +6,16 @@ OBJS=main.o token.o parser.o codegen.o reader.o debug.o vector.o
 
 FILE = test
 
+38cc: $(OBJS)
+	$(CC) -o 38cc $(OBJS) $(LDFLAGS)
+
+38cc2: main.s reader.s token.s parser.s codegen.s debug.s vector.s
+	$(CC) main.s reader.s token.s parser.s codegen.s debug.s vector.s -o 38cc2 $(LDFLAGS)
+
+38cc3: main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s
+	$(CC) main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s -o 38cc3 $(LDFLAGS)
+
+$(OBJS): 38cc.h $(SRCS)
 
 shtest: 38cc test.sh
 	./test.sh
@@ -27,19 +37,6 @@ test3: 38cc3 test2 test3.s test_gcc.s vector3.s
 	$(CC) test3.s test_gcc.s vector3.s -o test3
 	diff test2.s test3.s
 	./test3
-
-self: 38cc2 test test_.c test_gcc_.c main2.s vector2.s reader2.s token2.s parser2.s codegen2.s
-
-38cc: $(OBJS)
-	$(CC) -o 38cc $(OBJS) $(LDFLAGS)
-
-38cc2: main.s reader.s token.s parser.s codegen.s debug.s vector.s
-	$(CC) main.s reader.s token.s parser.s codegen.s debug.s vector.s -o 38cc2 $(LDFLAGS)
-
-38cc3: main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s
-	$(CC) main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s -o 38cc3 $(LDFLAGS)
-
-$(OBJS): 38cc.h $(SRCS)
 
 vector_.c: vector.c
 	cpp vector.c vector_.c
@@ -74,22 +71,18 @@ test_gcc_.c: test.h test_gcc.c
 sample_.c: sample.c
 	cpp sample.c -o sample_.c
 
-sample: 38cc 38cc2 sample_.c reader_.c
+sample: 38cc 38cc2 sample_.c
 	$(CC) -O0 -S -masm=intel sample.c -o sample-gcc.s
-	$(CC) -O0 -S -masm=intel reader.c -o reader-gcc.s
-	gcc -o sample-gcc sample-gcc.s reader-gcc.s
+	gcc -o sample-gcc sample-gcc.s
 	./sample-gcc Hello
 
 	./38cc sample_.c > sample-38cc.s
-	./38cc reader_.c > reader-38cc.s
-	gcc -o sample-38cc sample-38cc.s reader-38cc.s
+	gcc -o sample-38cc sample-38cc.s
 	./sample-38cc Hello
 
 	./38cc2 sample_.c > sample-38cc2.s
-	./38cc2 reader_.c > reader-38cc2.s
-	gcc -o sample-38cc2 sample-38cc2.s reader-38cc2.s
+	gcc -o sample-38cc2 sample-38cc2.s
 	./sample-38cc2 Hello
-
 
 main.s: 38cc main_.c
 	./38cc main_.c > main.s
@@ -170,5 +163,7 @@ maptest:
 
 clean:
 	rm -f 38cc 38cc2 38cc3 test test2 test3 *.s .*.s *.o *~ tmp/* *_.c
+
+all: 38cc
 
 .PHONY: test clean
