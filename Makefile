@@ -6,11 +6,38 @@ OBJS=main.o token.o parser.o codegen.o reader.o debug.o vector.o
 
 FILE = test
 
+
+shtest: 38cc test.sh
+	./test.sh
+
+test: 38cc test.s test_gcc.s vector.s
+	$(CC) test.s test_gcc.s vector.s -o test
+	./test
+
+test-gcc: test.c test_gcc.c
+	$(CC) -o test_gcc test.c test_gcc.c vector.c
+	./test_gcc
+
+test2: 38cc2 test.s test2.s test_gcc.s vector2.s
+	$(CC) test2.s test_gcc.s vector2.s -o test2
+	diff test.s test2.s
+	./test2
+
+test3: 38cc3 test2 test3.s test_gcc.s vector3.s
+	$(CC) test3.s test_gcc.s vector3.s -o test3
+	diff test2.s test3.s
+	./test3
+
+self: 38cc2 test test_.c test_gcc_.c main2.s vector2.s reader2.s token2.s parser2.s codegen2.s
+
 38cc: $(OBJS)
 	$(CC) -o 38cc $(OBJS) $(LDFLAGS)
 
-38cc2: main.s token.s parser.s codegen.s reader.s debug.s vector.s
-	$(CC) main.s token.s parser.s codegen.s reader.s debug.s vector.s -o 38cc2 $(LDFLAGS)
+38cc2: main.s reader.s token.s parser.s codegen.s debug.s vector.s
+	$(CC) main.s reader.s token.s parser.s codegen.s debug.s vector.s -o 38cc2 $(LDFLAGS)
+
+38cc3: main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s
+	$(CC) main2.s reader2.s token2.s parser2.s codegen2.s debug.s vector2.s -o 38cc3 $(LDFLAGS)
 
 $(OBJS): 38cc.h $(SRCS)
 
@@ -63,6 +90,71 @@ sample: 38cc 38cc2 sample_.c reader_.c
 	gcc -o sample-38cc2 sample-38cc2.s reader-38cc2.s
 	./sample-38cc2 Hello
 
+
+main.s: 38cc main_.c
+	./38cc main_.c > main.s
+
+main2.s: 38cc2 main_.c main.s
+	./38cc2 main_.c > main2.s
+	diff main.s main2.s
+
+vector.s: 38cc vector_.c
+	./38cc vector_.c > vector.s
+
+vector2.s: 38cc2 vector_.c vector.s
+	./38cc2 vector_.c > vector2.s
+	diff vector.s vector2.s
+
+vector3.s: 38cc3 vector_.c vector2.s
+	./38cc3 vector_.c > vector3.s
+	diff vector2.s vector3.s
+
+reader.s: 38cc reader_.c
+	./38cc reader_.c > reader.s
+
+reader2.s: 38cc2 reader_.c reader.s
+	./38cc2 reader_.c > reader2.s
+	diff reader.s reader2.s
+
+token.s: 38cc token_.c
+	./38cc token_.c > token.s
+
+token2.s: 38cc2 token_.c token.s
+	./38cc2 token_.c > token2.s
+	diff token.s token2.s
+
+parser.s: 38cc parser_.c
+	./38cc parser_.c > parser.s
+
+parser2.s: 38cc2 parser_.c parser.s
+	./38cc2 parser_.c > parser2.s
+	diff parser.s parser2.s
+
+codegen.s: 38cc codegen_.c
+	./38cc codegen_.c > codegen.s
+
+codegen2.s: 38cc2 codegen_.c codegen.s
+	./38cc2 codegen_.c > codegen2.s
+	diff codegen.s codegen2.s
+
+debug.s: 38cc debug.c debug_.c
+	$(CC) -S -masm=intel debug.c -o debug.s
+	#./38cc debug_.c > debug.s
+
+test.s: 38cc test_.c
+	./38cc test_.c > test.s
+
+test2.s: 38cc2 test_.c test.s
+	./38cc2 test_.c > test2.s
+	diff test.s test2.s
+
+test3.s: 38cc3 test_.c test2.s
+	./38cc3 test_.c > test3.s
+	diff test2.s test3.s
+
+test_gcc.s: 38cc test_gcc_.c
+	$(CC) -S -masm=intel test_gcc_.c -o test_gcc.s
+
 sample-s: sample-gcc.s sample-38cc.s
 	gcc -o sample-gcc sample-gcc.s
 	./sample-gcc Hello
@@ -72,101 +164,11 @@ sample-s: sample-gcc.s sample-38cc.s
 sample.s: 38cc sample.c .sample.c
 	./38cc .sample.c > sample.s
 
-vector.s: 38cc vector.c vector_.c
-	#$(CC) -S -masm=intel vector.c -o vector.s
-	./38cc vector_.c > vector.s
-
-reader.s: 38cc reader.c reader_.c
-	#$(CC) -S -masm=intel reader.c -o reader.s
-	./38cc reader_.c > reader.s
-
-token.s: 38cc token.c token_.c
-	#$(CC) -S -masm=intel token.c -o token.s
-	./38cc token_.c > token.s
-
-codegen.s: 38cc codegen.c codegen_.c
-	#$(CC) -S -masm=intel codegen.c -o codegen.s
-	./38cc codegen_.c > codegen.s
-
-main.s: 38cc main.c main_.c
-	#$(CC) -S -masm=intel main.c -o main.s
-	./38cc main_.c > main.s
-
-parser.s: 38cc parser.c parser_.c
-	$(CC) -S -masm=intel parser.c -o parser.s
-	#./38cc parser_.c > parser.s
-
-debug.s: 38cc debug.c debug_.c
-	$(CC) -S -masm=intel debug.c -o debug.s
-	#./38cc debug_.c > debug.s
-
-test.s: 38cc test_.c
-	./38cc test_.c > test.s
-
-test_gcc.s: 38cc test_gcc_.c
-	$(CC) -S -masm=intel test_gcc_.c -o test_gcc.s
-
-shtest: 38cc test.sh
-	./test.sh
-
-test_main_.c: test_main.c
-	cpp test_main.c test_main_.c
-
-test_main.s: 38cc test_main_.c
-	./38cc test_main_.c > test_main.s
-
-test: 38cc test_main.s test.s test_gcc.s vector.s
-	$(CC) test.s test_main.s test_gcc.s vector.s -o test
-	./test
-
-test-gcc: test_main.c test.c test_gcc.c
-	$(CC) -o test_gcc test_main.c test.c test_gcc.c vector.c
-	./test_gcc
-
-self: 38cc2 test test_.c test_gcc_.c
-	./38cc2 test_main_.c > test_main2.s
-	./38cc2 test_.c > test2.s
-	./38cc2 test_gcc_.c > test2_gcc.s
-
-	./38cc2 vector_.c > vector2.s
-	diff vector.s vector2.s
-
-	./38cc2 reader_.c > reader2.s
-	diff reader.s reader2.s
-
-	./38cc2 token_.c > token2.s
-	diff token.s token2.s
-
-	$(CC) test_main2.s test2.s test2_gcc.s vector2.s -o test2
-	./test2
-
-#	./38cc2 .sample.c > sample2.s
-#	./38cc2 .test.c > test2.s
-#	./38cc2 .vector.c > vector2.s
-#	./38cc2 .reader.c > reader2.s
-#	./38cc2 .subtoken.c > subtoken2.s
-
-#	$(CC) -o 38cc3 main.s token.s subtoken2.s parser.s codegen.s reader.s debug.s vector.s $(LDFLAGS)
-
-#	./38cc3 .vector.c > vector3.s
-#	./38cc3 .reader.c > reader3.s
-#	./38cc3 .subtoken.c > subtoken3.s
-#	diff reader2.s reader3.s
-#	diff subtoken2.s subtoken3.s
-#	diff vector2.s vector3.s
-
-#	$(CC) test2.s vector2.s -o test2
-#	./test2
-
-asm:
-	gcc -o .asm asm.s
-	./.asm
-
 maptest:
 	gcc map_test.c map.c -o map_test
 	./map_test
 
 clean:
-	rm -f 38cc 38cc2 test test2 *.s .*.s *.o *~ tmp/* .*.c
+	rm -f 38cc 38cc2 38cc3 test test2 test3 *.s .*.s *.o *~ tmp/* *_.c
 
 .PHONY: test clean

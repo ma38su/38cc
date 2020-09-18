@@ -12,8 +12,9 @@ make
 ```
 
 Run make to build and test:
+
 ```
-make test
+make test3
 ```
 or
 ```

@@ -15,7 +15,6 @@ void dump_args(int argc, char** argv) {
 }
 
 int main(int argc, char *argv[]) {
-  fprintf(stderr, "call main: %d\n", argc);
   if (argc != 2) {
     fprintf(stderr, "Illegal num of argmuments.\n");
     dump_args(argc, argv);

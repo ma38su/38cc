@@ -738,7 +738,7 @@ void test34() {
   assertStr("test34", "hEllo, wOrld!", gpath);
 }
 
-int test_all() {
+int main(int argc, char* argv[]) {
   test1();
   test2();
   test3();
