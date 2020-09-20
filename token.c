@@ -127,6 +127,8 @@ Token *tokenize(char *p) {
       }
 
       if (starts_with(p, l, "do") || starts_with(p, l, "while")
+          || starts_with(p, l, "switch") || starts_with(p, l, "case")
+          || starts_with(p, l, "default")
           || starts_with(p, l, "continue") || starts_with(p, l, "break")
           || starts_with(p, l, "for") || starts_with(p, l, "return")
           || starts_with(p, l, "if") || starts_with(p, l, "else")

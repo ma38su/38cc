@@ -1520,6 +1520,10 @@ Node *declaration(void) {
 Node *block_stmt() {
   if (!consume("{")) return NULL;
 
+  // scope in
+  Var *tmp_locals = locals;
+  int tmp_locals_size = locals_size;
+
   Node *node = new_node(ND_BLOCK);
   Vector *stmt_list = new_vector();
   while (!consume("}")) {
@@ -1527,20 +1531,18 @@ Node *block_stmt() {
     vec_add(stmt_list, stmt());
   }
   node->list = stmt_list;
+
+  // scope out
+  locals = tmp_locals;
+  locals_size = tmp_locals_size;
+
   return node;
 }
 
 Node *stmt() {
-  // scope in
-  Var *tmp_locals = locals;
-  int tmp_locals_size = locals_size;
 
   Node *node = block_stmt();
   if (node) {
-    // scope out
-    locals = tmp_locals;
-    locals_size = tmp_locals_size;
-
     return node;
   }
   if (consume("return")) {
@@ -1550,7 +1552,6 @@ Node *stmt() {
     expect(";");
     return node;
   }
-  
   if (consume("continue")) {
     node = new_node(ND_CONTINUE);
     expect(";");
@@ -1561,7 +1562,17 @@ Node *stmt() {
     expect(";");
     return node;
   }
-
+  if (consume("case")) {
+    node = new_node(ND_CASE);
+    node->val = eval_node(equality());
+    expect(":");
+    return node;
+  }
+  if (consume("default")) {
+    node = new_node(ND_DEFAULT);
+    expect(":");
+    return node;
+  }
   if (consume("if")) {
     node = new_node(ND_IF);
     expect("(");
@@ -1571,6 +1582,15 @@ Node *stmt() {
     if (consume("else")) {
       node->els = stmt();
     }
+    return node;
+  }
+
+  if (consume("switch")) {
+    node = new_node(ND_SWITCH);
+    expect("(");
+    node->cnd = expr();
+    expect(")");
+    node->thn = block_stmt();
     return node;
   }
 
@@ -1596,6 +1616,10 @@ Node *stmt() {
   if (consume("for")) {
     node = new_node(ND_FOR);
     expect("(");
+
+    // scope in
+    Var *tmp_locals = locals;
+    int tmp_locals_size = locals_size;
 
     if (!consume(";")) {
       Node *d = declaration();

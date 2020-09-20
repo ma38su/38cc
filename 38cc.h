@@ -54,7 +54,8 @@ typedef enum {
   ND_PTR_ADD,
   ND_PTR_SUB,
   ND_PTR_DIFF,
-
+  ND_CASE,
+  ND_DEFAULT,
   ND_COMMENT,
 
 } NodeKind;

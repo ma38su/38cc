@@ -738,6 +738,26 @@ void test34() {
   assertStr("test34", "hEllo, wOrld!", gpath);
 }
 
+int evalSwitch(int val) {
+  int ans;
+  switch (val) {
+    case 1:
+      ans = 7;
+      break;
+    case 3:
+      return 11;
+    case 2:
+      return 13;
+  }
+  return ans;
+}
+
+void test35() {
+  assertInt("test35-1", 7, evalSwitch(1));
+  assertInt("test35-2", 11, evalSwitch(3));
+  assertInt("test35-3", 13, evalSwitch(2));
+}
+
 int main(int argc, char* argv[]) {
   test1();
   test2();
@@ -772,6 +792,7 @@ int main(int argc, char* argv[]) {
   test31();
   test32();
   test34();
+  test35();
   return 0;
 }
 

@@ -25,6 +25,9 @@ void gen_defined_function(Node *node);
 void gen_defined_function(Node *node);
 
 void gen_if(Node *node);
+void gen_switch(Node *node);
+void gen_case(Node *node);
+void gen_default(Node *node);
 void gen_for(Node *node);
 void gen_while(Node *node);
 void gen_do_while(Node *node);
@@ -228,18 +231,15 @@ void gen_defined_function(Node *node) {
   }
   // extract args
   if (node->list) {
-    int index = node->list->size;
     for (int i = node->list->size - 1; i >= 0; --i) {
       Node *arg = (Node *) vec_get(node->list, i);
-      printf("  # extract arg \"%.*s\"\n", arg->len, arg->ident);
       gen_addr(arg);
       printf("  pop rax\n");
 
-      --index;
       Type *type = raw_type(arg->type);
       long size = sizeof_type(type);
-      char *r = args_register(size, index);
-      printf("  mov [rax], %s\n", r);
+      char *reg = args_register(size, i);
+      printf("  mov [rax], %s # arg \"%.*s\"\n", reg, arg->len, arg->ident);
     }
   }
 
@@ -400,6 +400,18 @@ bool gen(Node *node) {
   }
   if (node->kind == ND_FOR) {
     gen_for(node);
+    return false;
+  }
+  if (node->kind == ND_SWITCH) {
+    gen_switch(node);
+    return false;
+  }
+  if (node->kind == ND_CASE) {
+    gen_case(node);
+    return false;
+  }
+  if (node->kind == ND_DEFAULT) {
+    gen_default(node);
     return false;
   }
   if (node->kind == ND_WHILE) {
@@ -873,6 +885,62 @@ void gen_for(Node *node) {
   printf("  jmp .L.begin.%d\n", lid);
   printf(".L.end.%d:\n", lid);
   current_lid = prev_lid;
+}
+
+Vector *pick_cases(Node *node) {
+  if (node->kind != ND_BLOCK) error("not block");
+
+  Vector *ret = new_vector();
+
+  Vector *vec = node->list;
+  for (int i = 0; i < vec->size; ++i) {
+    Node *n = vec_get(vec, i);
+    if (n->kind == ND_CASE || n->kind == ND_DEFAULT) {
+      vec_add(ret, n);
+    }
+  }
+  return ret;
+}
+
+void gen_switch(Node *node) {
+  if (node->kind != ND_SWITCH) {
+    error("not switch");
+  }
+
+  int prev_lid = current_lid;
+  int lid = current_lid = label_id++;
+
+  gen_to_stack(node->cnd);
+  printf("  pop rax\n");
+
+  Vector *case_list = pick_cases(node->thn);
+  for (int i = 0; i < case_list->size; ++i) {
+    int case_id = label_id++;
+    Node *n = vec_get(case_list, i);
+    if (n->kind == ND_CASE) {
+      printf("  cmp	eax, %ld\n", n->val);
+      printf("  je  .L%d\n", case_id);
+    } else if (n->kind == ND_DEFAULT) {
+      printf("  jmp  .L%d\n", case_id);
+    } else {
+      error("not supported");      
+    }
+    n->val = case_id;
+  }
+  gen_block(node->thn);
+
+  printf(".L.end.%d:\n", lid);
+  current_lid = prev_lid;
+}
+
+void gen_case(Node *node) {
+  if (node->kind != ND_CASE) error("not case");
+  printf(".L%ld:\n", node->val);
+}
+
+void gen_default(Node *node) {
+  if (node->kind != ND_DEFAULT) error("not default");
+  printf(".L%ld:\n", node->val);
 }
 
 void gen_return(Node *node) {
