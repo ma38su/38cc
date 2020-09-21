@@ -394,6 +394,15 @@ bool gen(Node *node) {
     error("node is NULL");
   }
 
+  if (node->kind == ND_DECLR) {
+    for (int i = 0; i < node->list->size; ++i) {
+      Node *n = vec_get(node->list, i);
+      if (gen(n)) {
+        printf("  pop rax\n");
+      }
+    }
+    return false;
+  }
   if (node->kind == ND_IF) {
     gen_if(node);
     return false;

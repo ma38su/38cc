@@ -11,6 +11,7 @@ int align(int offset, int size);
 int eval_node(Node* node);
 bool is_alpbar(char c);
 
+Type *consume_type_base();
 Type *consume_type();
 Member *consume_member();
 Var *find_gvar(Token *tok);
@@ -431,7 +432,7 @@ Token *consume_ident() {
   return tmp;
 }
 
-Type *consume_type() {
+Type *consume_type_base() {
   // skip const
   consume("const");
 
@@ -488,9 +489,15 @@ Type *consume_type() {
     if (p0 == token) return NULL;
     if (!type) error_at(token->str, "type is not set(null) %.*s", token->len, token->str);
   }
+  return type;
+}
 
-  while (consume("*")) {
-    type = new_ptr_type(type);
+Type *consume_type() {
+  Type *type = consume_type_base();
+  if (type) {
+    while (consume("*")) {
+      type = new_ptr_type(type);
+    }
   }
   return type;
 }
@@ -1474,47 +1481,59 @@ Node *expr(void) {
 Node *declaration(void) {
   int is_static = consume("static");
 
-  Type *type = consume_type();
-  if (!type) {
+  Type *type0 = consume_type_base();
+  if (!type0) {
     return NULL;
   }
 
-  Token *tok = consume_ident();
-  if (!tok)
-    error_at(token->str, "illegal var name");
-  if (find_lvar(tok))
-    error_at(tok->str, "duplicated defined lvar");
-
-  if (consume("[")) {
-    int array_len = expect_number();
-    expect("]");
-
-    type = new_array_type(type, array_len);
-  }
-
-  if (is_static) {
-    Var *var = new_gvar(tok, type);
-
-    Node *node = new_node(ND_GVAR);
-    node->ident = var->name;
-    node->len = var->len;
-    node->type = var->type;
-    if (consume("=")) {
-      var->init = gvar_init_val(var->type);
+  Vector* list = new_vector();
+  do {
+    Type *type = type0;
+    while (consume("*")) {
+      type = new_ptr_type(type);
     }
-    return node;
-  } else {
-    Var *var = new_lvar(tok, type);
-    Node *node = new_node(ND_LVAR);
-    node->ident = var->name;
-    node->len = var->len;
-    node->offset = var->offset;
-    node->type = var->type;
-    if (consume("=")) {
-      node = new_node_lr(ND_ASSIGN, node, assign());
+
+    Token *tok = consume_ident();
+    if (!tok)
+      error_at(token->str, "illegal var name");
+    if (find_lvar(tok))
+      error_at(tok->str, "duplicated defined lvar");
+
+    if (consume("[")) {
+      int array_len = expect_number();
+      expect("]");
+
+      type = new_array_type(type, array_len);
     }
-    return node;
-  }
+
+    if (is_static) {
+      Var *var = new_gvar(tok, type);
+
+      Node *n = new_node(ND_GVAR);
+      n->ident = var->name;
+      n->len = var->len;
+      n->type = var->type;
+      if (consume("=")) {
+        var->init = gvar_init_val(var->type);
+        vec_add(list, n);
+      }
+    } else {
+      Var *var = new_lvar(tok, type);
+      Node *n = new_node(ND_LVAR);
+      n->ident = var->name;
+      n->len = var->len;
+      n->offset = var->offset;
+      n->type = var->type;
+      if (consume("=")) {
+        n = new_node_lr(ND_ASSIGN, n, assign());
+        vec_add(list, n);
+      }
+    }
+  } while (consume(","));
+
+  Node *node = new_node(ND_DECLR);
+  node->list = list;
+  return node;
 }
 
 Node *block_stmt() {

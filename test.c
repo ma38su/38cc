@@ -741,21 +741,39 @@ void test34() {
 int evalSwitch(int val) {
   int ans;
   switch (val) {
-    case 1:
-      ans = 7;
+    case 12:
+      ans = 13;
+    case 23:
+      ans = 24;
       break;
-    case 3:
-      return 11;
-    case 2:
-      return 13;
+    case 34:
+      return 35;
+    case -1:
+      return 71;
+    default:
+      ans = 46;
   }
   return ans;
 }
 
 void test35() {
-  assertInt("test35-1", 7, evalSwitch(1));
-  assertInt("test35-2", 11, evalSwitch(3));
-  assertInt("test35-3", 13, evalSwitch(2));
+  assertInt("test35-1", 24, evalSwitch(12));
+  assertInt("test35-2", 24, evalSwitch(23));
+  assertInt("test35-3", 35, evalSwitch(34));
+  assertInt("test35-4", 71, evalSwitch(-1));
+  assertInt("test35-5", 46, evalSwitch(0));
+}
+
+void test36() {
+  int a, b;
+  a = 7;
+  b = 11;
+  assertInt("test36-1", 7, a);
+  assertInt("test36-2", 11, b);
+
+  int c = 13, d = -7;
+  assertInt("test36-3", 13, c);
+  assertInt("test36-4", -7, d);
 }
 
 int main(int argc, char* argv[]) {
@@ -793,6 +811,7 @@ int main(int argc, char* argv[]) {
   test32();
   test34();
   test35();
+  test36();
   return 0;
 }
 

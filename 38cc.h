@@ -51,12 +51,12 @@ typedef enum {
   ND_SWITCH,      // 42 switch
   ND_DO,          // 43 do
   ND_LABEL,       // 44
+  ND_DECLR,
   ND_PTR_ADD,
   ND_PTR_SUB,
   ND_PTR_DIFF,
   ND_CASE,
   ND_DEFAULT,
-  ND_COMMENT,
 
 } NodeKind;
 
