@@ -774,6 +774,10 @@ void test36() {
   int c = 13, d = -7;
   assertInt("test36-3", 13, c);
   assertInt("test36-4", -7, d);
+
+  char e = 'a', *f = "HeLlo, wOrld!";
+  assertChar("test36-5", 'a', e);
+  assertChar("test36-6", "HeLlo, wOrld!", f);
 }
 
 int main(int argc, char* argv[]) {
